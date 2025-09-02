@@ -1,0 +1,51 @@
+{
+	"LOADING": "Ачааллаж байна …",
+
+	"DAYBEFOREYESTERDAY": "Өчигдрийн өмнөх өдөр",
+	"YESTERDAY": "Өчигдөр",
+	"TODAY": "Өнөөдөр",
+	"TOMORROW": "Маргааш",
+	"DAYAFTERTOMORROW": "Маргаашийн дараагийн өдөр",
+	"RUNNING": "Дуусах хугацаа",
+	"EMPTY": "Удахгүй болох үйл явдал байхгүй.",
+	"WEEK": "{weekNumber} долоо хоног",
+	"WEEK_SHORT": "{weekNumber}д",
+
+	"N": "Хойд",
+	"NNE": "Хойд-зүүн хойд",
+	"NE": "Зүүн хойд",
+	"ENE": "Зүүн-зүүн хойд",
+	"E": "Зүүн",
+	"ESE": "Зүүн-зүүн өмнөд",
+	"SE": "Зүүн өмнөд",
+	"SSE": "Өмнөд-зүүн өмнөд",
+	"S": "Өмнөд",
+	"SSW": "Өмнөд-баруун өмнөд",
+	"SW": "Баруун өмнөд",
+	"WSW": "Баруун-баруун өмнөд",
+	"W": "Баруун",
+	"WNW": "Баруун-баруун хойд",
+	"NW": "Баруун хойд",
+	"NNW": "Хойд-баруун хойд",
+
+	"FEELS": "Мэдрэгдэх {DEGREE}",
+	"PRECIP_POP": "Хур тунадасны магадлал",
+	"PRECIP_AMOUNT": "Хур тунадасны хэмжээ",
+
+	"MODULE_CONFIG_CHANGED": "{MODULE_NAME} модулийн тохиргооны сонголтууд өөрчлөгдсөн.\nДокументацийг шалгана уу.",
+	"MODULE_CONFIG_ERROR": "{MODULE_NAME} модулд алдаа гарлаа. {ERROR}",
+	"MODULE_ERROR_MALFORMED_URL": "Буруу URL хаяг.",
+	"MODULE_ERROR_NO_CONNECTION": "Интернет холболт байхгүй.",
+	"MODULE_ERROR_UNAUTHORIZED": "Эрх олгох амжилтгүй.",
+	"MODULE_ERROR_UNSPECIFIED": "Дэлгэрэнгүй мэдээллийн тулд лог файлыг шалгана уу.",
+
+	"NEWSFEED_NO_ITEMS": "Одоогоор мэдээ байхгүй.",
+
+	"UPDATE_NOTIFICATION": "MagicMirror²-ийн шинэ хувилбар байна.",
+	"UPDATE_NOTIFICATION_MODULE": "{MODULE_NAME} модулийн шинэ хувилбар байна.",
+	"UPDATE_INFO_SINGLE": "Одоогийн суулгасан хувилбар {BRANCH_NAME} салбараас {COMMIT_COUNT} commit-аар хоцорч байна.",
+	"UPDATE_INFO_MULTIPLE": "Одоогийн суулгасан хувилбар {BRANCH_NAME} салбараас {COMMIT_COUNT} commit-аар хоцорч байна.",
+	"UPDATE_NOTIFICATION_DONE": "{MODULE_NAME} модулийн шинэчлэл дууссан.",
+	"UPDATE_NOTIFICATION_ERROR": "{MODULE_NAME} модулийн шинэчлэлд алдаа гарлаа.",
+	"UPDATE_NOTIFICATION_NEED-RESTART": "MagicMirror-г дахин эхлүүлэх шаардлагатай."
+}
