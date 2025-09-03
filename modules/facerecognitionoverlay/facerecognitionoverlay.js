@@ -13,10 +13,10 @@ Module.register("facerecognitionoverlay", {
 		faceIconStyle: "pulse", // pulse, rotate, bounce
 		// Recognition status messages
 		messages: {
-			detecting: "Таныг таних гэж байна... (Recognizing you...)",
-			recognized: "Таныг танилаа! (Recognized you!)",
-			unknown: "Таныг танихгүй байна. (I don't recognize you.)",
-			waiting: "Хүлээж байна... (Waiting...)"
+			detecting: "Царай таниж байна",
+			recognized: "Тавтай Морил",
+			unknown: "Таныг танихгүй байна",
+			waiting: "Ойртож зогсоорой"
 		}
 	},
 
@@ -88,29 +88,29 @@ Module.register("facerecognitionoverlay", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "facerecognitionoverlay";
 
-		// Only show overlay when active
-		if (this.isActive) {
-			// Face icon
-			if (this.config.showFaceIcon) {
-				const faceIcon = document.createElement("div");
-				faceIcon.className = `face-icon ${this.config.faceIconSize} ${this.config.faceIconStyle}`;
-				faceIcon.innerHTML = "👤";
-				wrapper.appendChild(faceIcon);
-			}
+		// Always show overlay (for waiting state)
+		// Face icon (only show when detecting or recognized)
+		if (this.isActive && this.config.showFaceIcon) {
+			const faceIcon = document.createElement("div");
+			faceIcon.className = `face-icon ${this.config.faceIconSize} ${this.config.faceIconStyle}`;
+			faceIcon.innerHTML = "👤";
+			wrapper.appendChild(faceIcon);
+		}
 
-			// Recognition status
-			if (this.config.showRecognitionStatus) {
-				const statusElement = document.createElement("div");
-				statusElement.className = "recognition-status";
-				
-				let statusText = this.config.messages[this.currentStatus] || this.config.messages.waiting;
-				if (this.currentStatus === "recognized" && this.currentPerson) {
-					statusText = `Сайн байна уу ${this.currentPerson}! (Hello ${this.currentPerson}!)`;
-				}
-				
-				statusElement.innerHTML = statusText;
-				wrapper.appendChild(statusElement);
+		// Recognition status (always show)
+		if (this.config.showRecognitionStatus) {
+			const statusElement = document.createElement("div");
+			statusElement.className = "recognition-status";
+			
+			let statusText = this.config.messages[this.currentStatus] || this.config.messages.waiting;
+			
+			// Show personalized greeting when recognized
+			if (this.currentStatus === "recognized" && this.currentPerson && this.currentPerson !== "Unknown") {
+				statusText = `${this.config.messages.recognized} ${this.currentPerson}`;
 			}
+			
+			statusElement.innerHTML = statusText;
+			wrapper.appendChild(statusElement);
 		}
 
 		return wrapper;

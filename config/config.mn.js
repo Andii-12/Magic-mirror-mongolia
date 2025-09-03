@@ -213,11 +213,11 @@ let config = {
 				showStatus: false, // Hide status in main interface
 				animationSpeed: 1000,
 				greetings: {
-					"default": "Сайн байна уу {name}! (Hello {name}!)",
-					"unknown": "Таныг танихгүй байна. (I don't recognize you.)",
+					"default": "Тавтай Морил {name}!",
+					"unknown": "Таныг танихгүй байна",
 					// Add specific greetings for known people
-					// "John": "Сайн байна уу John! (Hello John!)",
-					// "Jane": "Сайн байна уу Jane! (Hello Jane!)"
+					// "John": "Тавтай Морил John!",
+					// "Jane": "Тавтай Морил Jane!"
 				}
 			}
 		},
@@ -233,10 +233,10 @@ let config = {
 				animationSpeed: 1000,
 				faceIconStyle: "pulse", // pulse, rotate, bounce
 				messages: {
-					detecting: "Таныг таних гэж байна... (Recognizing you...)",
-					recognized: "Таныг танилаа! (Recognized you!)",
-					unknown: "Таныг танихгүй байна. (I don't recognize you.)",
-					waiting: "Хүлээж байна... (Waiting...)"
+					detecting: "Царай таниж байна",
+					recognized: "Тавтай Морил",
+					unknown: "Таныг танихгүй байна",
+					waiting: "Ойртож зогсоорой"
 				}
 			}
 		}

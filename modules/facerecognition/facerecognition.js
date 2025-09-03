@@ -16,13 +16,13 @@ Module.register("facerecognition", {
 		showStatus: true, // Show recognition status
 		animationSpeed: 1000, // Animation speed for greetings
 		// Personalized greetings for different people
-		greetings: {
-			"default": "Сайн байна уу! (Hello!)",
-			"unknown": "Таныг танихгүй байна. (I don't recognize you.)",
-			// Add specific greetings for known people
-			// "John": "Сайн байна уу John! (Hello John!)",
-			// "Jane": "Сайн байна уу Jane! (Hello Jane!)"
-		}
+						greetings: {
+					"default": "Тавтай Морил {name}!",
+					"unknown": "Таныг танихгүй байна",
+					// Add specific greetings for known people
+					// "John": "Тавтай Морил John!",
+					// "Jane": "Тавтай Морил Jane!"
+				}
 	},
 
 	// Define required scripts.
@@ -198,32 +198,20 @@ Module.register("facerecognition", {
 		wrapper.className = "facerecognition";
 
 		// Show greeting if person is recognized
-		if (this.currentPerson) {
+		if (this.currentPerson && this.currentPerson !== "Unknown") {
 			const greetingElement = document.createElement("div");
 			greetingElement.className = `greeting ${this.config.greetingStyle}`;
 			
-			const greetingText = this.config.greetings[this.currentPerson] || 
-								this.config.greetings.default.replace("name", this.currentPerson);
+			// Create personalized greeting
+			let greetingText;
+			if (this.config.greetings[this.currentPerson]) {
+				greetingText = this.config.greetings[this.currentPerson];
+			} else {
+				greetingText = this.config.greetings.default.replace("{name}", this.currentPerson);
+			}
 			
 			greetingElement.innerHTML = greetingText;
 			wrapper.appendChild(greetingElement);
-		}
-
-		// Show status information if enabled
-		if (this.config.showStatus || this.config.showDistance) {
-			const statusElement = document.createElement("div");
-			statusElement.className = "status small dimmed";
-
-			let statusText = "";
-			if (this.config.showDistance) {
-				statusText += `Distance: ${this.currentDistance}cm `;
-			}
-			if (this.config.showStatus) {
-				statusText += this.isActive ? "Active" : "Inactive";
-			}
-
-			statusElement.innerHTML = statusText;
-			wrapper.appendChild(statusElement);
 		}
 
 		return wrapper;

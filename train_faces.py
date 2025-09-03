@@ -31,14 +31,63 @@ def capture_photos(person_name, num_photos=40):
         picam2.start()
         time.sleep(2)  # Let camera initialize
         
-        print("📷 Camera ready! Look at the camera and press Enter to start...")
-        input()
+        print("📷 Camera ready! You can see yourself in the preview window.")
+        print("📋 Instructions:")
+        print("   - Look directly at the camera")
+        print("   - Make sure your face is clearly visible")
+        print("   - Good lighting helps with recognition")
+        print("   - Press Enter when you're ready to start capturing photos")
+        print("   - Press 'q' to quit without capturing")
         
-        # Load face cascade
-        face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
-        if face_cascade.empty():
-            print(f"❌ Error: Could not load face cascade from {CASCADE_PATH}")
-            return False
+        # Show camera preview
+        preview_window = "Face Recognition Preview"
+        cv2.namedWindow(preview_window, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(preview_window, 640, 480)
+        
+        print("\n👀 Camera preview is now showing...")
+        print("   Press Enter to start capturing photos")
+        print("   Press 'q' to quit")
+        
+        # Show preview until user presses Enter
+        while True:
+            # Capture frame
+            frame = picam2.capture_array()
+            
+            # Convert to RGB for display
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Detect faces and draw rectangle
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+            
+            # Draw face rectangles
+            for (x, y, w, h) in faces:
+                cv2.rectangle(rgb_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                cv2.putText(rgb_frame, "Face Detected", (x, y-10), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
+            # Add instructions on frame
+            cv2.putText(rgb_frame, "Press ENTER to start capturing", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText(rgb_frame, "Press 'q' to quit", (10, 60), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            
+            # Show frame
+            cv2.imshow(preview_window, rgb_frame)
+            
+            # Check for key press
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('\r') or key == ord('\n'):  # Enter key
+                break
+            elif key == ord('q'):
+                cv2.destroyAllWindows()
+                picam2.close()
+                print("❌ Photo capture cancelled")
+                return False
+        
+        # Close preview window
+        cv2.destroyAllWindows()
+        print("✅ Starting photo capture...")
         
         captured_count = 0
         attempt = 0
@@ -67,7 +116,8 @@ def capture_photos(person_name, num_photos=40):
                 cv2.imwrite(photo_path, face_img)
                 
                 captured_count += 1
-                print(f"   ✅ Captured photo {captured_count}/{num_photos}")
+                progress = (captured_count / num_photos) * 100
+                print(f"   ✅ Captured photo {captured_count}/{num_photos} ({progress:.1f}%)")
                 
                 # Small delay between captures
                 time.sleep(0.5)
