@@ -70,7 +70,8 @@ let config = {
 					{
 						fetchInterval: 7 * 24 * 60 * 60 * 1000, // Weekly update
 						symbol: "calendar-check",
-						url: "https://ics.calendarlabs.com/76/mm3137/US_Holidays.ics"
+						url: "calendars/mongolian-holidays.ics",
+						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
 					}
 				],
 				maximumEntries: 5, // Limit for Pi 4 performance
@@ -82,20 +83,47 @@ let config = {
 			position: "lower_third",
 			config: {
 				compliments: {
+					anytime: [
+						"Өнөөдөр ч сайхан байна шүү!", // Today is beautiful!
+						"Таны өдөр амжилттай болтугай!", // May your day be successful!
+						"Хүч чадалтай байгаарай!", // Stay strong!
+						"Амьдрал сайхан байна!", // Life is beautiful!
+						"Бүх зүйл сайн болно!", // Everything will be fine!
+						"Өнөөдөр ч гайхалтай байна!", // Today is amazing!
+						"Таны хүсэл мөрөөдөл биелэгдэх болтугай!", // May your wishes come true!
+						"Эерэг энергитэй байгаарай!", // Stay positive!
+						"Өнөөдөр ч гайхалтай өдөр байна!", // Today is a wonderful day!
+						"Таны амьдрал сайхан болтугай!" // May your life be beautiful!
+					],
 					morning: [
 						"Сайн өглөө!", // Good morning!
 						"Өглөөний мэнд!", // Morning greetings!
-						"Сайхан өдөр болтугай!" // Have a great day!
+						"Сайхан өдөр байна шүү!", // It's a beautiful day!
+						"Өнөөдөр ч гайхалтай өглөө байна!", // Today is a wonderful morning!
+						"Амжилттай өдөр эхэлтугай!", // May a successful day begin!
+						"Өглөөний эрч хүчтэй байгаарай!", // Stay energetic in the morning!
+						"Өнөөдөр ч сайхан өдөр болтугай!", // May today be a beautiful day!
+						"Өглөөний аз жаргалтай байгаарай!" // Be happy in the morning!
 					],
 					afternoon: [
 						"Сайн өдөр!", // Good day!
 						"Өдрийн мэнд!", // Day greetings!
-						"Амжилттай байгаарай!" // Be successful!
+						"Амжилттай байгаарай!", // Be successful!
+						"Өдрийн цаг сайхан өнгөрч байна!", // The day is going well!
+						"Өнөөдөр ч гайхалтай өдөр байна!", // Today is an amazing day!
+						"Амжилттай цаг болтугай!", // May it be a successful time!
+						"Өдрийн эрч хүчтэй байгаарай!", // Stay energetic during the day!
+						"Өнөөдөр ч сайхан өдөр байна шүү!" // Today is a beautiful day!
 					],
 					evening: [
 						"Сайн орой!", // Good evening!
 						"Оройн мэнд!", // Evening greetings!
-						"Амрах цаг болтугай!" // Have a good rest!
+						"Амрах цаг болтугай!", // Have a good rest!
+						"Өнөөдөр ч сайхан өдөр байлаа!", // Today was a beautiful day!
+						"Оройн амрах цаг сайхан болтугай!", // May the evening rest be good!
+						"Өдрийн ажил амжилттай боллоо!", // The day's work was successful!
+						"Оройн аз жаргалтай байгаарай!", // Be happy in the evening!
+						"Өнөөдөр ч гайхалтай өдөр байлаа шүү!" // Today was an amazing day!
 					]
 				},
 				updateInterval: 30000 // 30 seconds
@@ -132,18 +160,51 @@ let config = {
 		{
 			module: "newsfeed",
 			position: "bottom_bar",
+			header: "Монголын мэдээ", // "Mongolian News" in Mongolian
 			config: {
 				feeds: [
 					{
-						title: "Монголын мэдээ", // Mongolian news
-						url: "https://www.montsame.mn/mn/rss.xml" // Example Mongolian news RSS
+						title: "Монголын Үндэсний Радио Телевиз", // Mongolian National Broadcasting
+						url: "http://www.mnb.mn/rss",
+						encoding: "UTF-8",
+						useCorsProxy: true
+					},
+					{
+						title: "BBC News", // International news
+						url: "http://feeds.bbci.co.uk/news/rss.xml",
+						encoding: "UTF-8",
+						useCorsProxy: true
+					},
+					{
+						title: "CNN World News", // International news
+						url: "http://rss.cnn.com/rss/edition.rss",
+						encoding: "UTF-8",
+						useCorsProxy: true
+					},
+					{
+						title: "Al Jazeera English", // International news
+						url: "https://www.aljazeera.com/xml/rss/all.xml",
+						encoding: "UTF-8",
+						useCorsProxy: true
 					}
 				],
 				showSourceTitle: true,
 				showPublishDate: true,
-				updateInterval: 5 * 60 * 1000, // 5 minutes
-				maxNewsItems: 5, // Limit for Pi 4 performance
-				animationSpeed: 2000
+				showDescription: true,
+				wrapTitle: true,
+				wrapDescription: true,
+				truncDescription: true,
+				lengthDescription: 200,
+				updateInterval: 10 * 60 * 1000, // 10 minutes
+				reloadInterval: 15 * 60 * 1000, // 15 minutes
+				maxNewsItems: 8, // Limit for Pi 4 performance
+				animationSpeed: 3000,
+				ignoreOldItems: true,
+				ignoreOlderThan: 24 * 60 * 60 * 1000, // 24 hours
+				hideLoading: false,
+				logFeedWarnings: true,
+				removeStartTags: "<p>",
+				removeEndTags: "</p>"
 			}
 		}
 	]

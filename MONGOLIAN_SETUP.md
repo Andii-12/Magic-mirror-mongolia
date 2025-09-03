@@ -49,9 +49,10 @@ chmod +x setup-mongolian.sh
 The following elements are now in Mongolian:
 
 - **Time and Date**: "Өнөөдөр" (Today), "Маргааш" (Tomorrow)
+- **Day Names**: "Даваа гараг" (Monday), "Мягмар гараг" (Tuesday), "Лхагва гараг" (Wednesday), "Пүрэв гараг" (Thursday), "Баасан гараг" (Friday), "Бямба гараг" (Saturday), "Ням гараг" (Sunday)
 - **Weather**: "Цаг агаарын урьдчилсан мэдээ" (Weather Forecast)
 - **Calendar**: "Цагийн хуваарь" (Schedule)
-- **Compliments**: "Сайн өглөө!" (Good morning!)
+- **Compliments**: Motivational messages like "Сайхан өдөр байна шүү!" (It's a beautiful day!), "Таны өдөр амжилттай болтугай!" (May your day be successful!), "Хүч чадалтай байгаарай!" (Stay strong!)
 - **Error Messages**: All system messages in Mongolian
 - **Wind Directions**: "Хойд" (North), "Зүүн" (East), etc.
 
@@ -73,9 +74,9 @@ timezone: "Asia/Ulaanbaatar"  // Ulaanbaatar timezone
 ### Default Modules Included
 - **Clock**: Digital display with Mongolian date format
 - **Weather**: Current weather and 3-day forecast
-- **Calendar**: Event display with Mongolian translations
-- **Compliments**: Mongolian greetings for different times
-- **News**: Mongolian news feed (configurable)
+- **Calendar**: Mongolian holidays and events (Tsagaan Sar, Naadam, etc.)
+- **Compliments**: Motivational Mongolian messages for different times
+- **News**: Mongolian and international news feeds (MNB, BBC, CNN, Al Jazeera)
 - **Update Notifications**: System update alerts
 
 ## 🎯 Customization
@@ -88,7 +89,55 @@ lon: 106.9057, // Your longitude
 ```
 
 ### Calendar Sources
-Add your calendar URLs:
+The default configuration includes Mongolian holidays:
+```javascript
+calendars: [
+    {
+        url: "calendars/mongolian-holidays.ics",
+        symbol: "calendar-check",
+        name: "Монголын баярын өдрүүд"
+    }
+]
+```
+
+### News Feed Sources
+The default configuration includes working news feeds:
+```javascript
+feeds: [
+    {
+        title: "Монголын Үндэсний Радио Телевиз",
+        url: "http://www.mnb.mn/rss",
+        useCorsProxy: true
+    },
+    {
+        title: "BBC News",
+        url: "http://feeds.bbci.co.uk/news/rss.xml",
+        useCorsProxy: true
+    },
+    {
+        title: "CNN World News",
+        url: "http://rss.cnn.com/rss/edition.rss",
+        useCorsProxy: true
+    },
+    {
+        title: "Al Jazeera English",
+        url: "https://www.aljazeera.com/xml/rss/all.xml",
+        useCorsProxy: true
+    }
+]
+```
+
+**Included Mongolian Holidays:**
+- **Шинэ жилийн баяр** (Tsagaan Sar - Lunar New Year) - February 10-12
+- **Олон улсын эмэгтэйчүүдийн өдөр** (International Women's Day) - March 8
+- **Цэргийн баатар, хамгаалагчдын өдөр** (Soldier's Day) - March 18
+- **Ажилчдын олон улсын нэгдэх өдөр** (Labor Day) - May 1
+- **Ялалтын баяр** (Victory Day) - May 9
+- **Наадам** (Naadam Festival) - July 11-15
+- **Тусгаар тогтнолын өдөр** (Independence Day) - November 26
+- **Үндсэн хуулийн өдөр** (Constitution Day) - November 26
+
+Add your own calendar URLs:
 ```javascript
 calendars: [
     {

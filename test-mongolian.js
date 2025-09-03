@@ -23,7 +23,7 @@ if (fs.existsSync(mnTranslationPath)) {
         console.log(`   ✅ Valid JSON format (${Object.keys(mnTranslations).length} translations)`);
         
         // Check for essential translations
-        const essentialKeys = ['LOADING', 'TODAY', 'TOMORROW', 'YESTERDAY', 'EMPTY'];
+        const essentialKeys = ['LOADING', 'TODAY', 'TOMORROW', 'YESTERDAY', 'EMPTY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
         const missingKeys = essentialKeys.filter(key => !mnTranslations[key]);
         
         if (missingKeys.length === 0) {
@@ -37,7 +37,42 @@ if (fs.existsSync(mnTranslationPath)) {
         console.log(`      LOADING: "${mnTranslations.LOADING}"`);
         console.log(`      TODAY: "${mnTranslations.TODAY}"`);
         console.log(`      TOMORROW: "${mnTranslations.TOMORROW}"`);
+        console.log(`      MONDAY: "${mnTranslations.MONDAY}"`);
+        console.log(`      TUESDAY: "${mnTranslations.TUESDAY}"`);
+        console.log(`      WEDNESDAY: "${mnTranslations.WEDNESDAY}"`);
         console.log(`      FEELS: "${mnTranslations.FEELS}"`);
+        
+        // Check for compliments configuration
+        console.log('\n   💬 Checking compliments configuration...');
+        const configPath = path.join(__dirname, 'config', 'config.mn.js');
+        if (fs.existsSync(configPath)) {
+            const configContent = fs.readFileSync(configPath, 'utf8');
+            if (configContent.includes('Сайхан өдөр байна шүү!')) {
+                console.log('      ✅ Improved Mongolian compliments found');
+                console.log('      📝 Sample compliments:');
+                console.log('         "Сайхан өдөр байна шүү!" (It\'s a beautiful day!)');
+                console.log('         "Таны өдөр амжилттай болтугай!" (May your day be successful!)');
+                console.log('         "Хүч чадалтай байгаарай!" (Stay strong!)');
+            } else {
+                console.log('      ⚠️  Old compliments format detected');
+            }
+        }
+        
+        // Check for news feed configuration
+        console.log('\n   📰 Checking news feed configuration...');
+        if (fs.existsSync(configPath)) {
+            const configContent = fs.readFileSync(configPath, 'utf8');
+            if (configContent.includes('Монголын Үндэсний Радио Телевиз')) {
+                console.log('      ✅ Mongolian news feeds configured');
+                console.log('      📝 News sources:');
+                console.log('         • Монголын Үндэсний Радио Телевиз (Mongolian National Broadcasting)');
+                console.log('         • BBC News (International)');
+                console.log('         • CNN World News (International)');
+                console.log('         • Al Jazeera English (International)');
+            } else {
+                console.log('      ⚠️  News feed configuration not found');
+            }
+        }
         
     } catch (error) {
         console.log(`   ❌ Invalid JSON: ${error.message}`);
@@ -97,8 +132,37 @@ if (fs.existsSync(configPath)) {
     console.log('   ❌ config/config.mn.js not found');
 }
 
-// Test 4: Validate configuration syntax
-console.log('\n4. Validating configuration syntax...');
+// Test 4: Check Mongolian holidays calendar
+console.log('\n4. Checking Mongolian holidays calendar...');
+const calendarPath = path.join(__dirname, 'calendars', 'mongolian-holidays.ics');
+
+if (fs.existsSync(calendarPath)) {
+    console.log('   ✅ Mongolian holidays calendar exists');
+    
+    try {
+        const calendarContent = fs.readFileSync(calendarPath, 'utf8');
+        
+        // Check for key Mongolian holidays
+        const keyHolidays = ['Шинэ жилийн баяр', 'Наадам', 'Тусгаар тогтнолын өдөр'];
+        const foundHolidays = keyHolidays.filter(holiday => calendarContent.includes(holiday));
+        
+        if (foundHolidays.length === keyHolidays.length) {
+            console.log('   ✅ All key Mongolian holidays found');
+        } else {
+            console.log(`   ⚠️  Some holidays missing: ${keyHolidays.filter(h => !foundHolidays.includes(h)).join(', ')}`);
+        }
+        
+        console.log(`   📅 Calendar contains ${(calendarContent.match(/BEGIN:VEVENT/g) || []).length} events`);
+        
+    } catch (error) {
+        console.log(`   ❌ Error reading calendar: ${error.message}`);
+    }
+} else {
+    console.log('   ❌ Mongolian holidays calendar not found');
+}
+
+// Test 5: Validate configuration syntax
+console.log('\n5. Validating configuration syntax...');
 try {
     // Load the check_config module
     const checkConfigPath = path.join(__dirname, 'js', 'check_config.js');
@@ -112,8 +176,8 @@ try {
     console.log(`   ❌ Error: ${error.message}`);
 }
 
-// Test 5: Check system requirements
-console.log('\n5. Checking system requirements...');
+// Test 6: Check system requirements
+console.log('\n6. Checking system requirements...');
 const nodeVersion = process.version;
 const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0]);
 

@@ -58,6 +58,13 @@ setup-mongolian.bat
 - **Өнөөдөр** (Today)
 - **Маргааш** (Tomorrow) 
 - **Өчигдөр** (Yesterday)
+- **Даваа гараг** (Monday)
+- **Мягмар гараг** (Tuesday)
+- **Лхагва гараг** (Wednesday)
+- **Пүрэв гараг** (Thursday)
+- **Баасан гараг** (Friday)
+- **Бямба гараг** (Saturday)
+- **Ням гараг** (Sunday)
 
 ### Weather
 - **Цаг агаарын урьдчилсан мэдээ** (Weather Forecast)
@@ -67,11 +74,27 @@ setup-mongolian.bat
 ### Calendar
 - **Цагийн хуваарь** (Schedule)
 - **Удахгүй болох үйл явдал байхгүй** (No upcoming events)
+- **Монголын баярын өдрүүд** (Mongolian Holidays)
+  - **Шинэ жилийн баяр** (Tsagaan Sar - Lunar New Year)
+  - **Наадам** (Naadam Festival)
+  - **Тусгаар тогтнолын өдөр** (Independence Day)
 
 ### Compliments
 - **Сайн өглөө!** (Good morning!)
-- **Сайн өдөр!** (Good day!)
-- **Сайн орой!** (Good evening!)
+- **Өглөөний мэнд!** (Morning greetings!)
+- **Сайхан өдөр байна шүү!** (It's a beautiful day!)
+- **Таны өдөр амжилттай болтугай!** (May your day be successful!)
+- **Хүч чадалтай байгаарай!** (Stay strong!)
+- **Амьдрал сайхан байна!** (Life is beautiful!)
+- **Бүх зүйл сайн болно!** (Everything will be fine!)
+- **Эерэг энергитэй байгаарай!** (Stay positive!)
+
+### News
+- **Монголын мэдээ** (Mongolian News)
+- **Монголын Үндэсний Радио Телевиз** (Mongolian National Broadcasting)
+- **BBC News** (International News)
+- **CNN World News** (International News)
+- **Al Jazeera English** (International News)
 
 ## ⚙️ Configuration
 

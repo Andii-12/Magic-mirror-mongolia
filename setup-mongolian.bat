@@ -58,11 +58,12 @@ echo.
 echo 📋 Next steps:
 echo    1. Transfer these files to your Raspberry Pi 4
 echo    2. Customize the weather location in config/config.js (lat/lon)
-echo    3. Add your calendar URLs if needed
-echo    4. Adjust news feeds for Mongolian sources
-echo    5. On Pi 4, run: chmod +x setup-mongolian.sh
-echo    6. On Pi 4, run: ./setup-mongolian.sh
-echo    7. Start MagicMirror² with: npm start
+echo    3. Mongolian holidays are already configured (Tsagaan Sar, Naadam, etc.)
+echo    4. Add your own calendar URLs if needed
+echo    5. Adjust news feeds for Mongolian sources
+echo    6. On Pi 4, run: chmod +x setup-mongolian.sh
+echo    7. On Pi 4, run: ./setup-mongolian.sh
+echo    8. Start MagicMirror² with: npm start
 echo.
 echo 🔧 Performance tips for Pi 4 with 1GB RAM:
 echo    - Close unnecessary applications
@@ -74,5 +75,6 @@ echo 🌐 Mongolian language is now configured!
 echo    Language code: mn
 echo    Locale: mn-MN
 echo    Timezone: Asia/Ulaanbaatar (adjust in config if needed)
+echo    Day names: Даваа гараг, Мягмар гараг, Лхагва гараг, etc.
 echo.
 pause

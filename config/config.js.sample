@@ -51,7 +51,7 @@ let config = {
 		},
 		{
 			module: "calendar",
-			header: "US Holidays",
+			header: "Holidays",
 			position: "top_left",
 			config: {
 				calendars: [
@@ -65,7 +65,56 @@ let config = {
 		},
 		{
 			module: "compliments",
-			position: "lower_third"
+			position: "lower_third",
+			config: {
+				compliments: {
+					anytime: [
+						"Hey there sexy!",
+						"You look amazing!",
+						"Have a wonderful day!",
+						"You're doing great!",
+						"Stay positive!",
+						"Keep smiling!",
+						"You're awesome!",
+						"Life is beautiful!",
+						"Everything will be fine!",
+						"You're amazing!"
+					],
+					morning: [
+						"Good morning, handsome!", 
+						"Enjoy your day!", 
+						"How was your sleep?",
+						"Have a great morning!",
+						"Start your day with a smile!",
+						"Good morning, beautiful!",
+						"May your day be successful!",
+						"Morning energy to you!"
+					],
+					afternoon: [
+						"Hello, beauty!", 
+						"You look sexy!", 
+						"Looking good today!",
+						"Hope your day is going well!",
+						"You're doing great!",
+						"Keep up the good work!",
+						"Stay energetic!",
+						"Afternoon greetings!"
+					],
+					evening: [
+						"Wow, you look hot!", 
+						"You look nice!", 
+						"Hi, sexy!",
+						"Have a good evening!",
+						"Time to relax!",
+						"Evening greetings!",
+						"Hope you had a great day!",
+						"Rest well tonight!"
+					],
+					"....-01-01": ["Happy new year!"]
+				},
+				updateInterval: 30000,
+				random: true
+			}
 		},
 		{
 			module: "weather",
@@ -95,11 +144,31 @@ let config = {
 				feeds: [
 					{
 						title: "New York Times",
-						url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+						url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+						encoding: "UTF-8",
+						useCorsProxy: true
+					},
+					{
+						title: "BBC News",
+						url: "http://feeds.bbci.co.uk/news/rss.xml",
+						encoding: "UTF-8",
+						useCorsProxy: true
 					}
 				],
 				showSourceTitle: true,
 				showPublishDate: true,
+				showDescription: true,
+				wrapTitle: true,
+				wrapDescription: true,
+				truncDescription: true,
+				lengthDescription: 200,
+				updateInterval: 10 * 60 * 1000, // 10 minutes
+				reloadInterval: 15 * 60 * 1000, // 15 minutes
+				maxNewsItems: 8,
+				animationSpeed: 3000,
+				ignoreOldItems: true,
+				ignoreOlderThan: 24 * 60 * 60 * 1000, // 24 hours
+				logFeedWarnings: true,
 				broadcastNewsFeeds: true,
 				broadcastNewsUpdates: true
 			}
