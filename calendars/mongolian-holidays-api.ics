@@ -6,21 +6,6 @@ METHOD:PUBLISH
 X-WR-CALNAME:Mongolian Holidays (API)
 X-WR-CALDESC:Official holidays from Calendarific API
 
-BEGIN:VEVENT
-UID:test-today@magicmirror.builders
-DTSTART;VALUE=DATE:20250903
-DTEND;VALUE=DATE:20250903
-SUMMARY:Өнөөдрийн тест (Today's Test)
-DESCRIPTION:Test event for today to verify calendar loading
-END:VEVENT
-
-BEGIN:VEVENT
-UID:test-tomorrow@magicmirror.builders
-DTSTART;VALUE=DATE:20250904
-DTEND;VALUE=DATE:20250904
-SUMMARY:Маргаашийн тест (Tomorrow's Test)
-DESCRIPTION:Test event for tomorrow
-END:VEVENT
 
 BEGIN:VEVENT
 UID:mongolian-0-20250101@calendarific.com

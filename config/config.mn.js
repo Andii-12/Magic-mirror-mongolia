@@ -170,22 +170,16 @@ let config = {
 			}
 		},
 		{
-			module: "newsfeed",
+			module: "mongoliannews",
 			position: "bottom_bar",
 			header: "Монголын мэдээ", // "Mongolian News" in Mongolian
 			config: {
-				feeds: [
-					{
-						title: "BBC News", // International news
-						url: "http://feeds.bbci.co.uk/news/rss.xml",
-						encoding: "UTF-8"
-					},
-					{
-						title: "CNN World News", // International news
-						url: "http://rss.cnn.com/rss/edition.rss",
-						encoding: "UTF-8"
-					}
-				],
+				apiKey: "pub_cb951c5b3961435ea0feb4edc321f1d2",
+				apiUrl: "https://newsdata.io/api/1/latest",
+				country: "mn",
+				updateInterval: 10 * 60 * 1000, // 10 minutes
+				animationSpeed: 3000,
+				maxNewsItems: 5,
 				showSourceTitle: true,
 				showPublishDate: true,
 				showDescription: true,
@@ -193,10 +187,6 @@ let config = {
 				wrapDescription: true,
 				truncDescription: true,
 				lengthDescription: 200,
-				updateInterval: 10 * 60 * 1000, // 10 minutes
-				reloadInterval: 15 * 60 * 1000, // 15 minutes
-				maxNewsItems: 5, // Limit for Pi 4 performance
-				animationSpeed: 3000,
 				ignoreOldItems: true,
 				ignoreOlderThan: 24 * 60 * 60 * 1000, // 24 hours
 				hideLoading: false,
