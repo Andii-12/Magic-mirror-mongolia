@@ -7,129 +7,145 @@ X-WR-CALNAME:Mongolian Holidays
 X-WR-CALDESC:Official holidays and special days in Mongolia
 
 BEGIN:VEVENT
-UID:mongolian-new-year-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240210
-DTEND;VALUE=DATE:20240212
+UID:mongolian-new-year-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250129
+DTEND;VALUE=DATE:20250131
 SUMMARY:Шинэ жилийн баяр (Tsagaan Sar - Lunar New Year)
 DESCRIPTION:Traditional Mongolian New Year celebration
-RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=10,11,12
+RRULE:FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=29,30,31
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-women-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240308
-DTEND;VALUE=DATE:20240309
+UID:mongolian-women-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250308
+DTEND;VALUE=DATE:20250309
 SUMMARY:Олон улсын эмэгтэйчүүдийн өдөр (International Women's Day)
 DESCRIPTION:International Women's Day
 RRULE:FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=8
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-soldier-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240318
-DTEND;VALUE=DATE:20240319
+UID:mongolian-soldier-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250318
+DTEND;VALUE=DATE:20250319
 SUMMARY:Цэргийн баатар, хамгаалагчдын өдөр (Soldier's Day)
 DESCRIPTION:Day of Soldiers and Defenders
 RRULE:FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=18
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-health-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240407
-DTEND;VALUE=DATE:20240408
+UID:mongolian-health-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250407
+DTEND;VALUE=DATE:20250408
 SUMMARY:Эрүүл мэндийн дэлхийн өдөр (World Health Day)
 DESCRIPTION:World Health Day
 RRULE:FREQ=YEARLY;BYMONTH=4;BYMONTHDAY=7
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-labor-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240501
-DTEND;VALUE=DATE:20240502
+UID:mongolian-labor-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250501
+DTEND;VALUE=DATE:20250502
 SUMMARY:Ажилчдын олон улсын нэгдэх өдөр (International Labor Day)
 DESCRIPTION:International Labor Day
 RRULE:FREQ=YEARLY;BYMONTH=5;BYMONTHDAY=1
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-victory-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240509
-DTEND;VALUE=DATE:20240510
+UID:mongolian-victory-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250509
+DTEND;VALUE=DATE:20250510
 SUMMARY:Ялалтын баяр (Victory Day)
 DESCRIPTION:Victory Day over fascism
 RRULE:FREQ=YEARLY;BYMONTH=5;BYMONTHDAY=9
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-children-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240601
-DTEND;VALUE=DATE:20240602
+UID:mongolian-children-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250601
+DTEND;VALUE=DATE:20250602
 SUMMARY:Хүүхдийн дэлхийн өдөр (International Children's Day)
 DESCRIPTION:International Children's Day
 RRULE:FREQ=YEARLY;BYMONTH=6;BYMONTHDAY=1
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-naadam-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240711
-DTEND;VALUE=DATE:20240715
+UID:mongolian-naadam-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250711
+DTEND;VALUE=DATE:20250715
 SUMMARY:Наадам (Naadam Festival)
 DESCRIPTION:Traditional Mongolian festival with wrestling, horse racing, and archery
 RRULE:FREQ=YEARLY;BYMONTH=7;BYMONTHDAY=11,12,13,14,15
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-youth-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240825
-DTEND;VALUE=DATE:20240826
+UID:mongolian-youth-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250825
+DTEND;VALUE=DATE:20250826
 SUMMARY:Залуучуудын өдөр (Youth Day)
 DESCRIPTION:National Youth Day
 RRULE:FREQ=YEARLY;BYMONTH=8;BYMONTHDAY=25
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-education-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20240901
-DTEND;VALUE=DATE:20240902
+UID:mongolian-education-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250901
+DTEND;VALUE=DATE:20250902
 SUMMARY:Боловсролын өдөр (Education Day)
 DESCRIPTION:Beginning of school year
 RRULE:FREQ=YEARLY;BYMONTH=9;BYMONTHDAY=1
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-independence-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20241126
-DTEND;VALUE=DATE:20241127
+UID:mongolian-independence-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20251126
+DTEND;VALUE=DATE:20251127
 SUMMARY:Тусгаар тогтнолын өдөр (Independence Day)
 DESCRIPTION:National Independence Day
 RRULE:FREQ=YEARLY;BYMONTH=11;BYMONTHDAY=26
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-constitution-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20241126
-DTEND;VALUE=DATE:20241127
+UID:mongolian-constitution-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20251126
+DTEND;VALUE=DATE:20251127
 SUMMARY:Үндсэн хуулийн өдөр (Constitution Day)
 DESCRIPTION:Constitution Day
 RRULE:FREQ=YEARLY;BYMONTH=11;BYMONTHDAY=26
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-human-rights-day-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20241210
-DTEND;VALUE=DATE:20241211
+UID:mongolian-human-rights-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20251210
+DTEND;VALUE=DATE:20251211
 SUMMARY:Хүний эрхийн дэлхийн өдөр (Human Rights Day)
 DESCRIPTION:International Human Rights Day
 RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=10
 END:VEVENT
 
 BEGIN:VEVENT
-UID:mongolian-new-year-eve-2024@magicmirror.builders
-DTSTART;VALUE=DATE:20241231
-DTEND;VALUE=DATE:20250101
+UID:mongolian-new-year-eve-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20251231
+DTEND;VALUE=DATE:20260101
 SUMMARY:Шинэ жилийн өдөр (New Year's Eve)
 DESCRIPTION:New Year's Eve celebration
 RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=31
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-test-event-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250115
+DTEND;VALUE=DATE:20250116
+SUMMARY:Тест үйл явдал (Test Event)
+DESCRIPTION:Test event to verify calendar is working
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-weekend-reminder-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250118
+DTEND;VALUE=DATE:20250119
+SUMMARY:Амралтын өдөр (Weekend)
+DESCRIPTION:Weekend reminder
 END:VEVENT
 
 END:VCALENDAR

@@ -1,0 +1,249 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//MagicMirror²//Mongolian Holidays API//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Mongolian Holidays (API)
+X-WR-CALDESC:Official holidays from Calendarific API
+
+BEGIN:VEVENT
+UID:test-today@magicmirror.builders
+DTSTART;VALUE=DATE:20250903
+DTEND;VALUE=DATE:20250903
+SUMMARY:Өнөөдрийн тест (Today's Test)
+DESCRIPTION:Test event for today to verify calendar loading
+END:VEVENT
+
+BEGIN:VEVENT
+UID:test-tomorrow@magicmirror.builders
+DTSTART;VALUE=DATE:20250904
+DTEND;VALUE=DATE:20250904
+SUMMARY:Маргаашийн тест (Tomorrow's Test)
+DESCRIPTION:Test event for tomorrow
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-0-20250101@calendarific.com
+DTSTART;VALUE=DATE:20250101
+DTEND;VALUE=DATE:20250101
+SUMMARY:Шинэ жилийн өдөр
+DESCRIPTION:New Year’s Day is the first day of the year, or January 1, in the Gregorian calendar.
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-1-20250113@calendarific.com
+DTSTART;VALUE=DATE:20250113
+DTEND;VALUE=DATE:20250113
+SUMMARY:Үндсэн хуулийн өдөр
+DESCRIPTION:Constitution Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-2-20250214@calendarific.com
+DTSTART;VALUE=DATE:20250214
+DTEND;VALUE=DATE:20250214
+SUMMARY:Валентины өдөр
+DESCRIPTION:February 14 is Valentine's Day or Saint Valentine's Feast. The day of love owes its origins to ancient Roman and European Christian traditions.
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-3-20250301@calendarific.com
+DTSTART;VALUE=DATE:20250301
+DTEND;VALUE=DATE:20250301
+SUMMARY:Шинэ жилийн баяр (Цагаан сар)
+DESCRIPTION:Tsagaan Sar is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-4-20250301@calendarific.com
+DTSTART;VALUE=DATE:20250301
+DTEND;VALUE=DATE:20250301
+SUMMARY:Эх орончдын өдөр
+DESCRIPTION:Patriots' Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-5-20250302@calendarific.com
+DTSTART;VALUE=DATE:20250302
+DTEND;VALUE=DATE:20250302
+SUMMARY:Tsagaan Sar Holiday
+DESCRIPTION:Tsagaan Sar Holiday is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-6-20250303@calendarific.com
+DTSTART;VALUE=DATE:20250303
+DTEND;VALUE=DATE:20250303
+SUMMARY:Tsagaan Sar Holiday
+DESCRIPTION:Tsagaan Sar Holiday is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-7-20250308@calendarific.com
+DTSTART;VALUE=DATE:20250308
+DTEND;VALUE=DATE:20250308
+SUMMARY:Олон улсын эмэгтэйчүүдийн өдөр
+DESCRIPTION:International Women's Day is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-8-20250318@calendarific.com
+DTSTART;VALUE=DATE:20250318
+DTEND;VALUE=DATE:20250318
+SUMMARY:Цэргийн баатар, хамгаалагчдын өдөр
+DESCRIPTION:Soldiers' Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-9-20250407@calendarific.com
+DTSTART;VALUE=DATE:20250407
+DTEND;VALUE=DATE:20250407
+SUMMARY:Эрүүл мэндийн дэлхийн өдөр
+DESCRIPTION:Health Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-10-20250426@calendarific.com
+DTSTART;VALUE=DATE:20250426
+DTEND;VALUE=DATE:20250426
+SUMMARY:Оюуны өмчийн өдөр
+DESCRIPTION:Intellectual Property Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-11-20250515@calendarific.com
+DTSTART;VALUE=DATE:20250515
+DTEND;VALUE=DATE:20250515
+SUMMARY:Гэр бүлийн өдөр
+DESCRIPTION:Family Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-12-20250601@calendarific.com
+DTSTART;VALUE=DATE:20250601
+DTEND;VALUE=DATE:20250601
+SUMMARY:Хүүхдийн дэлхийн өдөр
+DESCRIPTION:Children's Day is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-13-20250611@calendarific.com
+DTSTART;VALUE=DATE:20250611
+DTEND;VALUE=DATE:20250611
+SUMMARY:Бурханы их өдөр
+DESCRIPTION:Great Buddha Day is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-14-20250710@calendarific.com
+DTSTART;VALUE=DATE:20250710
+DTEND;VALUE=DATE:20250710
+SUMMARY:Political Flag Day
+DESCRIPTION:Political Flag Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-15-20250711@calendarific.com
+DTSTART;VALUE=DATE:20250711
+DTEND;VALUE=DATE:20250711
+SUMMARY:Naadam (National Day)
+DESCRIPTION:Naadam (National Day) is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-16-20250712@calendarific.com
+DTSTART;VALUE=DATE:20250712
+DTEND;VALUE=DATE:20250712
+SUMMARY:Naadam Holiday (National Day Holiday)
+DESCRIPTION:Naadam Holiday (National Day Holiday) is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-17-20250713@calendarific.com
+DTSTART;VALUE=DATE:20250713
+DTEND;VALUE=DATE:20250713
+SUMMARY:Naadam Holiday (National Day Holiday)
+DESCRIPTION:Naadam Holiday (National Day Holiday) is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-18-20250714@calendarific.com
+DTSTART;VALUE=DATE:20250714
+DTEND;VALUE=DATE:20250714
+SUMMARY:Naadam Holiday (National Day Holiday)
+DESCRIPTION:Naadam Holiday (National Day Holiday) is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-19-20250715@calendarific.com
+DTSTART;VALUE=DATE:20250715
+DTEND;VALUE=DATE:20250715
+SUMMARY:Naadam Holiday (National Day Holiday)
+DESCRIPTION:Naadam Holiday (National Day Holiday) is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-20-20250825@calendarific.com
+DTSTART;VALUE=DATE:20250825
+DTEND;VALUE=DATE:20250825
+SUMMARY:Залуучуудын өдөр
+DESCRIPTION:Youth's Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-21-20250910@calendarific.com
+DTSTART;VALUE=DATE:20250910
+DTEND;VALUE=DATE:20250910
+SUMMARY:Хэлмэгдүүлэлтийн хохирогчдын өдөр
+DESCRIPTION:Repression Victims' Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-22-20251001@calendarific.com
+DTSTART;VALUE=DATE:20251001
+DTEND;VALUE=DATE:20251001
+SUMMARY:Ахмад настны өдөр
+DESCRIPTION:Elders' Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-23-20251029@calendarific.com
+DTSTART;VALUE=DATE:20251029
+DTEND;VALUE=DATE:20251029
+SUMMARY:Нийслэл хотын өдөр
+DESCRIPTION:Capital City Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-24-20251121@calendarific.com
+DTSTART;VALUE=DATE:20251121
+DTEND;VALUE=DATE:20251121
+SUMMARY:Чингис хааны өдөр
+DESCRIPTION:Genghis Khan Day is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-25-20251126@calendarific.com
+DTSTART;VALUE=DATE:20251126
+DTEND;VALUE=DATE:20251126
+SUMMARY:Тусгаар тогтнолын өдөр
+DESCRIPTION:Republic's Day is a public holiday in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-26-20251210@calendarific.com
+DTSTART;VALUE=DATE:20251210
+DTEND;VALUE=DATE:20251210
+SUMMARY:Хүний эрхийн дэлхийн өдөр
+DESCRIPTION:Human Rights Day is a observance in Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-27-20251229@calendarific.com
+DTSTART;VALUE=DATE:20251229
+DTEND;VALUE=DATE:20251229
+SUMMARY:Тусгаар тогтнолын өдөр
+DESCRIPTION:Independence Day is a public holiday in Mongolia
+END:VEVENT
+
+END:VCALENDAR

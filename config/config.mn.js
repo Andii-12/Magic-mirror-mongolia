@@ -68,14 +68,26 @@ let config = {
 			config: {
 				calendars: [
 					{
-						fetchInterval: 7 * 24 * 60 * 60 * 1000, // Weekly update
 						symbol: "calendar-check",
-						url: "calendars/mongolian-holidays.ics",
+						url: "http://localhost:8080/calendars/mongolian-holidays-api.ics",
 						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
 					}
 				],
-				maximumEntries: 5, // Limit for Pi 4 performance
-				animationSpeed: 2000
+				maximumEntries: 10, // Show more holidays
+				maximumNumberOfDays: 365, // Show events for the next year
+				animationSpeed: 2000,
+				showLocation: false,
+				showEnd: false,
+				timeFormat: "relative",
+				dateFormat: "MMM Do",
+				hidePrivate: false,
+				hideOngoing: false,
+				fetchInterval: 5 * 60 * 1000, // Update every 5 minutes for testing
+				urgency: 365, // Show all events within a year
+				fade: true,
+				fadePoint: 0.25,
+				displaySymbol: true,
+				defaultSymbol: "calendar-check"
 			}
 		},
 		{
@@ -164,28 +176,14 @@ let config = {
 			config: {
 				feeds: [
 					{
-						title: "Монголын Үндэсний Радио Телевиз", // Mongolian National Broadcasting
-						url: "http://www.mnb.mn/rss",
-						encoding: "UTF-8",
-						useCorsProxy: true
-					},
-					{
 						title: "BBC News", // International news
 						url: "http://feeds.bbci.co.uk/news/rss.xml",
-						encoding: "UTF-8",
-						useCorsProxy: true
+						encoding: "UTF-8"
 					},
 					{
 						title: "CNN World News", // International news
 						url: "http://rss.cnn.com/rss/edition.rss",
-						encoding: "UTF-8",
-						useCorsProxy: true
-					},
-					{
-						title: "Al Jazeera English", // International news
-						url: "https://www.aljazeera.com/xml/rss/all.xml",
-						encoding: "UTF-8",
-						useCorsProxy: true
+						encoding: "UTF-8"
 					}
 				],
 				showSourceTitle: true,
@@ -197,14 +195,16 @@ let config = {
 				lengthDescription: 200,
 				updateInterval: 10 * 60 * 1000, // 10 minutes
 				reloadInterval: 15 * 60 * 1000, // 15 minutes
-				maxNewsItems: 8, // Limit for Pi 4 performance
+				maxNewsItems: 5, // Limit for Pi 4 performance
 				animationSpeed: 3000,
 				ignoreOldItems: true,
 				ignoreOlderThan: 24 * 60 * 60 * 1000, // 24 hours
 				hideLoading: false,
 				logFeedWarnings: true,
 				removeStartTags: "<p>",
-				removeEndTags: "</p>"
+				removeEndTags: "</p>",
+				prohibitedWords: [],
+				scrollLength: 500
 			}
 		}
 	]

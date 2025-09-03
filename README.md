@@ -19,6 +19,22 @@ A complete Mongolian language localization for MagicMirror², optimized for Rasp
 
 ## 🚀 Quick Start
 
+### For Windows Users:
+
+```cmd
+# Clone this repository
+git clone https://github.com/Andii-12/Magic-mirror-mongolia.git
+cd Magic-mirror-mongolia
+
+# Run the Windows setup script
+.\setup-windows.bat
+
+# Start MagicMirror²
+npm start
+```
+
+**Note**: If you encounter Node.js version compatibility issues, the setup script will automatically use `--force` to bypass engine checks.
+
 ### For Raspberry Pi 4:
 
 ```bash
@@ -74,8 +90,10 @@ setup-mongolian.bat
 ### Calendar
 - **Цагийн хуваарь** (Schedule)
 - **Удахгүй болох үйл явдал байхгүй** (No upcoming events)
-- **Монголын баярын өдрүүд** (Mongolian Holidays)
+- **Монголын баярын өдрүүд** (Mongolian Holidays) - Powered by [Calendarific API](https://calendarific.com/api/v2/holidays?&api_key=VhaBu1hTpO9OtGRyFbPUxY6vhO2nrqbL&country=MN&year=2025)
+  - **Шинэ жилийн өдөр** (New Year's Day)
   - **Шинэ жилийн баяр** (Tsagaan Sar - Lunar New Year)
+  - **Олон улсын эмэгтэйчүүдийн өдөр** (International Women's Day)
   - **Наадам** (Naadam Festival)
   - **Тусгаар тогтнолын өдөр** (Independence Day)
 
@@ -95,6 +113,22 @@ setup-mongolian.bat
 - **BBC News** (International News)
 - **CNN World News** (International News)
 - **Al Jazeera English** (International News)
+
+## 🔧 Troubleshooting
+
+### Windows Issues:
+
+**Node.js Version Compatibility:**
+- If you get "Unsupported engine" errors, the setup script automatically uses `--force`
+- Your Node.js v22.3.0 is compatible (minimum required: v18.0.0)
+
+**Startup Issues:**
+- Use `npm start` (now configured for Windows)
+- Alternative: `npm run start:windows`
+- For server-only mode: `npm run server` (opens in browser)
+
+**PowerShell Execution Policy:**
+- If scripts won't run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 ## ⚙️ Configuration
 

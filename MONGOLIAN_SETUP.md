@@ -89,16 +89,21 @@ lon: 106.9057, // Your longitude
 ```
 
 ### Calendar Sources
-The default configuration includes Mongolian holidays:
+The default configuration includes Mongolian holidays from the official Calendarific API:
 ```javascript
 calendars: [
     {
-        url: "calendars/mongolian-holidays.ics",
+        url: "calendars/mongolian-holidays-api.ics",
         symbol: "calendar-check",
         name: "Монголын баярын өдрүүд"
     }
 ]
 ```
+
+**API Integration:**
+- **Source**: [Calendarific API](https://calendarific.com/api/v2/holidays?&api_key=VhaBu1hTpO9OtGRyFbPUxY6vhO2nrqbL&country=MN&year=2025)
+- **Update Command**: `npm run update-holidays`
+- **Automatic Updates**: Run the update script to refresh holidays
 
 ### News Feed Sources
 The default configuration includes working news feeds:
@@ -127,15 +132,18 @@ feeds: [
 ]
 ```
 
-**Included Mongolian Holidays:**
-- **Шинэ жилийн баяр** (Tsagaan Sar - Lunar New Year) - February 10-12
+**Included Mongolian Holidays (2025) - From Calendarific API:**
+- **Шинэ жилийн өдөр** (New Year's Day) - January 1
+- **Үндсэн хуулийн өдөр** (Constitution Day) - January 13
+- **Шинэ жилийн баяр** (Tsagaan Sar - Lunar New Year) - March 1-3
 - **Олон улсын эмэгтэйчүүдийн өдөр** (International Women's Day) - March 8
 - **Цэргийн баатар, хамгаалагчдын өдөр** (Soldier's Day) - March 18
-- **Ажилчдын олон улсын нэгдэх өдөр** (Labor Day) - May 1
-- **Ялалтын баяр** (Victory Day) - May 9
+- **Хүүхдийн дэлхийн өдөр** (Children's Day) - June 1
 - **Наадам** (Naadam Festival) - July 11-15
-- **Тусгаар тогтнолын өдөр** (Independence Day) - November 26
-- **Үндсэн хуулийн өдөр** (Constitution Day) - November 26
+- **Залуучуудын өдөр** (Youth's Day) - August 25
+- **Чингис хааны өдөр** (Genghis Khan Day) - November 21
+- **Тусгаар тогтнолын өдөр** (Republic's Day) - November 26
+- **Тусгаар тогтнолын өдөр** (Independence Day) - December 29
 
 Add your own calendar URLs:
 ```javascript

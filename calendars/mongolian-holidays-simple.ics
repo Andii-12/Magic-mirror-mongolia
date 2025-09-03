@@ -1,0 +1,57 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//MagicMirror²//Mongolian Holidays//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Mongolian Holidays
+X-WR-CALDESC:Official holidays and special days in Mongolia
+
+BEGIN:VEVENT
+UID:mongolian-new-year-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250129
+DTEND;VALUE=DATE:20250131
+SUMMARY:Шинэ жилийн баяр (Tsagaan Sar)
+DESCRIPTION:Traditional Mongolian New Year celebration
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-women-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250308
+DTEND;VALUE=DATE:20250309
+SUMMARY:Олон улсын эмэгтэйчүүдийн өдөр
+DESCRIPTION:International Women's Day
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-soldier-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250318
+DTEND;VALUE=DATE:20250319
+SUMMARY:Цэргийн баатар, хамгаалагчдын өдөр
+DESCRIPTION:Day of Soldiers and Defenders
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-labor-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250501
+DTEND;VALUE=DATE:20250502
+SUMMARY:Ажилчдын олон улсын нэгдэх өдөр
+DESCRIPTION:International Labor Day
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-naadam-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20250711
+DTEND;VALUE=DATE:20250715
+SUMMARY:Наадам (Naadam Festival)
+DESCRIPTION:Traditional Mongolian festival
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-independence-day-2025@magicmirror.builders
+DTSTART;VALUE=DATE:20251126
+DTEND;VALUE=DATE:20251127
+SUMMARY:Тусгаар тогтнолын өдөр
+DESCRIPTION:National Independence Day
+END:VEVENT
+
+END:VCALENDAR
