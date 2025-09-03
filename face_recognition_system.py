@@ -26,7 +26,7 @@ TIMEOUT_DELAY = 10  # seconds
 
 # Face recognition paths (matching your working code)
 CASCADE_PATH = "/home/andii/haarcascades/haarcascade_frontalface_default.xml"
-TRAINER_PATH = "trainer.yml"
+TRAINER_PATH = "trainer.yml"  # Will check python_code/trainer.yml if not found
 IMAGE_BASE = "Images"
 
 class FaceRecognitionSystem:
@@ -45,10 +45,30 @@ class FaceRecognitionSystem:
         # Load face recognition components (matching your working code)
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
         self.recognizer = cv2.face.LBPHFaceRecognizer_create()
-        self.recognizer.read(TRAINER_PATH)
+        
+        # Try to load trainer.yml from multiple locations
+        trainer_paths = [TRAINER_PATH, "python_code/trainer.yml"]
+        trainer_loaded = False
+        
+        for trainer_path in trainer_paths:
+            if os.path.exists(trainer_path):
+                try:
+                    self.recognizer.read(trainer_path)
+                    print(f"✅ Loaded trainer from: {trainer_path}")
+                    trainer_loaded = True
+                    break
+                except Exception as e:
+                    print(f"⚠️  Could not load trainer from {trainer_path}: {e}")
+                    continue
+        
+        if not trainer_loaded:
+            raise Exception("Could not load trainer.yml from any location")
         
         # Load label mapping (matching your working code)
-        self.label_names = os.listdir(IMAGE_BASE)
+        if os.path.exists(IMAGE_BASE):
+            self.label_names = os.listdir(IMAGE_BASE)
+        else:
+            self.label_names = []
         self.label_map = {i: name for i, name in enumerate(self.label_names)}
         
         print("Face Recognition System initialized")

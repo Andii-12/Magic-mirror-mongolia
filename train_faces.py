@@ -1,18 +1,92 @@
 #!/usr/bin/env python3
 """
-Face Training Script for MagicMirror²
-This script trains the face recognition system using photos in the Images directory
+Interactive Face Training Script for MagicMirror²
+This script takes photos and trains the face recognition system
 """
 
 import cv2
 import os
 import numpy as np
-from PIL import Image
+import time
+from picamera2 import Picamera2
 
 # Paths
 IMAGE_BASE = "Images"
 TRAINER_FILE = "trainer.yml"
 CASCADE_PATH = "/home/andii/haarcascades/haarcascade_frontalface_default.xml"
+
+def capture_photos(person_name, num_photos=40):
+    """Capture photos for a person using camera"""
+    print(f"📸 Capturing {num_photos} photos for {person_name}...")
+    
+    # Create person directory
+    person_path = os.path.join(IMAGE_BASE, person_name)
+    os.makedirs(person_path, exist_ok=True)
+    
+    # Initialize camera
+    try:
+        picam2 = Picamera2()
+        config = picam2.create_preview_configuration(main={"size": (640, 480)})
+        picam2.configure(config)
+        picam2.start()
+        time.sleep(2)  # Let camera initialize
+        
+        print("📷 Camera ready! Look at the camera and press Enter to start...")
+        input()
+        
+        # Load face cascade
+        face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
+        if face_cascade.empty():
+            print(f"❌ Error: Could not load face cascade from {CASCADE_PATH}")
+            return False
+        
+        captured_count = 0
+        attempt = 0
+        max_attempts = num_photos * 3  # Allow more attempts in case no face detected
+        
+        while captured_count < num_photos and attempt < max_attempts:
+            attempt += 1
+            
+            # Capture frame
+            frame = picam2.capture_array()
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Detect faces
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+            
+            if len(faces) > 0:
+                # Use the first face found
+                (x, y, w, h) = faces[0]
+                face_img = gray[y:y+h, x:x+w]
+                
+                # Resize face to standard size
+                face_img = cv2.resize(face_img, (100, 100))
+                
+                # Save the face image
+                photo_path = os.path.join(person_path, f"photo_{captured_count + 1:03d}.jpg")
+                cv2.imwrite(photo_path, face_img)
+                
+                captured_count += 1
+                print(f"   ✅ Captured photo {captured_count}/{num_photos}")
+                
+                # Small delay between captures
+                time.sleep(0.5)
+            else:
+                print(f"   ⚠️  No face detected (attempt {attempt})")
+                time.sleep(0.2)
+        
+        picam2.close()
+        
+        if captured_count >= num_photos:
+            print(f"✅ Successfully captured {captured_count} photos for {person_name}")
+            return True
+        else:
+            print(f"⚠️  Only captured {captured_count} photos (target was {num_photos})")
+            return captured_count > 0
+            
+    except Exception as e:
+        print(f"❌ Error capturing photos: {e}")
+        return False
 
 def get_images_and_labels():
     """Get images and labels from the Images directory"""
@@ -23,8 +97,6 @@ def get_images_and_labels():
     # Get all subdirectories in Images folder
     if not os.path.exists(IMAGE_BASE):
         print(f"❌ Error: {IMAGE_BASE} directory not found!")
-        print(f"   Please create the {IMAGE_BASE} directory and add person folders")
-        print(f"   Example: {IMAGE_BASE}/John/photo1.jpg, {IMAGE_BASE}/Jane/photo1.jpg")
         return [], [], []
     
     # Get list of person directories
@@ -33,10 +105,6 @@ def get_images_and_labels():
     
     if not person_dirs:
         print(f"❌ Error: No person directories found in {IMAGE_BASE}")
-        print(f"   Please create folders for each person:")
-        print(f"   mkdir -p {IMAGE_BASE}/John")
-        print(f"   mkdir -p {IMAGE_BASE}/Jane")
-        print(f"   Then add photos to each folder")
         return [], [], []
     
     print(f"📁 Found {len(person_dirs)} person directories: {person_dirs}")
@@ -45,7 +113,6 @@ def get_images_and_labels():
     face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
     if face_cascade.empty():
         print(f"❌ Error: Could not load face cascade from {CASCADE_PATH}")
-        print(f"   Please check if the file exists")
         return [], [], []
     
     # Process each person directory
@@ -71,7 +138,6 @@ def get_images_and_labels():
                 # Read image
                 image = cv2.imread(image_path)
                 if image is None:
-                    print(f"   ⚠️  Could not read {image_file}")
                     continue
                 
                 # Convert to grayscale
@@ -81,7 +147,6 @@ def get_images_and_labels():
                 faces = face_cascade.detectMultiScale(gray, 1.3, 5)
                 
                 if len(faces) == 0:
-                    print(f"   ⚠️  No face detected in {image_file}")
                     continue
                 
                 # Use the first face found
@@ -95,10 +160,7 @@ def get_images_and_labels():
                 image_paths.append(face_img)
                 labels.append(len(label_names))  # Use index as label
                 
-                print(f"   ✅ Added face from {image_file}")
-                
             except Exception as e:
-                print(f"   ❌ Error processing {image_file}: {e}")
                 continue
         
         # Add person name to label names
@@ -179,26 +241,55 @@ def test_training():
         return False
 
 if __name__ == "__main__":
-    print("🚀 Face Recognition Training System")
-    print("===================================")
+    print("🚀 Interactive Face Recognition Training System")
+    print("===============================================")
     
-    # Check if Images directory exists
+    # Create Images directory if it doesn't exist
     if not os.path.exists(IMAGE_BASE):
         print(f"📁 Creating {IMAGE_BASE} directory...")
         os.makedirs(IMAGE_BASE)
         print(f"✅ Created {IMAGE_BASE} directory")
-        print(f"📋 Next steps:")
-        print(f"   1. Create folders for each person: mkdir -p {IMAGE_BASE}/YourName")
-        print(f"   2. Add photos to each folder")
-        print(f"   3. Run this script again: python3 train_faces.py")
-        exit(0)
     
-    # Train the recognizer
-    if train_recognizer():
-        # Test the training
-        test_training()
-        print("\n🎉 Training completed successfully!")
-        print("   You can now run: python3 test_face_recognition.py")
-    else:
-        print("\n❌ Training failed!")
-        print("   Please check your Images directory and try again")
+    while True:
+        print("\n📋 What would you like to do?")
+        print("1. Add a new person (capture photos)")
+        print("2. Train the system with existing photos")
+        print("3. Test the trained system")
+        print("4. Exit")
+        
+        choice = input("\nEnter your choice (1-4): ").strip()
+        
+        if choice == "1":
+            # Add new person
+            person_name = input("Enter the person's name: ").strip()
+            if person_name:
+                print(f"\n👤 Adding {person_name} to the system...")
+                if capture_photos(person_name, 40):
+                    print(f"✅ Successfully captured photos for {person_name}")
+                else:
+                    print(f"❌ Failed to capture photos for {person_name}")
+            else:
+                print("❌ Please enter a valid name")
+        
+        elif choice == "2":
+            # Train the system
+            print("\n🎓 Training the face recognition system...")
+            if train_recognizer():
+                test_training()
+                print("\n🎉 Training completed successfully!")
+                print("   You can now run: python3 test_face_recognition.py")
+            else:
+                print("\n❌ Training failed!")
+                print("   Please add some people first (option 1)")
+        
+        elif choice == "3":
+            # Test the system
+            print("\n🧪 Testing the trained system...")
+            test_training()
+        
+        elif choice == "4":
+            print("👋 Goodbye!")
+            break
+        
+        else:
+            print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
