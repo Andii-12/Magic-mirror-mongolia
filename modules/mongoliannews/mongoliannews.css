@@ -16,12 +16,16 @@
 
 .news-item {
 	margin-bottom: 15px;
-	padding: 12px;
+	padding: 15px;
 	border-radius: 8px;
 	background-color: rgba(255, 255, 255, 0.08);
 	border: 1px solid rgba(255, 255, 255, 0.1);
-	transition: all 0.3s ease;
+	transition: all 0.5s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	min-height: 120px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
 }
 
 .news-item:hover {

@@ -7,7 +7,7 @@ Module.register("mongoliannews", {
 		apiUrl: "https://newsdata.io/api/1/latest",
 		country: "mn",
 		updateInterval: 10 * 60 * 1000, // 10 minutes
-		animationSpeed: 3000,
+		animationSpeed: 15000, // 8 seconds - slower for better reading
 		maxNewsItems: 5,
 		showSourceTitle: true,
 		showPublishDate: true,
@@ -33,17 +33,20 @@ Module.register("mongoliannews", {
 
 	// Define start sequence.
 	start: function() {
-		Log.info("Starting module: " + this.name);
+		console.log("Starting module: " + this.name);
 
 		// Set locale.
 		moment.locale(config.language);
 
 		this.newsItems = [];
 		this.loaded = false;
+		this.activeItem = 0;
 		this.updateTimer = null;
+		this.rotationTimer = null;
 
 		this.updateNews();
 		this.scheduleUpdate();
+		this.scheduleRotation();
 	},
 
 	// Override socket notification handler.
@@ -76,16 +79,11 @@ Module.register("mongoliannews", {
 			return wrapper;
 		}
 
-		const newsContainer = document.createElement("div");
-		newsContainer.className = "news-container";
+		// Show only one news item at a time
+		const currentItem = this.newsItems[this.activeItem];
+		const newsItemElement = this.createNewsItem(currentItem);
+		wrapper.appendChild(newsItemElement);
 
-		for (let i = 0; i < this.newsItems.length; i++) {
-			const newsItem = this.newsItems[i];
-			const newsItemElement = this.createNewsItem(newsItem);
-			newsContainer.appendChild(newsItemElement);
-		}
-
-		wrapper.appendChild(newsContainer);
 		return wrapper;
 	},
 
@@ -189,16 +187,33 @@ Module.register("mongoliannews", {
 		}, this.config.updateInterval);
 	},
 
+	// Schedule rotation of news items.
+	scheduleRotation: function() {
+		const self = this;
+		this.rotationTimer = setTimeout(function() {
+			if (self.newsItems.length > 1) {
+				self.activeItem = (self.activeItem + 1) % self.newsItems.length;
+				self.updateDom(self.config.animationSpeed);
+			}
+			self.scheduleRotation();
+		}, this.config.animationSpeed);
+	},
+
 	// Override suspend method.
 	suspend: function() {
 		if (this.updateTimer) {
 			clearTimeout(this.updateTimer);
 			this.updateTimer = null;
 		}
+		if (this.rotationTimer) {
+			clearTimeout(this.rotationTimer);
+			this.rotationTimer = null;
+		}
 	},
 
 	// Override resume method.
 	resume: function() {
 		this.scheduleUpdate();
+		this.scheduleRotation();
 	}
 });
