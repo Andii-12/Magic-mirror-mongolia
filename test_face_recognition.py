@@ -14,6 +14,16 @@ def test_face_recognition():
     print("🧪 Testing Face Recognition System")
     print("==================================")
     
+    # Check if trainer.yml exists
+    if not os.path.exists("trainer.yml"):
+        print("❌ trainer.yml not found!")
+        print("📋 You need to train the face recognition system first:")
+        print("   1. Create Images directory: mkdir -p Images")
+        print("   2. Add person folders: mkdir -p Images/YourName")
+        print("   3. Add photos to each folder")
+        print("   4. Run training: python3 train_faces.py")
+        return False
+    
     try:
         # Initialize the system
         system = FaceRecognitionSystem()
