@@ -1,0 +1,81 @@
+.facerecognition {
+	text-align: center;
+	padding: 20px;
+}
+
+.facerecognition .greeting {
+	font-size: 2.5em;
+	font-weight: bold;
+	margin-bottom: 10px;
+	animation: fadeIn 1s ease-in;
+}
+
+.facerecognition .greeting.large {
+	font-size: 3em;
+}
+
+.facerecognition .greeting.bright {
+	color: #fff;
+	text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.facerecognition .status {
+	margin-top: 10px;
+	font-size: 0.9em;
+	opacity: 0.7;
+}
+
+/* Animation for greeting appearance */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Animation for greeting disappearance */
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+}
+
+/* Proximity indicator */
+.facerecognition .proximity-indicator {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background-color: #ff4444;
+	animation: pulse 2s infinite;
+}
+
+.facerecognition .proximity-indicator.active {
+	background-color: #44ff44;
+}
+
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.2);
+		opacity: 0.7;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}

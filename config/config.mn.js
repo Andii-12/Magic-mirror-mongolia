@@ -196,6 +196,30 @@ let config = {
 				prohibitedWords: [],
 				scrollLength: 500
 			}
+		},
+		{
+			module: "facerecognition",
+			position: "middle_center",
+			config: {
+				updateInterval: 1000, // Check for updates every 1 second
+				proximityThreshold: 20, // 20 cm threshold
+				timeoutDelay: 10000, // 10 seconds delay before shutdown
+				greetingDuration: 5000, // Show greeting for 5 seconds
+				pythonScriptPath: "/home/pi/face_recognition_system.py",
+				statusFile: "/tmp/magicmirror_face_status.json",
+				useAPI: false, // Use file communication
+				greetingStyle: "large bright",
+				showDistance: true,
+				showStatus: true,
+				animationSpeed: 1000,
+				greetings: {
+					"default": "Сайн байна уу {name}! (Hello {name}!)",
+					"unknown": "Таныг танихгүй байна. (I don't recognize you.)",
+					// Add specific greetings for known people
+					// "John": "Сайн байна уу John! (Hello John!)",
+					// "Jane": "Сайн байна уу Jane! (Hello Jane!)"
+				}
+			}
 		}
 	]
 };
