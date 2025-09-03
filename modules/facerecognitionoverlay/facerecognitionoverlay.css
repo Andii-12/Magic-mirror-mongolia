@@ -1,0 +1,120 @@
+.facerecognitionoverlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.8);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	z-index: 9999;
+	backdrop-filter: blur(10px);
+}
+
+.facerecognitionoverlay .face-icon {
+	font-size: 8em;
+	margin-bottom: 30px;
+	color: #fff;
+	text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.facerecognitionoverlay .face-icon.small {
+	font-size: 4em;
+}
+
+.facerecognitionoverlay .face-icon.medium {
+	font-size: 6em;
+}
+
+.facerecognitionoverlay .face-icon.large {
+	font-size: 8em;
+}
+
+.facerecognitionoverlay .face-icon.pulse {
+	animation: facePulse 2s ease-in-out infinite;
+}
+
+.facerecognitionoverlay .face-icon.rotate {
+	animation: faceRotate 3s linear infinite;
+}
+
+.facerecognitionoverlay .face-icon.bounce {
+	animation: faceBounce 1.5s ease-in-out infinite;
+}
+
+.facerecognitionoverlay .recognition-status {
+	font-size: 2em;
+	color: #fff;
+	text-align: center;
+	text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+	max-width: 80%;
+	line-height: 1.4;
+}
+
+/* Animations */
+@keyframes facePulse {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.1);
+		opacity: 0.8;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes faceRotate {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes faceBounce {
+	0%, 100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-20px);
+	}
+}
+
+/* Fade in/out animations */
+.facerecognitionoverlay {
+	animation: fadeInOverlay 0.5s ease-in;
+}
+
+@keyframes fadeInOverlay {
+	from {
+		opacity: 0;
+		backdrop-filter: blur(0px);
+	}
+	to {
+		opacity: 1;
+		backdrop-filter: blur(10px);
+	}
+}
+
+/* Status-specific styling */
+.facerecognitionoverlay .recognition-status.recognized {
+	color: #4CAF50;
+	text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.facerecognitionoverlay .recognition-status.unknown {
+	color: #FF9800;
+	text-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+}
+
+.facerecognitionoverlay .recognition-status.detecting {
+	color: #2196F3;
+	text-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+}

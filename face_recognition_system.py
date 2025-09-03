@@ -82,6 +82,10 @@ class FaceRecognitionSystem:
         """Recognize faces using Picamera2 (matching your working code)"""
         try:
             print(f"[INFO] Object detected at {self.current_distance}cm. Opening camera...")
+            
+            # Update status to show "detecting" state
+            self.update_status_file()
+            
             picam2 = Picamera2()
             config = picam2.create_preview_configuration(main={"size": (320, 240)})
             picam2.configure(config)
@@ -93,22 +97,29 @@ class FaceRecognitionSystem:
             faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
 
             recognized_person = None
-            for (x, y, w, h) in faces:
-                face_img = gray[y:y+h, x:x+w]
-                label, confidence = self.recognizer.predict(face_img)
-                name = self.label_map.get(label, "Unknown")
-                print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
-                recognized_person = name
-                break
-
-            if not recognized_person:
-                print("[INFO] No recognized face detected!")
+            if len(faces) > 0:
+                for (x, y, w, h) in faces:
+                    face_img = gray[y:y+h, x:x+w]
+                    label, confidence = self.recognizer.predict(face_img)
+                    name = self.label_map.get(label, "Unknown")
+                    print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
+                    recognized_person = name
+                    break
+            else:
+                print("[INFO] No face detected in frame!")
 
             picam2.close()
+            
+            # Update status with recognition result
+            self.current_person = recognized_person
+            self.update_status_file()
+            
             return recognized_person
             
         except Exception as e:
             print(f"Error in face recognition: {e}")
+            self.current_person = None
+            self.update_status_file()
             return None
 
     def update_status_file(self):
@@ -145,16 +156,21 @@ class FaceRecognitionSystem:
                         self.is_active = True
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
+                        self.current_person = None  # Reset person
+                        self.update_status_file()  # Update status to show detecting
                     
-                    # Perform face recognition using your working method
-                    person = self.recognize_face_with_camera()
-                    if person and person != self.current_person:
-                        print(f"Face recognized: {person}")
-                        self.current_person = person
-                    elif not person:
-                        self.current_person = None
+                    # Only perform face recognition once per detection
+                    if self.current_person is None:
+                        # Perform face recognition using your working method
+                        person = self.recognize_face_with_camera()
+                        if person:
+                            print(f"Face recognized: {person}")
+                            self.current_person = person
+                        else:
+                            print("No face recognized")
+                            self.current_person = "Unknown"
                     
-                    time.sleep(1)  # avoid multiple triggers instantly (matching your code)
+                    time.sleep(2)  # Wait longer to avoid multiple triggers
                 else:
                     # Object moved away
                     if self.is_active:

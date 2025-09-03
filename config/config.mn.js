@@ -199,7 +199,7 @@ let config = {
 		},
 		{
 			module: "facerecognition",
-			position: "middle_center",
+			position: "top_center",
 			config: {
 				updateInterval: 1000, // Check for updates every 1 second
 				proximityThreshold: 20, // 20 cm threshold
@@ -209,8 +209,8 @@ let config = {
 				statusFile: "/tmp/magicmirror_face_status.json",
 				useAPI: false, // Use file communication
 				greetingStyle: "large bright",
-				showDistance: true,
-				showStatus: true,
+				showDistance: false, // Hide distance in main interface
+				showStatus: false, // Hide status in main interface
 				animationSpeed: 1000,
 				greetings: {
 					"default": "Сайн байна уу {name}! (Hello {name}!)",
@@ -218,6 +218,25 @@ let config = {
 					// Add specific greetings for known people
 					// "John": "Сайн байна уу John! (Hello John!)",
 					// "Jane": "Сайн байна уу Jane! (Hello Jane!)"
+				}
+			}
+		},
+		{
+			module: "facerecognitionoverlay",
+			position: "fullscreen_above",
+			config: {
+				updateInterval: 500, // Check for updates every 500ms
+				statusFile: "/tmp/magicmirror_face_status.json",
+				showFaceIcon: true,
+				showRecognitionStatus: true,
+				faceIconSize: "large",
+				animationSpeed: 1000,
+				faceIconStyle: "pulse", // pulse, rotate, bounce
+				messages: {
+					detecting: "Таныг таних гэж байна... (Recognizing you...)",
+					recognized: "Таныг танилаа! (Recognized you!)",
+					unknown: "Таныг танихгүй байна. (I don't recognize you.)",
+					waiting: "Хүлээж байна... (Waiting...)"
 				}
 			}
 		}
