@@ -227,7 +227,7 @@ let config = {
 			config: {
 				updateInterval: 500, // Check for updates every 500ms
 				statusFile: "/tmp/magicmirror_face_status.json",
-				showFaceIcon: true,
+				showFaceIcon: false,
 				showRecognitionStatus: true,
 				faceIconSize: "large",
 				animationSpeed: 1000,

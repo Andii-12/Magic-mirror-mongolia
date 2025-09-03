@@ -5,7 +5,7 @@ Module.register("facerecognitionoverlay", {
 	defaults: {
 		updateInterval: 500, // Check for updates every 500ms
 		statusFile: "/tmp/magicmirror_face_status.json",
-		showFaceIcon: true,
+		showFaceIcon: false,
 		showRecognitionStatus: true,
 		faceIconSize: "large", // small, medium, large
 		animationSpeed: 1000,
@@ -88,16 +88,19 @@ Module.register("facerecognitionoverlay", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "facerecognitionoverlay";
 
-		// Always show overlay (for waiting state)
-		// Face icon (only show when detecting or recognized)
-		if (this.isActive && this.config.showFaceIcon) {
-			const faceIcon = document.createElement("div");
-			faceIcon.className = `face-icon ${this.config.faceIconSize} ${this.config.faceIconStyle}`;
-			faceIcon.innerHTML = "👤";
-			wrapper.appendChild(faceIcon);
+		// Always show overlay - blank black screen when not active
+		if (!this.isActive) {
+			// Show waiting message on blank screen
+			if (this.config.showRecognitionStatus) {
+				const statusElement = document.createElement("div");
+				statusElement.className = "recognition-status";
+				statusElement.innerHTML = this.config.messages.waiting;
+				wrapper.appendChild(statusElement);
+			}
+			return wrapper;
 		}
 
-		// Recognition status (always show)
+		// Show recognition status when active
 		if (this.config.showRecognitionStatus) {
 			const statusElement = document.createElement("div");
 			statusElement.className = "recognition-status";
