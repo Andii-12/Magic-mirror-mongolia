@@ -31,6 +31,12 @@ def capture_photos(person_name, num_photos=40):
         picam2.start()
         time.sleep(2)  # Let camera initialize
         
+        # Load face cascade
+        face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
+        if face_cascade.empty():
+            print(f"❌ Error: Could not load face cascade from {CASCADE_PATH}")
+            return False
+        
         print("📷 Camera ready! You can see yourself in the preview window.")
         print("📋 Instructions:")
         print("   - Look directly at the camera")
