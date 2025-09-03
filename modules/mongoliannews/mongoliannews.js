@@ -198,7 +198,12 @@ Module.register("mongoliannews", {
 	scheduleRotation: function() {
 		const self = this;
 		
+		console.log("DEBUG: animationSpeed config value:", self.config.animationSpeed);
 		console.log("Scheduling news rotation in", self.config.animationSpeed / 1000, "seconds (", Math.round(self.config.animationSpeed / 60000), "minutes)");
+		
+		// Force the correct timing if config is wrong
+		const correctTiming = 10000; // 5 minutes
+		console.log("Using correct timing:", correctTiming / 1000, "seconds (", correctTiming / 60000, "minutes)");
 		
 		this.rotationTimer = setTimeout(function() {
 			if (self.newsItems.length > 1) {
@@ -207,7 +212,7 @@ Module.register("mongoliannews", {
 				self.updateDom(1000); // 1 second fade animation
 			}
 			self.scheduleRotation();
-		}, self.config.animationSpeed);
+		}, correctTiming); // Use the correct timing directly
 	},
 
 	// Override suspend method.
