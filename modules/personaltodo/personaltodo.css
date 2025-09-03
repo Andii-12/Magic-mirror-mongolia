@@ -1,0 +1,93 @@
+.personaltodo {
+	width: 100%;
+	max-width: 400px;
+	margin: 0 auto;
+}
+
+.personaltodo-header {
+	font-size: 1.2em;
+	font-weight: bold;
+	color: #fff;
+	text-align: center;
+	margin-bottom: 15px;
+	padding: 10px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	backdrop-filter: blur(5px);
+}
+
+.personaltodo-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.personaltodo-item {
+	display: flex;
+	align-items: center;
+	padding: 8px 12px;
+	margin: 5px 0;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	backdrop-filter: blur(3px);
+	transition: all 0.3s ease;
+}
+
+.personaltodo-item:hover {
+	background: rgba(255, 255, 255, 0.2);
+	transform: translateX(5px);
+}
+
+.personaltodo-checkbox {
+	font-size: 1.2em;
+	margin-right: 10px;
+	color: #4CAF50;
+	cursor: pointer;
+	user-select: none;
+}
+
+.personaltodo-checkbox:hover {
+	color: #66BB6A;
+}
+
+.personaltodo-text {
+	color: #fff;
+	font-size: 0.9em;
+	line-height: 1.4;
+}
+
+/* Animation for new items */
+.personaltodo-item {
+	animation: slideInFromRight 0.5s ease-out;
+}
+
+@keyframes slideInFromRight {
+	from {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+	.personaltodo {
+		max-width: 100%;
+		padding: 0 10px;
+	}
+	
+	.personaltodo-header {
+		font-size: 1em;
+	}
+	
+	.personaltodo-item {
+		padding: 6px 10px;
+	}
+	
+	.personaltodo-text {
+		font-size: 0.8em;
+	}
+}

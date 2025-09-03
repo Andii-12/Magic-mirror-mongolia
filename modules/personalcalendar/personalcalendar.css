@@ -1,0 +1,109 @@
+.personalcalendar {
+	width: 100%;
+	max-width: 400px;
+	margin: 0 auto;
+}
+
+.personalcalendar-header {
+	font-size: 1.2em;
+	font-weight: bold;
+	color: #fff;
+	text-align: center;
+	margin-bottom: 15px;
+	padding: 10px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	backdrop-filter: blur(5px);
+}
+
+.personalcalendar-events {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.personalcalendar-event {
+	display: flex;
+	align-items: center;
+	padding: 10px 12px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	backdrop-filter: blur(3px);
+	transition: all 0.3s ease;
+	border-left: 4px solid #4CAF50;
+}
+
+.personalcalendar-event:hover {
+	background: rgba(255, 255, 255, 0.2);
+	transform: translateX(5px);
+}
+
+.personalcalendar-time {
+	font-size: 0.9em;
+	color: #4CAF50;
+	font-weight: bold;
+	min-width: 60px;
+	margin-right: 12px;
+	text-align: center;
+}
+
+.personalcalendar-title {
+	color: #fff;
+	font-size: 0.9em;
+	line-height: 1.4;
+	flex: 1;
+}
+
+/* Animation for new events */
+.personalcalendar-event {
+	animation: slideInFromLeft 0.5s ease-out;
+}
+
+@keyframes slideInFromLeft {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Different colors for different event types */
+.personalcalendar-event.urgent {
+	border-left-color: #f44336;
+}
+
+.personalcalendar-event.important {
+	border-left-color: #ff9800;
+}
+
+.personalcalendar-event.normal {
+	border-left-color: #4CAF50;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+	.personalcalendar {
+		max-width: 100%;
+		padding: 0 10px;
+	}
+	
+	.personalcalendar-header {
+		font-size: 1em;
+	}
+	
+	.personalcalendar-event {
+		padding: 8px 10px;
+	}
+	
+	.personalcalendar-time {
+		font-size: 0.8em;
+		min-width: 50px;
+	}
+	
+	.personalcalendar-title {
+		font-size: 0.8em;
+	}
+}

@@ -133,17 +133,19 @@ class FaceRecognitionSystem:
                     label, confidence = self.recognizer.predict(face_img)
                     name = self.label_map.get(label, "Unknown")
                     print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
-                    recognized_person = name
-                    break
+                    
+                    # Only return known persons, not "Unknown"
+                    if name != "Unknown":
+                        recognized_person = name
+                        break
+                    else:
+                        print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
             else:
                 print("[INFO] No face detected in frame!")
 
             picam2.close()
             
-            # Update status with recognition result
-            self.current_person = recognized_person
-            self.update_status_file()
-            
+            # Don't update current_person here, let the main loop handle it
             return recognized_person
             
         except Exception as e:
@@ -154,10 +156,19 @@ class FaceRecognitionSystem:
 
     def update_status_file(self):
         """Update the status file for MagicMirror²"""
+        # Determine current status
+        if not self.is_active:
+            status_type = "waiting"
+        elif self.current_person and self.current_person != "Unknown":
+            status_type = "recognized"
+        else:
+            status_type = "detecting"
+        
         status = {
             "distance": self.current_distance,
             "person": self.current_person,
             "active": self.is_active,
+            "status": status_type,
             "timestamp": datetime.now().isoformat()
         }
         
@@ -189,18 +200,19 @@ class FaceRecognitionSystem:
                         self.current_person = None  # Reset person
                         self.update_status_file()  # Update status to show detecting
                     
-                    # Only perform face recognition once per detection
+                    # Keep trying face recognition until we get a known person
                     if self.current_person is None:
                         # Perform face recognition using your working method
                         person = self.recognize_face_with_camera()
-                        if person:
+                        if person and person != "Unknown":
                             print(f"Face recognized: {person}")
                             self.current_person = person
                         else:
-                            print("No face recognized")
-                            self.current_person = "Unknown"
+                            print("Face not recognized yet, continuing to try...")
+                            # Don't set to "Unknown", keep trying
+                            self.current_person = None
                     
-                    time.sleep(2)  # Wait longer to avoid multiple triggers
+                    time.sleep(1)  # Shorter delay for continuous recognition attempts
                 else:
                     # Object moved away
                     if self.is_active:

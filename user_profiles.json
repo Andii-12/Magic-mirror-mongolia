@@ -1,0 +1,144 @@
+{
+  "users": {
+    "Andii": {
+      "name": "Andii",
+      "displayName": "Анди",
+      "calendar": {
+        "enabled": true,
+        "urls": [
+          "https://calendar.google.com/calendar/ical/your-email%40gmail.com/private-abc123/basic.ics"
+        ],
+        "maxEntries": 5,
+        "fade": true,
+        "fadePoint": 0.25
+      },
+      "todo": {
+        "enabled": true,
+        "list": [
+          "Check emails",
+          "Review project status",
+          "Call family",
+          "Buy groceries",
+          "Exercise"
+        ]
+      },
+      "weather": {
+        "enabled": true,
+        "location": "Ulaanbaatar",
+        "locationID": "2028462",
+        "apiKey": "YOUR_WEATHER_API_KEY",
+        "units": "metric",
+        "language": "mn"
+      },
+      "news": {
+        "enabled": true,
+        "feeds": [
+          {
+            "title": "Монголын мэдээ",
+            "url": "https://www.mongolnews.mn/rss.xml"
+          },
+          {
+            "title": "UB Post",
+            "url": "https://ubpost.mn/feed/"
+          }
+        ],
+        "showPublishDate": true,
+        "showDescription": true,
+        "wrapTitle": true,
+        "animationSpeed": 300000
+      },
+      "greeting": {
+        "morning": "Өглөөний мэнд, {name}!",
+        "afternoon": "Өдрийн мэнд, {name}!",
+        "evening": "Оройн мэнд, {name}!",
+        "night": "Шөнийн мэнд, {name}!"
+      }
+    },
+    "Jane": {
+      "name": "Jane",
+      "displayName": "Жейн",
+      "calendar": {
+        "enabled": true,
+        "urls": [
+          "https://calendar.google.com/calendar/ical/jane%40gmail.com/private-xyz789/basic.ics"
+        ],
+        "maxEntries": 3,
+        "fade": true,
+        "fadePoint": 0.25
+      },
+      "todo": {
+        "enabled": true,
+        "list": [
+          "Team meeting at 2 PM",
+          "Finish presentation",
+          "Grocery shopping",
+          "Call mom"
+        ]
+      },
+      "weather": {
+        "enabled": true,
+        "location": "Ulaanbaatar",
+        "locationID": "2028462",
+        "apiKey": "YOUR_WEATHER_API_KEY",
+        "units": "metric",
+        "language": "en"
+      },
+      "news": {
+        "enabled": true,
+        "feeds": [
+          {
+            "title": "BBC News",
+            "url": "http://feeds.bbci.co.uk/news/rss.xml"
+          }
+        ],
+        "showPublishDate": true,
+        "showDescription": true,
+        "wrapTitle": true,
+        "animationSpeed": 200000
+      },
+      "greeting": {
+        "morning": "Good morning, {name}!",
+        "afternoon": "Good afternoon, {name}!",
+        "evening": "Good evening, {name}!",
+        "night": "Good night, {name}!"
+      }
+    }
+  },
+  "default": {
+    "name": "Guest",
+    "displayName": "Зочин",
+    "calendar": {
+      "enabled": false
+    },
+    "todo": {
+      "enabled": false
+    },
+    "weather": {
+      "enabled": true,
+      "location": "Ulaanbaatar",
+      "locationID": "2028462",
+      "apiKey": "YOUR_WEATHER_API_KEY",
+      "units": "metric",
+      "language": "mn"
+    },
+    "news": {
+      "enabled": true,
+      "feeds": [
+        {
+          "title": "Монголын мэдээ",
+          "url": "https://www.mongolnews.mn/rss.xml"
+        }
+      ],
+      "showPublishDate": true,
+      "showDescription": true,
+      "wrapTitle": true,
+      "animationSpeed": 300000
+    },
+    "greeting": {
+      "morning": "Өглөөний мэнд!",
+      "afternoon": "Өдрийн мэнд!",
+      "evening": "Оройн мэнд!",
+      "night": "Шөнийн мэнд!"
+    }
+  }
+}

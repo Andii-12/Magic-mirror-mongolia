@@ -57,17 +57,20 @@ Module.register("facerecognitionoverlay", {
 		this.isActive = data.active || false;
 		this.currentPerson = data.person || null;
 
-		// Determine current status
-		if (this.isActive) {
-			if (this.currentPerson && this.currentPerson !== "Unknown") {
-				this.currentStatus = "recognized";
-			} else if (this.currentPerson === "Unknown") {
-				this.currentStatus = "unknown";
-			} else {
-				this.currentStatus = "detecting";
-			}
+		// Use status from file if available, otherwise determine status
+		if (data.status) {
+			this.currentStatus = data.status;
 		} else {
-			this.currentStatus = "waiting";
+			// Determine current status
+			if (this.isActive) {
+				if (this.currentPerson && this.currentPerson !== "Unknown") {
+					this.currentStatus = "recognized";
+				} else {
+					this.currentStatus = "detecting";
+				}
+			} else {
+				this.currentStatus = "waiting";
+			}
 		}
 
 		// Update display if status changed
@@ -105,11 +108,17 @@ Module.register("facerecognitionoverlay", {
 			const statusElement = document.createElement("div");
 			statusElement.className = "recognition-status";
 			
-			let statusText = this.config.messages[this.currentStatus] || this.config.messages.waiting;
+			let statusText;
 			
 			// Show personalized greeting when recognized
 			if (this.currentStatus === "recognized" && this.currentPerson && this.currentPerson !== "Unknown") {
 				statusText = `${this.config.messages.recognized} ${this.currentPerson}`;
+			} else if (this.currentStatus === "detecting" || !this.currentPerson) {
+				// Keep showing detecting message until we get a known person
+				statusText = this.config.messages.detecting;
+			} else {
+				// Default to waiting message
+				statusText = this.config.messages.waiting;
 			}
 			
 			statusElement.innerHTML = statusText;
