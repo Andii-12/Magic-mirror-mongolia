@@ -233,7 +233,7 @@ let config = {
 				animationSpeed: 1000,
 				faceIconStyle: "pulse", // pulse, rotate, bounce
 				messages: {
-					detecting: "Царай таниж байна",
+					detecting: "Царай уншиж байна",
 					recognized: "Тавтай Морил",
 					unknown: "Таныг танихгүй байна",
 					waiting: "Ойртож зогсоорой"

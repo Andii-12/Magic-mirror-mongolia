@@ -13,7 +13,7 @@ Module.register("facerecognitionoverlay", {
 		faceIconStyle: "pulse", // pulse, rotate, bounce
 		// Recognition status messages
 		messages: {
-			detecting: "Царай таниж байна",
+			detecting: "Царай уншиж байна",
 			recognized: "Тавтай Морил",
 			unknown: "Таныг танихгүй байна",
 			waiting: "Ойртож зогсоорой"

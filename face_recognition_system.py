@@ -38,9 +38,16 @@ class FaceRecognitionSystem:
         self.shutdown_timer = None
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(TRIG_PIN, GPIO.OUT)
-        GPIO.setup(ECHO_PIN, GPIO.IN)
+        try:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(TRIG_PIN, GPIO.OUT)
+            GPIO.setup(ECHO_PIN, GPIO.IN)
+        except Exception as e:
+            print(f"⚠️  GPIO setup warning: {e}")
+            print("   Continuing without ultrasonic sensor...")
+            self.gpio_available = False
+        else:
+            self.gpio_available = True
         
         # Load face recognition components (matching your working code)
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
@@ -76,6 +83,9 @@ class FaceRecognitionSystem:
 
     def get_distance(self):
         """Get distance from ultrasonic sensor in cm (matching your working code)"""
+        if not self.gpio_available:
+            return 999  # Return far distance if GPIO not available
+            
         try:
             GPIO.output(TRIG_PIN, False)
             time.sleep(0.1)
