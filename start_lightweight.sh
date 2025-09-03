@@ -13,9 +13,13 @@ pkill -f "node.*electron" 2>/dev/null
 pkill -f "npm start" 2>/dev/null
 sleep 3
 
-# Clear GPIO pins
-echo "🔧 Clearing GPIO pins..."
+# Clear GPIO pins and processes
+echo "🔧 Clearing GPIO pins and processes..."
+pkill -f "python.*face_recognition" 2>/dev/null || true
+pkill -f "python.*combined" 2>/dev/null || true
+sleep 2
 sudo gpio unexportall 2>/dev/null || true
+python3 cleanup_gpio.py 2>/dev/null || true
 
 # Start face recognition system in background
 echo "🤖 Starting face recognition system..."

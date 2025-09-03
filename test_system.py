@@ -13,14 +13,37 @@ def test_gpio():
     print("🔧 Testing GPIO...")
     try:
         import RPi.GPIO as GPIO
+        
+        # Clean up any existing GPIO setup first
+        try:
+            GPIO.cleanup()
+        except:
+            pass
+        
+        # Set mode and test pins
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(23, GPIO.OUT)
         GPIO.setup(24, GPIO.IN)
+        
+        # Test basic functionality
+        GPIO.output(23, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(23, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(23, GPIO.LOW)
+        
+        # Clean up
         GPIO.cleanup()
         print("   ✅ GPIO test passed")
         return True
     except Exception as e:
         print(f"   ❌ GPIO test failed: {e}")
+        # Try to clean up even if test failed
+        try:
+            import RPi.GPIO as GPIO
+            GPIO.cleanup()
+        except:
+            pass
         return False
 
 def test_camera():
