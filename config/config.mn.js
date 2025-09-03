@@ -178,7 +178,7 @@ let config = {
 				apiUrl: "https://newsdata.io/api/1/latest",
 				country: "mn",
 				updateInterval: 10 * 60 * 1000, // 10 minutes
-				animationSpeed: 45000, // 45 seconds - very slow for comfortable reading
+				animationSpeed: 300000, // 5 minutes - very comfortable reading time
 				maxNewsItems: 5,
 				showSourceTitle: true,
 				showPublishDate: true,

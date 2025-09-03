@@ -7,7 +7,7 @@ Module.register("mongoliannews", {
 		apiUrl: "https://newsdata.io/api/1/latest",
 		country: "mn",
 		updateInterval: 10 * 60 * 1000, // 10 minutes
-		animationSpeed: 45000, // 45 seconds - very slow for comfortable reading
+		animationSpeed: 300000, // 5 minutes - very comfortable reading time
 		maxNewsItems: 5,
 		showSourceTitle: true,
 		showPublishDate: true,
@@ -46,11 +46,12 @@ Module.register("mongoliannews", {
 
 		this.updateNews();
 		this.scheduleUpdate();
-		this.scheduleRotation();
+		this.scheduleRotation(); // Re-enabled with comfortable timing
 	},
 
 	// Override socket notification handler.
 	socketNotificationReceived: function(notification, payload) {
+		console.log("Mongolian News received notification:", notification);
 		if (notification === "MONGOLIAN_NEWS_ITEMS") {
 			this.newsItems = payload;
 			// Reset activeItem if it's out of bounds
@@ -58,11 +59,12 @@ Module.register("mongoliannews", {
 				this.activeItem = 0;
 			}
 			this.loaded = true;
-			this.updateDom(this.config.animationSpeed);
+			console.log("Mongolian News: Showing item", this.activeItem + 1, "of", this.newsItems.length);
+			this.updateDom(0); // No animation
 		} else if (notification === "MONGOLIAN_NEWS_ERROR") {
 			console.error("Mongolian News Error: " + payload);
 			this.loaded = true;
-			this.updateDom(this.config.animationSpeed);
+			this.updateDom(0); // No animation
 		}
 	},
 
@@ -84,6 +86,7 @@ Module.register("mongoliannews", {
 		}
 
 		// Show only one news item at a time
+		console.log("getDom: Showing news item", this.activeItem + 1, "of", this.newsItems.length);
 		const currentItem = this.newsItems[this.activeItem];
 		const newsItemElement = this.createNewsItem(currentItem);
 		wrapper.appendChild(newsItemElement);
@@ -194,14 +197,17 @@ Module.register("mongoliannews", {
 	// Schedule rotation of news items.
 	scheduleRotation: function() {
 		const self = this;
+		
+		console.log("Scheduling news rotation in", self.config.animationSpeed / 1000, "seconds (", Math.round(self.config.animationSpeed / 60000), "minutes)");
+		
 		this.rotationTimer = setTimeout(function() {
 			if (self.newsItems.length > 1) {
 				self.activeItem = (self.activeItem + 1) % self.newsItems.length;
-				console.log("Rotating to news item:", self.activeItem + 1, "of", self.newsItems.length);
+				console.log("Rotating to news item:", self.activeItem + 1, "of", self.newsItems.length, "at", new Date().toLocaleTimeString());
 				self.updateDom(1000); // 1 second fade animation
 			}
 			self.scheduleRotation();
-		}, this.config.animationSpeed);
+		}, self.config.animationSpeed);
 	},
 
 	// Override suspend method.
