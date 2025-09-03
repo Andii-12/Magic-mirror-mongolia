@@ -7,7 +7,7 @@ Module.register("mongoliannews", {
 		apiUrl: "https://newsdata.io/api/1/latest",
 		country: "mn",
 		updateInterval: 10 * 60 * 1000, // 10 minutes
-		animationSpeed: 15000, // 8 seconds - slower for better reading
+		animationSpeed: 45000, // 45 seconds - very slow for comfortable reading
 		maxNewsItems: 5,
 		showSourceTitle: true,
 		showPublishDate: true,
@@ -53,6 +53,10 @@ Module.register("mongoliannews", {
 	socketNotificationReceived: function(notification, payload) {
 		if (notification === "MONGOLIAN_NEWS_ITEMS") {
 			this.newsItems = payload;
+			// Reset activeItem if it's out of bounds
+			if (this.activeItem >= this.newsItems.length) {
+				this.activeItem = 0;
+			}
 			this.loaded = true;
 			this.updateDom(this.config.animationSpeed);
 		} else if (notification === "MONGOLIAN_NEWS_ERROR") {
@@ -193,7 +197,8 @@ Module.register("mongoliannews", {
 		this.rotationTimer = setTimeout(function() {
 			if (self.newsItems.length > 1) {
 				self.activeItem = (self.activeItem + 1) % self.newsItems.length;
-				self.updateDom(self.config.animationSpeed);
+				console.log("Rotating to news item:", self.activeItem + 1, "of", self.newsItems.length);
+				self.updateDom(1000); // 1 second fade animation
 			}
 			self.scheduleRotation();
 		}, this.config.animationSpeed);
