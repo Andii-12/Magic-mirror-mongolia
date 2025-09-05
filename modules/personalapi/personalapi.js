@@ -46,21 +46,11 @@ Module.register("personalapi", {
 		}, 1000); // Check every second
 	},
 
-	// Check face recognition status
+	// Check face recognition status via node helper
 	checkFaceStatus: function() {
-		const self = this;
-		fetch(this.config.statusFile)
-			.then(response => response.json())
-			.then(data => {
-				if (data.person && data.person !== self.currentUser) {
-					self.currentUser = data.person;
-					console.log("Personal API: User changed to", self.currentUser);
-					self.loadUserData();
-				}
-			})
-			.catch(error => {
-				// File might not exist yet, that's okay
-			});
+		this.sendSocketNotification("CHECK_FACE_STATUS", {
+			statusFile: this.config.statusFile
+		});
 	},
 
 	// Load user-specific data
@@ -113,6 +103,19 @@ Module.register("personalapi", {
 		} else if (notification === "PERSONAL_API_ERROR") {
 			console.error("Personal API: Error fetching data:", payload);
 			this.loaded = false;
+		} else if (notification === "FACE_STATUS_UPDATE") {
+			console.log("Personal API: Face status update:", payload);
+			if (payload.person && payload.person !== this.currentUser) {
+				this.currentUser = payload.person;
+				console.log("Personal API: User changed to", this.currentUser);
+				this.loadUserData();
+			} else if (!payload.person && this.currentUser) {
+				this.currentUser = null;
+				this.events = [];
+				this.lists = [];
+				console.log("Personal API: User cleared");
+				this.updateDom(this.config.animationSpeed);
+			}
 		}
 	},
 
