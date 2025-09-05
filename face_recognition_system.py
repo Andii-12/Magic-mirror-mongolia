@@ -173,8 +173,12 @@ class FaceRecognitionSystem:
         }
         
         try:
-            with open(STATUS_FILE, 'w') as f:
-                json.dump(status, f)
+            # Write to temporary file first, then rename to avoid corruption
+            temp_file = STATUS_FILE + ".tmp"
+            with open(temp_file, 'w') as f:
+                json.dump(status, f, indent=2)
+            # Atomic rename to avoid partial reads
+            os.rename(temp_file, STATUS_FILE)
         except Exception as e:
             print(f"Error writing status file: {e}")
 
