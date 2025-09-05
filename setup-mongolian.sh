@@ -64,6 +64,18 @@ echo "   - Memory: ${MEMORY}MB"
 echo "   - Node.js: $(node -v)"
 echo "   - NPM: $(npm -v)"
 
+# Setup personalapi module
+echo "🔧 Setting up personalapi module..."
+if [ ! -d "modules/personalapi" ]; then
+    echo "❌ Error: personalapi module not found!"
+    echo "   Please ensure the personalapi module is in modules/personalapi/"
+    exit 1
+fi
+
+# Create tmp directory for face recognition status
+mkdir -p /tmp
+chmod 777 /tmp
+
 # Test configuration
 echo ""
 echo "🧪 Testing configuration..."
@@ -82,7 +94,7 @@ echo "   1. Customize the weather location in config/config.js (lat/lon)"
 echo "   2. Mongolian holidays are already configured (Tsagaan Sar, Naadam, etc.)"
 echo "   3. Add your own calendar URLs if needed"
 echo "   4. Adjust news feeds for Mongolian sources"
-echo "   5. Start MagicMirror² with: npm start"
+echo "   5. Start the complete system with: ./start.sh"
 echo ""
 echo "🔧 Performance tips for Pi 4 with 1GB RAM:"
 echo "   - Close unnecessary applications"

@@ -46,8 +46,9 @@ cd Magic-mirror-mongolia
 chmod +x setup-mongolian.sh
 ./setup-mongolian.sh
 
-# Start MagicMirror²
-npm start
+# Start the complete system (face recognition + ultrasonic + MagicMirror² + personal data)
+chmod +x start.sh
+./start.sh
 ```
 
 ### For Windows (Preparation):
