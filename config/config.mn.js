@@ -141,34 +141,35 @@ let config = {
 				updateInterval: 30000 // 30 seconds
 			}
 		},
-		{
-			module: "weather",
-			position: "top_right",
-			config: {
-				weatherProvider: "openmeteo", // Free weather provider
-				type: "current",
-				// Ulaanbaatar coordinates (adjust for your location)
-				lat: 47.8864,
-				lon: 106.9057,
-				updateInterval: 10 * 60 * 1000, // 10 minutes
-				animationSpeed: 1000,
-				showFeelsLike: true,
-				showHumidity: "wind"
-			}
-		},
-		{
-			module: "weather",
-			position: "top_right",
-			header: "Цаг агаарын урьдчилсан мэдээ", // "Weather Forecast" in Mongolian
-			config: {
-				weatherProvider: "openmeteo",
-				type: "forecast",
-				lat: 47.8864,
-				lon: 106.9057,
-				maxNumberOfDays: 3, // Limit for Pi 4 performance
-				updateInterval: 10 * 60 * 1000
-			}
-		},
+		// Temporarily disabled weather modules
+		// {
+		// 	module: "weather",
+		// 	position: "top_right",
+		// 	config: {
+		// 		weatherProvider: "openmeteo", // Free weather provider
+		// 		type: "current",
+		// 		// Ulaanbaatar coordinates (adjust for your location)
+		// 		lat: 47.8864,
+		// 		lon: 106.9057,
+		// 		updateInterval: 10 * 60 * 1000, // 10 minutes
+		// 		animationSpeed: 1000,
+		// 		showFeelsLike: true,
+		// 		showHumidity: "wind"
+		// 	}
+		// },
+		// {
+		// 	module: "weather",
+		// 	position: "top_right",
+		// 	header: "Цаг агаарын урьдчилсан мэдээ", // "Weather Forecast" in Mongolian
+		// 	config: {
+		// 		weatherProvider: "openmeteo",
+		// 		type: "forecast",
+		// 		lat: 47.8864,
+		// 		lon: 106.9057,
+		// 		maxNumberOfDays: 3, // Limit for Pi 4 performance
+		// 		updateInterval: 10 * 60 * 1000
+		// 	}
+		// },
 		{
 			module: "mongoliannews",
 			position: "bottom_bar",
@@ -242,7 +243,7 @@ let config = {
 		},
 		{
 			module: "personaltodo",
-			position: "top_left",
+			position: "bottom_right",
 			config: {
 				updateInterval: 1000,
 				statusFile: "/tmp/magicmirror_face_status.json",

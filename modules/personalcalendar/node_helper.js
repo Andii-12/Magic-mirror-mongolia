@@ -1,0 +1,37 @@
+const NodeHelper = require("node_helper");
+const Log = require("logger");
+const fs = require("fs");
+
+module.exports = NodeHelper.create({
+	// Override socketNotificationReceived method.
+	socketNotificationReceived: function(notification, payload) {
+		Log.log(`${this.name} received a socket notification: ${notification}`);
+		
+		if (notification === "CHECK_FACE_STATUS") {
+			this.checkFaceStatus(payload);
+		}
+	},
+
+	// Check face recognition status
+	checkFaceStatus: function(payload) {
+		const self = this;
+		const statusFile = payload.statusFile;
+		
+		try {
+			if (fs.existsSync(statusFile)) {
+				const data = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+				Log.log(`Personal Calendar: Face status - Person: ${data.person}, Active: ${data.active}`);
+				self.sendSocketNotification("FACE_STATUS_UPDATE", data);
+			} else {
+				Log.log("Personal Calendar: Face status file not found");
+				self.sendSocketNotification("FACE_STATUS_UPDATE", {
+					person: null,
+					active: false,
+					status: "waiting"
+				});
+			}
+		} catch (error) {
+			Log.error(`Personal Calendar: Error reading face status: ${error.message}`);
+		}
+	}
+});
