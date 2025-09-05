@@ -216,7 +216,7 @@ let config = {
 		},
 		{
 			module: "personaltodo",
-			position: "bottom_right",
+			position: "top_right",
 			header: "Personal Todo", // Will be overridden by face recognition
 			config: {
 				updateInterval: 1000, // Check for updates every 1 second
@@ -225,6 +225,25 @@ let config = {
 				animationSpeed: 2000,
 				showCompleted: false,
 				maxItems: 10
+			}
+		},
+		{
+			module: "personalcalendar",
+			position: "bottom_right",
+			header: "Personal Calendar", // Will be overridden by face recognition
+			config: {
+				updateInterval: 1000, // Check for updates every 1 second
+				statusFile: "/tmp/magicmirror_face_status.json",
+				profilesFile: "user_profiles.json",
+				animationSpeed: 2000,
+				maximumEntries: 5,
+				maximumNumberOfDays: 7,
+				displaySymbol: true,
+				defaultSymbol: "calendar",
+				maxTitleLength: 25,
+				wrapEvents: true,
+				fade: true,
+				fadePoint: 0.25
 			}
 		},
 		{

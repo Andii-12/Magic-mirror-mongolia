@@ -9,12 +9,18 @@ Module.register("personaltodo", {
 		maxItems: 10
 	},
 
+	// Define required scripts.
+	getScripts: function() {
+		return ["moment.js"];
+	},
+
 	// Define start sequence.
 	start: function() {
 		console.log("Starting Personal Todo module: " + this.name);
 		this.currentUser = null;
 		this.userProfile = null;
 		this.todoItems = [];
+		this.userProfiles = null;
 		this.loadUserProfiles();
 		this.startStatusCheck();
 	},
@@ -22,15 +28,10 @@ Module.register("personaltodo", {
 	// Load user profiles from JSON file
 	loadUserProfiles: function() {
 		const self = this;
-		fetch(this.config.profilesFile)
-			.then(response => response.json())
-			.then(data => {
-				self.userProfiles = data;
-				console.log("Personal Todo: User profiles loaded");
-			})
-			.catch(error => {
-				console.error("Personal Todo: Error loading user profiles:", error);
-			});
+		// Load profiles via node helper instead of fetch
+		this.sendSocketNotification("LOAD_USER_PROFILES", {
+			profilesFile: this.config.profilesFile
+		});
 	},
 
 	// Start checking for face recognition status
@@ -54,6 +55,30 @@ Module.register("personaltodo", {
 		
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal Todo: Face status update:", payload);
+			if (payload.person && payload.person !== this.currentUser) {
+				this.currentUser = payload.person;
+				console.log("Personal Todo: User changed to", this.currentUser);
+				this.loadUserProfile();
+			} else if (!payload.person && this.currentUser) {
+				this.currentUser = null;
+				this.userProfile = null;
+				this.todoItems = [];
+				console.log("Personal Todo: User cleared");
+				this.updateDom(this.config.animationSpeed);
+			}
+		} else if (notification === "USER_PROFILES_LOADED") {
+			console.log("Personal Todo: User profiles loaded");
+			this.userProfiles = payload;
+			if (this.currentUser) {
+				this.loadUserProfile();
+			}
+		}
+	},
+
+	// Override notificationReceived method to handle MM notifications
+	notificationReceived: function(notification, payload, sender) {
+		if (notification === "FACE_STATUS_UPDATE") {
+			console.log("Personal Todo: Received face status via MM notification:", payload);
 			if (payload.person && payload.person !== this.currentUser) {
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);

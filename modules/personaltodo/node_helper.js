@@ -9,6 +9,8 @@ module.exports = NodeHelper.create({
 		
 		if (notification === "CHECK_FACE_STATUS") {
 			this.checkFaceStatus(payload);
+		} else if (notification === "LOAD_USER_PROFILES") {
+			this.loadUserProfiles(payload);
 		}
 	},
 
@@ -32,6 +34,26 @@ module.exports = NodeHelper.create({
 			}
 		} catch (error) {
 			Log.error(`Personal Todo: Error reading face status: ${error.message}`);
+		}
+	},
+
+	// Load user profiles
+	loadUserProfiles: function(payload) {
+		const self = this;
+		const profilesFile = payload.profilesFile;
+		
+		try {
+			if (fs.existsSync(profilesFile)) {
+				const data = JSON.parse(fs.readFileSync(profilesFile, 'utf8'));
+				Log.log(`Personal Todo: User profiles loaded from ${profilesFile}`);
+				self.sendSocketNotification("USER_PROFILES_LOADED", data);
+			} else {
+				Log.error(`Personal Todo: User profiles file not found: ${profilesFile}`);
+				self.sendSocketNotification("USER_PROFILES_LOADED", { users: {}, default: {} });
+			}
+		} catch (error) {
+			Log.error(`Personal Todo: Error loading user profiles: ${error.message}`);
+			self.sendSocketNotification("USER_PROFILES_LOADED", { users: {}, default: {} });
 		}
 	}
 });

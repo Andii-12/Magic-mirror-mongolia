@@ -189,6 +189,8 @@ Module.register("facerecognition", {
 	socketNotificationReceived: function(notification, payload) {
 		if (notification === "FACE_STATUS_UPDATE") {
 			this.processStatusData(payload);
+			// Broadcast the status update to all modules
+			this.sendNotification("FACE_STATUS_UPDATE", payload);
 		}
 	},
 
