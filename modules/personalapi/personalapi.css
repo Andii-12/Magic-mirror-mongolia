@@ -1,0 +1,218 @@
+/* Personal API Module Styles */
+.personalapi {
+    font-family: 'Roboto', sans-serif;
+    color: #fff;
+    padding: 10px;
+}
+
+.personalapi-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #fff;
+    text-align: center;
+    border-bottom: 1px solid #444;
+    padding-bottom: 8px;
+}
+
+.personalapi-section-header {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin: 15px 0 10px 0;
+    color: #fff;
+    border-bottom: 1px solid #666;
+    padding-bottom: 5px;
+}
+
+.personalapi-events {
+    margin-bottom: 20px;
+}
+
+.personalapi-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.personalapi-event {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-left: 4px solid #3b82f6;
+    transition: all 0.3s ease;
+}
+
+.personalapi-event:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.personalapi-event-title {
+    font-weight: bold;
+    font-size: 1em;
+    margin-bottom: 4px;
+    color: #fff;
+}
+
+.personalapi-event-date {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-bottom: 4px;
+}
+
+.personalapi-event-description {
+    font-size: 0.85em;
+    color: #aaa;
+    font-style: italic;
+}
+
+.personalapi-lists {
+    margin-bottom: 15px;
+}
+
+.personalapi-list {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.personalapi-list-header {
+    font-weight: bold;
+    font-size: 1em;
+    margin-bottom: 8px;
+    color: #fff;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+}
+
+.personalapi-list-description {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.personalapi-list-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.personalapi-list-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+}
+
+.personalapi-list-item:last-child {
+    border-bottom: none;
+}
+
+.personalapi-list-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding-left: 8px;
+}
+
+.personalapi-list-item.completed {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.personalapi-checkbox {
+    margin-right: 10px;
+    font-size: 1.1em;
+    color: #4ade80;
+    min-width: 20px;
+}
+
+.personalapi-item-text {
+    flex: 1;
+    font-size: 0.9em;
+    color: #fff;
+}
+
+.personalapi-update {
+    font-size: 0.8em;
+    color: #888;
+    text-align: center;
+    margin-top: 15px;
+    font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .personalapi {
+        padding: 8px;
+    }
+    
+    .personalapi-header {
+        font-size: 1.1em;
+    }
+    
+    .personalapi-event,
+    .personalapi-list {
+        padding: 10px;
+    }
+    
+    .personalapi-event-title,
+    .personalapi-list-header {
+        font-size: 0.95em;
+    }
+}
+
+/* Animation for loading states */
+.personalapi.loading {
+    opacity: 0.7;
+}
+
+.personalapi.loading .personalapi-header::after {
+    content: "...";
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: ""; }
+    40% { content: "."; }
+    60% { content: ".."; }
+    80%, 100% { content: "..."; }
+}
+
+/* Color variations for different event types */
+.personalapi-event[style*="#ef4444"] {
+    border-left-color: #ef4444;
+}
+
+.personalapi-event[style*="#f59e0b"] {
+    border-left-color: #f59e0b;
+}
+
+.personalapi-event[style*="#06b6d4"] {
+    border-left-color: #06b6d4;
+}
+
+.personalapi-event[style*="#3b82f6"] {
+    border-left-color: #3b82f6;
+}
+
+/* Fade in animation for new content */
+.personalapi-event,
+.personalapi-list {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
