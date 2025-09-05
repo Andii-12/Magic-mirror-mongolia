@@ -243,7 +243,7 @@ let config = {
 		},
 		{
 			module: "personaltodo",
-			position: "bottom_right",
+			position: "top_right",
 			config: {
 				updateInterval: 1000,
 				statusFile: "/tmp/magicmirror_face_status.json",
@@ -255,7 +255,7 @@ let config = {
 		},
 		{
 			module: "personalcalendar",
-			position: "top_right",
+			position: "bottom_right",
 			config: {
 				updateInterval: 1000,
 				statusFile: "/tmp/magicmirror_face_status.json",

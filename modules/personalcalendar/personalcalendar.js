@@ -47,20 +47,31 @@ Module.register("personalcalendar", {
 		}, this.config.updateInterval);
 	},
 
-	// Check face recognition status
+	// Check face recognition status via node helper
 	checkFaceStatus: function() {
-		const self = this;
-		fetch(this.config.statusFile)
-			.then(response => response.json())
-			.then(data => {
-				if (data.person && data.person !== self.currentUser) {
-					self.currentUser = data.person;
-					self.loadUserProfile();
-				}
-			})
-			.catch(error => {
-				// File might not exist yet, that's okay
-			});
+		this.sendSocketNotification("CHECK_FACE_STATUS", {
+			statusFile: this.config.statusFile
+		});
+	},
+
+	// Override socket notification handler
+	socketNotificationReceived: function(notification, payload) {
+		console.log("Personal Calendar received notification:", notification);
+		
+		if (notification === "FACE_STATUS_UPDATE") {
+			console.log("Personal Calendar: Face status update:", payload);
+			if (payload.person && payload.person !== this.currentUser) {
+				this.currentUser = payload.person;
+				console.log("Personal Calendar: User changed to", this.currentUser);
+				this.loadUserProfile();
+			} else if (!payload.person && this.currentUser) {
+				this.currentUser = null;
+				this.userProfile = null;
+				this.events = [];
+				console.log("Personal Calendar: User cleared");
+				this.updateDom(this.config.animationSpeed);
+			}
+		}
 	},
 
 	// Load user profile and calendar
@@ -117,8 +128,17 @@ Module.register("personalcalendar", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "personalcalendar";
 
+		// Show message when no user is recognized
+		if (!this.currentUser) {
+			wrapper.innerHTML = "Waiting for face recognition...<br><small>Personal calendar will appear here when a face is recognized</small>";
+			wrapper.className = "dimmed light small";
+			return wrapper;
+		}
+
 		// Only show if user has calendar enabled
 		if (!this.userProfile || !this.userProfile.calendar || !this.userProfile.calendar.enabled || this.events.length === 0) {
+			wrapper.innerHTML = `No calendar events for ${this.currentUser}`;
+			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
 
