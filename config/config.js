@@ -141,34 +141,35 @@ let config = {
 				updateInterval: 30000 // 30 seconds
 			}
 		},
-		{
-			module: "weather",
-			position: "bottom_left",
-			config: {
-				weatherProvider: "openmeteo", // Free weather provider
-				type: "current",
-				// Ulaanbaatar coordinates (adjust for your location)
-				lat: 47.8864,
-				lon: 106.9057,
-				updateInterval: 10 * 60 * 1000, // 10 minutes
-				animationSpeed: 1000,
-				showFeelsLike: true,
-				showHumidity: "wind"
-			}
-		},
-		{
-			module: "weather",
-			position: "bottom_left",
-			header: "Цаг агаарын урьдчилсан мэдээ", // "Weather Forecast" in Mongolian
-			config: {
-				weatherProvider: "openmeteo",
-				type: "forecast",
-				lat: 47.8864,
-				lon: 106.9057,
-				maxNumberOfDays: 3, // Limit for Pi 4 performance
-				updateInterval: 10 * 60 * 1000
-			}
-		},
+		// Temporarily disabled weather modules
+		// {
+		// 	module: "weather",
+		// 	position: "bottom_left",
+		// 	config: {
+		// 		weatherProvider: "openmeteo", // Free weather provider
+		// 		type: "current",
+		// 		// Ulaanbaatar coordinates (adjust for your location)
+		// 		lat: 47.8864,
+		// 		lon: 106.9057,
+		// 		updateInterval: 10 * 60 * 1000, // 10 minutes
+		// 		animationSpeed: 1000,
+		// 		showFeelsLike: true,
+		// 		showHumidity: "wind"
+		// 	}
+		// },
+		// {
+		// 	module: "weather",
+		// 	position: "bottom_left",
+		// 	header: "Цаг агаарын урьдчилсан мэдээ", // "Weather Forecast" in Mongolian
+		// 	config: {
+		// 		weatherProvider: "openmeteo",
+		// 		type: "forecast",
+		// 		lat: 47.8864,
+		// 		lon: 106.9057,
+		// 		maxNumberOfDays: 3, // Limit for Pi 4 performance
+		// 		updateInterval: 10 * 60 * 1000
+		// 	}
+		// },
 		{
 			module: "mongoliannews",
 			position: "bottom_bar",
@@ -218,15 +219,12 @@ let config = {
 			position: "bottom_right",
 			header: "Personal Todo", // Will be overridden by face recognition
 			config: {
-				apiUrl: "https://calendar-app-production-6d2d.up.railway.app/api/magic-mirror/future-data",
-				updateInterval: 5 * 60 * 1000, // 5 minutes
+				updateInterval: 1000, // Check for updates every 1 second
+				statusFile: "/tmp/magicmirror_face_status.json",
+				profilesFile: "user_profiles.json",
 				animationSpeed: 2000,
-				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
-				maxEvents: 0, // Hide calendar events from this module
-				maxLists: 3,
 				showCompleted: false,
-				dateFormat: "MMM Do",
-				timeFormat: "HH:mm"
+				maxItems: 10
 			}
 		},
 		{

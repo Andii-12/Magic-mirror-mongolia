@@ -140,7 +140,8 @@ Module.register("personalapi", {
 		}
 
 		if (!this.currentUser) {
-			wrapper.innerHTML = "Waiting for face recognition...";
+			// Show default data for testing when no face is recognized
+			wrapper.innerHTML = "Waiting for face recognition...<br><small>Personal data will appear here when a face is recognized</small>";
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}

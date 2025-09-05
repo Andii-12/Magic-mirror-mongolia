@@ -92,8 +92,17 @@ Module.register("personaltodo", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "personaltodo";
 
+		// Show message when no user is recognized
+		if (!this.currentUser) {
+			wrapper.innerHTML = "Waiting for face recognition...<br><small>Personal todo list will appear here when a face is recognized</small>";
+			wrapper.className = "dimmed light small";
+			return wrapper;
+		}
+
 		// Only show if user has todo enabled
 		if (!this.userProfile || !this.userProfile.todo || !this.userProfile.todo.enabled || this.todoItems.length === 0) {
+			wrapper.innerHTML = `No todo items for ${this.currentUser}`;
+			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
 

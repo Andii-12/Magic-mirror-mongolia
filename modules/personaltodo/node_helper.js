@@ -1,12 +1,8 @@
 const NodeHelper = require("node_helper");
+const Log = require("logger");
 const fs = require("fs");
 
 module.exports = NodeHelper.create({
-	// Override start method.
-	start: function() {
-		console.log("Starting node helper for: " + this.name);
-	},
-
 	// Override socketNotificationReceived method.
 	socketNotificationReceived: function(notification, payload) {
 		Log.log(`${this.name} received a socket notification: ${notification}`);
