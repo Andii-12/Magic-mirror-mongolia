@@ -41,20 +41,31 @@ Module.register("personaltodo", {
 		}, this.config.updateInterval);
 	},
 
-	// Check face recognition status
+	// Check face recognition status via node helper
 	checkFaceStatus: function() {
-		const self = this;
-		fetch(this.config.statusFile)
-			.then(response => response.json())
-			.then(data => {
-				if (data.person && data.person !== self.currentUser) {
-					self.currentUser = data.person;
-					self.loadUserProfile();
-				}
-			})
-			.catch(error => {
-				// File might not exist yet, that's okay
-			});
+		this.sendSocketNotification("CHECK_FACE_STATUS", {
+			statusFile: this.config.statusFile
+		});
+	},
+
+	// Override socket notification handler
+	socketNotificationReceived: function(notification, payload) {
+		console.log("Personal Todo received notification:", notification);
+		
+		if (notification === "FACE_STATUS_UPDATE") {
+			console.log("Personal Todo: Face status update:", payload);
+			if (payload.person && payload.person !== this.currentUser) {
+				this.currentUser = payload.person;
+				console.log("Personal Todo: User changed to", this.currentUser);
+				this.loadUserProfile();
+			} else if (!payload.person && this.currentUser) {
+				this.currentUser = null;
+				this.userProfile = null;
+				this.todoItems = [];
+				console.log("Personal Todo: User cleared");
+				this.updateDom(this.config.animationSpeed);
+			}
+		}
 	},
 
 	// Load user profile and todo items

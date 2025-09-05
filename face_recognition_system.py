@@ -224,12 +224,12 @@ class FaceRecognitionSystem:
                             print(f"Object moved away ({distance}cm) - starting {TIMEOUT_DELAY}s shutdown timer")
                             self.shutdown_timer = time.time()
                         elif time.time() - self.shutdown_timer >= TIMEOUT_DELAY:
-                            print("Timeout reached - showing blank screen")
+                            print("Timeout reached - logging out user")
                             self.is_active = False
                             self.current_person = None
                             self.shutdown_timer = None
-                            # Don't shutdown MagicMirror, just show blank screen
-                            # The overlay will handle showing the blank screen
+                            # Update status file to clear user data
+                            self.update_status_file()
                 
                 # Update status file for MagicMirror²
                 self.update_status_file()
