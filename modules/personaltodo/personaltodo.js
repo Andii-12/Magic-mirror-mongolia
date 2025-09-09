@@ -123,6 +123,29 @@ Module.register("personaltodo", {
 				console.log("Personal Todo: User cleared");
 				this.updateDom(this.config.animationSpeed);
 			}
+		} else if (notification === "USER_DATA_LOADED") {
+			// Handle user data from personalapi module
+			console.log("Personal Todo: Received user data:", payload);
+			if (payload.user === this.currentUser) {
+				// Flatten all todo items from all lists
+				this.todoItems = [];
+				if (payload.lists) {
+					payload.lists.forEach(list => {
+						if (list.items) {
+							list.items.forEach(item => {
+								this.todoItems.push({
+									title: item.title,
+									completed: item.completed,
+									listTitle: list.title
+								});
+							});
+						}
+					});
+				}
+				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
+				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+				this.updateDom(this.config.animationSpeed);
+			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Handle API data from MM notifications
 			console.log("Personal Todo: Received API data via MM notification");

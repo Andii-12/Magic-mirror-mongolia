@@ -117,6 +117,15 @@ Module.register("personalcalendar", {
 				console.log("Personal Calendar: User cleared");
 				this.updateDom(this.config.animationSpeed);
 			}
+		} else if (notification === "USER_DATA_LOADED") {
+			// Handle user data from personalapi module
+			console.log("Personal Calendar: Received user data:", payload);
+			if (payload.user === this.currentUser) {
+				this.events = payload.events || [];
+				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+				this.updateDom(this.config.animationSpeed);
+			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Handle API data from MM notifications
 			console.log("Personal Calendar: Received API data via MM notification");

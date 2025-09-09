@@ -56,6 +56,7 @@ Module.register("personalapi", {
 	// Load user-specific data
 	loadUserData: function() {
 		if (!this.userData || !this.currentUser) {
+			console.log(`Personal API: Cannot load data - userData: ${!!this.userData}, currentUser: ${this.currentUser}`);
 			return;
 		}
 
@@ -70,6 +71,13 @@ Module.register("personalapi", {
 			console.log(`Personal API: Loaded ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
 			console.log(`Personal API: Events:`, this.events.map(e => e.title));
 			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
+			
+			// Send the specific user data to other modules
+			this.sendNotification("USER_DATA_LOADED", {
+				user: this.currentUser,
+				events: this.events,
+				lists: this.lists
+			});
 		} else {
 			this.events = [];
 			this.lists = [];
@@ -118,7 +126,10 @@ Module.register("personalapi", {
 				this.currentUser = payload.person;
 				console.log("Personal API: User changed to", this.currentUser);
 				if (this.loaded) {
+					console.log("Personal API: Data already loaded, loading user data");
 					this.loadUserData();
+				} else {
+					console.log("Personal API: Data not loaded yet, will load when API data arrives");
 				}
 			} else if (!payload.person && this.currentUser) {
 				this.currentUser = null;
