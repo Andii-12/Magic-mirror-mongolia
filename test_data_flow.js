@@ -4,7 +4,7 @@
  */
 
 console.log('🧪 Testing Data Flow Between Modules');
-console.log('=' * 50);
+console.log('='.repeat(50));
 
 // Simulate the API data
 const apiData = {

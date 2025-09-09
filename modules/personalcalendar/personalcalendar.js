@@ -99,6 +99,15 @@ Module.register("personalcalendar", {
 			} else {
 				console.log("Personal Calendar: No users in payload or no current user");
 			}
+		} else if (notification === "USER_DATA_LOADED") {
+			// Handle user data from socket notification
+			console.log("Personal Calendar: Received user data via socket:", payload);
+			if (payload.user === this.currentUser) {
+				this.events = payload.events || [];
+				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+				this.updateDom(this.config.animationSpeed);
+			}
 		}
 	},
 

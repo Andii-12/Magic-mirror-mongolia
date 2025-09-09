@@ -105,6 +105,29 @@ Module.register("personaltodo", {
 			} else {
 				console.log("Personal Todo: No users in payload or no current user");
 			}
+		} else if (notification === "USER_DATA_LOADED") {
+			// Handle user data from socket notification
+			console.log("Personal Todo: Received user data via socket:", payload);
+			if (payload.user === this.currentUser) {
+				// Flatten all todo items from all lists
+				this.todoItems = [];
+				if (payload.lists) {
+					payload.lists.forEach(list => {
+						if (list.items) {
+							list.items.forEach(item => {
+								this.todoItems.push({
+									title: item.title,
+									completed: item.completed,
+									listTitle: list.title
+								});
+							});
+						}
+					});
+				}
+				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
+				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+				this.updateDom(this.config.animationSpeed);
+			}
 		}
 	},
 

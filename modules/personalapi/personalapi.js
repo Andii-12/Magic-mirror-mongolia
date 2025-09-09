@@ -36,6 +36,11 @@ Module.register("personalapi", {
 		this.startStatusCheck();
 		this.fetchData();
 		this.scheduleUpdate();
+		
+		// Add a delay to ensure data is loaded before face recognition
+		setTimeout(() => {
+			console.log("Personal API: Initial data load completed");
+		}, 2000);
 	},
 
 	// Start checking for face recognition status
@@ -72,12 +77,8 @@ Module.register("personalapi", {
 			console.log(`Personal API: Events:`, this.events.map(e => e.title));
 			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
 			
-			// Send the specific user data to other modules
-			this.sendNotification("USER_DATA_LOADED", {
-				user: this.currentUser,
-				events: this.events,
-				lists: this.lists
-			});
+			// Send the specific user data to other modules with retry mechanism
+			this.sendUserDataToModules();
 		} else {
 			this.events = [];
 			this.lists = [];
@@ -85,6 +86,29 @@ Module.register("personalapi", {
 		}
 
 		this.updateDom(this.config.animationSpeed);
+	},
+
+	// Send user data to other modules with retry mechanism
+	sendUserDataToModules: function() {
+		const userData = {
+			user: this.currentUser,
+			events: this.events,
+			lists: this.lists
+		};
+
+		console.log("Personal API: Sending user data to modules:", userData);
+		
+		// Send notification
+		this.sendNotification("USER_DATA_LOADED", userData);
+		
+		// Also send via socket notification as backup
+		this.sendSocketNotification("USER_DATA_LOADED", userData);
+		
+		// Retry after a short delay to ensure modules receive it
+		setTimeout(() => {
+			console.log("Personal API: Retrying user data send...");
+			this.sendNotification("USER_DATA_LOADED", userData);
+		}, 1000);
 	},
 
 	// Fetch data from API via node helper
@@ -122,6 +146,29 @@ Module.register("personalapi", {
 			this.loaded = false;
 		} else if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal API: Face status update:", payload);
+			if (payload.person && payload.person !== this.currentUser) {
+				this.currentUser = payload.person;
+				console.log("Personal API: User changed to", this.currentUser);
+				if (this.loaded) {
+					console.log("Personal API: Data already loaded, loading user data");
+					this.loadUserData();
+				} else {
+					console.log("Personal API: Data not loaded yet, will load when API data arrives");
+				}
+			} else if (!payload.person && this.currentUser) {
+				this.currentUser = null;
+				this.events = [];
+				this.lists = [];
+				console.log("Personal API: User cleared");
+				this.updateDom(this.config.animationSpeed);
+			}
+		}
+	},
+
+	// Override notificationReceived method to handle MM notifications
+	notificationReceived: function(notification, payload, sender) {
+		if (notification === "FACE_STATUS_UPDATE") {
+			console.log("Personal API: Received face status via MM notification:", payload);
 			if (payload.person && payload.person !== this.currentUser) {
 				this.currentUser = payload.person;
 				console.log("Personal API: User changed to", this.currentUser);
