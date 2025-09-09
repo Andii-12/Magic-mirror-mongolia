@@ -83,6 +83,9 @@ Module.register("personalapi", {
 			this.events = [];
 			this.lists = [];
 			console.log(`Personal API: No data found for user ${this.currentUser}. Available users:`, this.userData.users.map(u => u.name));
+			
+			// Still send empty data to clear the display
+			this.sendUserDataToModules();
 		}
 
 		this.updateDom(this.config.animationSpeed);
@@ -190,6 +193,8 @@ Module.register("personalapi", {
 				this.loadUserData();
 			} else {
 				console.log("Personal API: No current user, waiting for face recognition");
+				// Still broadcast the data so other modules can use it
+				this.sendNotification("PERSONAL_API_DATA_READY", payload);
 			}
 		} else if (notification === "PERSONAL_API_ERROR") {
 			console.error("Personal API: Error fetching data:", payload);
@@ -207,8 +212,15 @@ Module.register("personalapi", {
 			if (payload.person && payload.person !== this.currentUser) {
 				this.currentUser = payload.person;
 				console.log("Personal API: User changed to", this.currentUser);
-				if (this.loaded) {
+				console.log("Personal API: Current loaded state:", this.loaded);
+				console.log("Personal API: Current userData:", this.userData ? "Available" : "Not available");
+				
+				if (this.loaded && this.userData) {
 					console.log("Personal API: Data already loaded, loading user data");
+					this.loadUserData();
+				} else if (this.userData) {
+					console.log("Personal API: UserData available but not loaded, loading now");
+					this.loaded = true;
 					this.loadUserData();
 				} else {
 					console.log("Personal API: Data not loaded yet, will load when API data arrives");
@@ -230,8 +242,15 @@ Module.register("personalapi", {
 			if (payload.person && payload.person !== this.currentUser) {
 				this.currentUser = payload.person;
 				console.log("Personal API: User changed to", this.currentUser);
-				if (this.loaded) {
+				console.log("Personal API: Current loaded state:", this.loaded);
+				console.log("Personal API: Current userData:", this.userData ? "Available" : "Not available");
+				
+				if (this.loaded && this.userData) {
 					console.log("Personal API: Data already loaded, loading user data");
+					this.loadUserData();
+				} else if (this.userData) {
+					console.log("Personal API: UserData available but not loaded, loading now");
+					this.loaded = true;
 					this.loadUserData();
 				} else {
 					console.log("Personal API: Data not loaded yet, will load when API data arrives");
@@ -242,6 +261,36 @@ Module.register("personalapi", {
 				this.lists = [];
 				console.log("Personal API: User cleared");
 				this.updateDom(this.config.animationSpeed);
+			}
+		} else if (notification === "PERSONAL_API_DATA") {
+			// Handle API data from MM notifications
+			console.log("Personal API: Received API data via MM notification");
+			console.log("Personal API: Current user:", this.currentUser);
+			console.log("Personal API: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
+			
+			// Store the API data
+			this.userData = payload;
+			this.loaded = true;
+			
+			if (payload.users && this.currentUser) {
+				const user = payload.users.find(u => 
+					u.name.toLowerCase() === this.currentUser.toLowerCase()
+				);
+				if (user) {
+					this.events = user.events || [];
+					this.lists = user.lists || [];
+					console.log(`Personal API: Loaded ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
+					console.log("Personal API: Events:", this.events.map(e => e.title));
+					console.log("Personal API: Lists:", this.lists.map(l => l.title));
+					
+					// Send data to other modules
+					this.sendUserDataToModules();
+					this.updateDom(this.config.animationSpeed);
+				} else {
+					console.log(`Personal API: User ${this.currentUser} not found in API data`);
+				}
+			} else {
+				console.log("Personal API: No users in payload or no current user");
 			}
 		}
 	},
