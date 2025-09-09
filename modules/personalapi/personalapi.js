@@ -88,6 +88,45 @@ Module.register("personalapi", {
 		this.updateDom(this.config.animationSpeed);
 	},
 
+	// Load user data from local profiles (fallback method)
+	loadUserDataFromProfiles: function() {
+		if (!this.userProfiles || !this.currentUser) {
+			console.log(`Personal API: Cannot load from profiles - userProfiles: ${!!this.userProfiles}, currentUser: ${this.currentUser}`);
+			return;
+		}
+
+		const userProfile = this.userProfiles.users[this.currentUser] || this.userProfiles.default;
+		
+		if (userProfile) {
+			// Convert profile data to API format
+			this.events = userProfile.calendar && userProfile.calendar.enabled ? 
+				userProfile.calendar.events || [] : [];
+			
+			this.lists = userProfile.todo && userProfile.todo.enabled ? 
+				[{
+					title: "Personal Tasks",
+					items: (userProfile.todo.list || []).map(item => ({
+						title: item,
+						completed: false
+					}))
+				}] : [];
+
+			console.log(`Personal API: Loaded from profiles - ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
+			console.log(`Personal API: Events:`, this.events.map(e => e.title || e));
+			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
+			
+			// Send the data to other modules
+			this.sendUserDataToModules();
+		} else {
+			this.events = [];
+			this.lists = [];
+			console.log(`Personal API: No profile found for user ${this.currentUser}`);
+		}
+
+		this.loaded = true;
+		this.updateDom(this.config.animationSpeed);
+	},
+
 	// Send user data to other modules with retry mechanism
 	sendUserDataToModules: function() {
 		const userData = {
@@ -117,6 +156,17 @@ Module.register("personalapi", {
 		this.sendSocketNotification("GET_PERSONAL_API_DATA", {
 			apiUrl: this.config.apiUrl
 		});
+		
+		// Also try to load from local profiles as fallback
+		this.loadFromLocalProfiles();
+	},
+
+	// Load data from local user profiles as fallback
+	loadFromLocalProfiles: function() {
+		console.log("Personal API: Loading from local profiles as fallback");
+		this.sendSocketNotification("LOAD_USER_PROFILES", {
+			profilesFile: "user_profiles.json"
+		});
 	},
 
 	// Override socket notification handler.
@@ -144,6 +194,14 @@ Module.register("personalapi", {
 		} else if (notification === "PERSONAL_API_ERROR") {
 			console.error("Personal API: Error fetching data:", payload);
 			this.loaded = false;
+			// Try to load from local profiles when API fails
+			this.loadFromLocalProfiles();
+		} else if (notification === "USER_PROFILES_LOADED") {
+			console.log("Personal API: User profiles loaded as fallback");
+			this.userProfiles = payload;
+			if (this.currentUser) {
+				this.loadUserDataFromProfiles();
+			}
 		} else if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal API: Face status update:", payload);
 			if (payload.person && payload.person !== this.currentUser) {

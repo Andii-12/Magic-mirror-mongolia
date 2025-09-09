@@ -11,6 +11,8 @@ module.exports = NodeHelper.create({
 			this.fetchPersonalData(payload);
 		} else if (notification === "CHECK_FACE_STATUS") {
 			this.checkFaceStatus(payload);
+		} else if (notification === "LOAD_USER_PROFILES") {
+			this.loadUserProfiles(payload);
 		}
 	},
 
@@ -58,5 +60,23 @@ module.exports = NodeHelper.create({
 				Log.error(`Personal API: Error fetching data: ${error.message}`);
 				self.sendSocketNotification("PERSONAL_API_ERROR", error.message);
 			});
+	},
+
+	// Load user profiles from local file
+	loadUserProfiles: function(payload) {
+		const self = this;
+		const profilesFile = payload.profilesFile || "user_profiles.json";
+		
+		try {
+			if (fs.existsSync(profilesFile)) {
+				const profilesData = JSON.parse(fs.readFileSync(profilesFile, 'utf8'));
+				Log.log(`Personal API: Loaded user profiles from ${profilesFile}`);
+				self.sendSocketNotification("USER_PROFILES_LOADED", profilesData);
+			} else {
+				Log.error(`Personal API: User profiles file not found: ${profilesFile}`);
+			}
+		} catch (error) {
+			Log.error(`Personal API: Error loading user profiles: ${error.message}`);
+		}
 	}
 });
