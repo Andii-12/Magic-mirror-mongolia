@@ -97,13 +97,17 @@ Module.register("personalapi", {
 			this.lastUpdate = new Date();
 			console.log("Personal API: Data received successfully");
 			console.log(`Personal API: Found ${payload.users.length} users, ${payload.summary.totalEvents} events, ${payload.summary.totalLists} lists`);
+			console.log("Personal API: Users available:", payload.users.map(u => u.name));
 			
 			// Broadcast the API data to other modules
 			this.sendNotification("PERSONAL_API_DATA", payload);
 			
 			// Load data for current user if available
 			if (this.currentUser) {
+				console.log("Personal API: Loading data for current user:", this.currentUser);
 				this.loadUserData();
+			} else {
+				console.log("Personal API: No current user, waiting for face recognition");
 			}
 		} else if (notification === "PERSONAL_API_ERROR") {
 			console.error("Personal API: Error fetching data:", payload);
@@ -113,7 +117,9 @@ Module.register("personalapi", {
 			if (payload.person && payload.person !== this.currentUser) {
 				this.currentUser = payload.person;
 				console.log("Personal API: User changed to", this.currentUser);
-				this.loadUserData();
+				if (this.loaded) {
+					this.loadUserData();
+				}
 			} else if (!payload.person && this.currentUser) {
 				this.currentUser = null;
 				this.events = [];

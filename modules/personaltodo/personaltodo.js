@@ -75,6 +75,9 @@ Module.register("personaltodo", {
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Get todo lists from the API data
 			console.log("Personal Todo: Received API data");
+			console.log("Personal Todo: Current user:", this.currentUser);
+			console.log("Personal Todo: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
+			
 			if (payload.users && this.currentUser) {
 				const user = payload.users.find(u => 
 					u.name.toLowerCase() === this.currentUser.toLowerCase()
@@ -94,8 +97,13 @@ Module.register("personaltodo", {
 						}
 					});
 					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
+					console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
 					this.updateDom(this.config.animationSpeed);
+				} else {
+					console.log(`Personal Todo: User ${this.currentUser} not found or no lists`);
 				}
+			} else {
+				console.log("Personal Todo: No users in payload or no current user");
 			}
 		}
 	},
@@ -114,6 +122,39 @@ Module.register("personaltodo", {
 				this.todoItems = [];
 				console.log("Personal Todo: User cleared");
 				this.updateDom(this.config.animationSpeed);
+			}
+		} else if (notification === "PERSONAL_API_DATA") {
+			// Handle API data from MM notifications
+			console.log("Personal Todo: Received API data via MM notification");
+			console.log("Personal Todo: Current user:", this.currentUser);
+			console.log("Personal Todo: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
+			
+			if (payload.users && this.currentUser) {
+				const user = payload.users.find(u => 
+					u.name.toLowerCase() === this.currentUser.toLowerCase()
+				);
+				if (user && user.lists) {
+					// Flatten all todo items from all lists
+					this.todoItems = [];
+					user.lists.forEach(list => {
+						if (list.items) {
+							list.items.forEach(item => {
+								this.todoItems.push({
+									title: item.title,
+									completed: item.completed,
+									listTitle: list.title
+								});
+							});
+						}
+					});
+					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
+					console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+					this.updateDom(this.config.animationSpeed);
+				} else {
+					console.log(`Personal Todo: User ${this.currentUser} not found or no lists`);
+				}
+			} else {
+				console.log("Personal Todo: No users in payload or no current user");
 			}
 		}
 	},

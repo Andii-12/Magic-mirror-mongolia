@@ -81,6 +81,9 @@ Module.register("personalcalendar", {
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Get events from the API data
 			console.log("Personal Calendar: Received API data");
+			console.log("Personal Calendar: Current user:", this.currentUser);
+			console.log("Personal Calendar: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
+			
 			if (payload.users && this.currentUser) {
 				const user = payload.users.find(u => 
 					u.name.toLowerCase() === this.currentUser.toLowerCase()
@@ -88,8 +91,13 @@ Module.register("personalcalendar", {
 				if (user) {
 					this.events = user.events || [];
 					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+					console.log("Personal Calendar: Events:", this.events.map(e => e.title));
 					this.updateDom(this.config.animationSpeed);
+				} else {
+					console.log(`Personal Calendar: User ${this.currentUser} not found in API data`);
 				}
+			} else {
+				console.log("Personal Calendar: No users in payload or no current user");
 			}
 		}
 	},
@@ -108,6 +116,27 @@ Module.register("personalcalendar", {
 				this.events = [];
 				console.log("Personal Calendar: User cleared");
 				this.updateDom(this.config.animationSpeed);
+			}
+		} else if (notification === "PERSONAL_API_DATA") {
+			// Handle API data from MM notifications
+			console.log("Personal Calendar: Received API data via MM notification");
+			console.log("Personal Calendar: Current user:", this.currentUser);
+			console.log("Personal Calendar: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
+			
+			if (payload.users && this.currentUser) {
+				const user = payload.users.find(u => 
+					u.name.toLowerCase() === this.currentUser.toLowerCase()
+				);
+				if (user) {
+					this.events = user.events || [];
+					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+					console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+					this.updateDom(this.config.animationSpeed);
+				} else {
+					console.log(`Personal Calendar: User ${this.currentUser} not found in API data`);
+				}
+			} else {
+				console.log("Personal Calendar: No users in payload or no current user");
 			}
 		}
 	},
