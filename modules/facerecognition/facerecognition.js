@@ -105,10 +105,18 @@ Module.register("facerecognition", {
 				this.onProximityDetected();
 			}
 
-			// Handle face recognition
+			// Handle face recognition - only trigger on new recognition
 			if (this.currentPerson && this.currentPerson !== previousPerson) {
 				console.log("Face recognized:", this.currentPerson);
 				this.onFaceRecognized(this.currentPerson);
+			} else if (this.currentPerson && this.currentPerson === previousPerson) {
+				// Face already recognized, maintain the state
+				console.log("Maintaining recognized state for:", this.currentPerson);
+				// Clear any existing greeting timer to keep showing the greeting
+				if (this.greetingTimer) {
+					clearTimeout(this.greetingTimer);
+					this.greetingTimer = null;
+				}
 			}
 		} else {
 			// Object moved away
@@ -146,13 +154,11 @@ Module.register("facerecognition", {
 		// Clear any existing greeting timer
 		if (this.greetingTimer) {
 			clearTimeout(this.greetingTimer);
+			this.greetingTimer = null;
 		}
 
-		// Show greeting for specified duration
-		this.greetingTimer = setTimeout(() => {
-			this.currentPerson = null; // Hide greeting after duration
-			this.updateDom(this.config.animationSpeed);
-		}, this.config.greetingDuration);
+		// Don't set a timer to hide the greeting - keep it visible as long as proximity is detected
+		// The greeting will only be cleared when proximity is lost
 
 		// Send notification about face recognition
 		this.sendNotification("FACE_RECOGNIZED", {

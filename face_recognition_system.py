@@ -161,8 +161,10 @@ class FaceRecognitionSystem:
             status_type = "waiting"
         elif self.current_person and self.current_person != "Unknown":
             status_type = "recognized"
-        else:
+        elif self.is_active and self.current_person is None:
             status_type = "detecting"
+        else:
+            status_type = "waiting"
         
         status = {
             "distance": self.current_distance,
@@ -204,7 +206,7 @@ class FaceRecognitionSystem:
                         self.current_person = None  # Reset person
                         self.update_status_file()  # Update status to show detecting
                     
-                    # Keep trying face recognition until we get a known person
+                    # Only try face recognition if we haven't recognized anyone yet
                     if self.current_person is None:
                         # Perform face recognition using your working method
                         person = self.recognize_face_with_camera()
@@ -215,6 +217,9 @@ class FaceRecognitionSystem:
                             print("Face not recognized yet, continuing to try...")
                             # Don't set to "Unknown", keep trying
                             self.current_person = None
+                    else:
+                        # Face already recognized, maintain the state
+                        print(f"Maintaining recognized state for {self.current_person} at {distance}cm")
                     
                     time.sleep(1)  # Shorter delay for continuous recognition attempts
                 else:

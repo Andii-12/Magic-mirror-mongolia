@@ -72,6 +72,31 @@ Module.register("personaltodo", {
 			if (this.currentUser) {
 				this.loadUserProfile();
 			}
+		} else if (notification === "PERSONAL_API_DATA") {
+			// Get todo lists from the API data
+			console.log("Personal Todo: Received API data");
+			if (payload.users && this.currentUser) {
+				const user = payload.users.find(u => 
+					u.name.toLowerCase() === this.currentUser.toLowerCase()
+				);
+				if (user && user.lists) {
+					// Flatten all todo items from all lists
+					this.todoItems = [];
+					user.lists.forEach(list => {
+						if (list.items) {
+							list.items.forEach(item => {
+								this.todoItems.push({
+									title: item.title,
+									completed: item.completed,
+									listTitle: list.title
+								});
+							});
+						}
+					});
+					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
+					this.updateDom(this.config.animationSpeed);
+				}
+			}
 		}
 	},
 
@@ -124,8 +149,8 @@ Module.register("personaltodo", {
 			return wrapper;
 		}
 
-		// Only show if user has todo enabled
-		if (!this.userProfile || !this.userProfile.todo || !this.userProfile.todo.enabled || this.todoItems.length === 0) {
+		// Show todo items if available
+		if (this.todoItems.length === 0) {
 			wrapper.innerHTML = `No todo items for ${this.currentUser}`;
 			wrapper.className = "dimmed light small";
 			return wrapper;
@@ -143,10 +168,14 @@ Module.register("personaltodo", {
 
 		this.todoItems.slice(0, this.config.maxItems).forEach((item, index) => {
 			const listItem = document.createElement("li");
-			listItem.className = "personaltodo-item";
+			listItem.className = `personaltodo-item ${item.completed ? 'completed' : ''}`;
+			
+			const checkbox = item.completed ? '☑' : '☐';
+			const text = item.listTitle ? `${item.title} (${item.listTitle})` : item.title;
+			
 			listItem.innerHTML = `
-				<span class="personaltodo-checkbox">☐</span>
-				<span class="personaltodo-text">${item}</span>
+				<span class="personaltodo-checkbox">${checkbox}</span>
+				<span class="personaltodo-text">${text}</span>
 			`;
 			todoList.appendChild(listItem);
 		});

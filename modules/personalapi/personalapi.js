@@ -59,7 +59,7 @@ Module.register("personalapi", {
 			return;
 		}
 
-		// Find user data from API response
+		// Find user data from API response - match by name
 		const user = this.userData.users.find(u => 
 			u.name.toLowerCase() === this.currentUser.toLowerCase()
 		);
@@ -68,10 +68,12 @@ Module.register("personalapi", {
 			this.events = user.events || [];
 			this.lists = user.lists || [];
 			console.log(`Personal API: Loaded ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
+			console.log(`Personal API: Events:`, this.events.map(e => e.title));
+			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
 		} else {
 			this.events = [];
 			this.lists = [];
-			console.log(`Personal API: No data found for user ${this.currentUser}`);
+			console.log(`Personal API: No data found for user ${this.currentUser}. Available users:`, this.userData.users.map(u => u.name));
 		}
 
 		this.updateDom(this.config.animationSpeed);
@@ -95,6 +97,9 @@ Module.register("personalapi", {
 			this.lastUpdate = new Date();
 			console.log("Personal API: Data received successfully");
 			console.log(`Personal API: Found ${payload.users.length} users, ${payload.summary.totalEvents} events, ${payload.summary.totalLists} lists`);
+			
+			// Broadcast the API data to other modules
+			this.sendNotification("PERSONAL_API_DATA", payload);
 			
 			// Load data for current user if available
 			if (this.currentUser) {
@@ -203,10 +208,11 @@ Module.register("personalapi", {
 			dateElement.innerHTML = this.formatEventDate(event);
 			eventElement.appendChild(dateElement);
 
-			if (event.description) {
+			if (event.description && event.description.trim()) {
 				const descElement = document.createElement("div");
 				descElement.className = "personalapi-event-description";
-				descElement.innerHTML = event.description;
+				// Replace \n with <br> for line breaks
+				descElement.innerHTML = event.description.replace(/\n/g, '<br>');
 				eventElement.appendChild(descElement);
 			}
 
@@ -273,14 +279,26 @@ Module.register("personalapi", {
 		const now = moment();
 		const diffDays = eventDate.diff(now, 'days');
 
-		if (diffDays === 0) {
-			return "Today";
-		} else if (diffDays === 1) {
-			return "Tomorrow";
-		} else if (diffDays < 7) {
-			return eventDate.format('dddd');
+		if (event.allDay) {
+			if (diffDays === 0) {
+				return "Today (All Day)";
+			} else if (diffDays === 1) {
+				return "Tomorrow (All Day)";
+			} else if (diffDays < 7) {
+				return eventDate.format('dddd (All Day)');
+			} else {
+				return eventDate.format(this.config.dateFormat) + " (All Day)";
+			}
 		} else {
-			return eventDate.format(this.config.dateFormat);
+			if (diffDays === 0) {
+				return "Today " + eventDate.format('HH:mm');
+			} else if (diffDays === 1) {
+				return "Tomorrow " + eventDate.format('HH:mm');
+			} else if (diffDays < 7) {
+				return eventDate.format('dddd HH:mm');
+			} else {
+				return eventDate.format(this.config.dateFormat + ' HH:mm');
+			}
 		}
 	},
 

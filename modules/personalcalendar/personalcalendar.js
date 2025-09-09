@@ -78,6 +78,19 @@ Module.register("personalcalendar", {
 			if (this.currentUser) {
 				this.loadUserProfile();
 			}
+		} else if (notification === "PERSONAL_API_DATA") {
+			// Get events from the API data
+			console.log("Personal Calendar: Received API data");
+			if (payload.users && this.currentUser) {
+				const user = payload.users.find(u => 
+					u.name.toLowerCase() === this.currentUser.toLowerCase()
+				);
+				if (user) {
+					this.events = user.events || [];
+					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+					this.updateDom(this.config.animationSpeed);
+				}
+			}
 		}
 	},
 
@@ -118,34 +131,11 @@ Module.register("personalcalendar", {
 		this.updateDom(this.config.animationSpeed);
 	},
 
-	// Load calendar events
+	// Load calendar events from API data
 	loadCalendarEvents: function(calendarConfig) {
-		const self = this;
-		this.events = [];
-
-		// For now, we'll create some sample events
-		// In a real implementation, you would fetch from the calendar URLs
-		const today = new Date();
-		const sampleEvents = [
-			{
-				title: "Team Meeting",
-				startDate: new Date(today.getTime() + 2 * 60 * 60 * 1000), // 2 hours from now
-				fullDayEvent: false
-			},
-			{
-				title: "Doctor Appointment",
-				startDate: new Date(today.getTime() + 24 * 60 * 60 * 1000), // Tomorrow
-				fullDayEvent: false
-			},
-			{
-				title: "Birthday Party",
-				startDate: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-				fullDayEvent: true
-			}
-		];
-
-		this.events = sampleEvents.slice(0, calendarConfig.maxEntries || this.config.maximumEntries);
-		console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+		// This will be called from the personalapi module when user data is loaded
+		// The events are already loaded in the personalapi module
+		console.log(`Personal Calendar: Using API data for ${this.currentUser}`);
 	},
 
 	// Override dom generator.
