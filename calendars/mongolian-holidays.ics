@@ -1,0 +1,153 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//MagicMirror//Mongolian Holidays//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Mongolian Holidays
+X-WR-TIMEZONE:Asia/Ulaanbaatar
+
+BEGIN:VEVENT
+UID:mongolian-new-year-2024@magicmirror.local
+DTSTART;VALUE=DATE:20240210
+DTEND;VALUE=DATE:20240212
+SUMMARY:Шинэ жил (New Year)
+DESCRIPTION:Traditional Mongolian New Year celebration
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-women-day-2024@magicmirror.local
+DTSTART;VALUE=DATE:20240308
+DTEND;VALUE=DATE:20240309
+SUMMARY:Эмэгтэйчүүдийн ой (Women's Day)
+DESCRIPTION:International Women's Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-soldier-day-2024@magicmirror.local
+DTSTART;VALUE=DATE:20240318
+DTEND;VALUE=DATE:20240319
+SUMMARY:Цэргийн баяр (Soldier's Day)
+DESCRIPTION:Day of the Mongolian Armed Forces
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-mother-child-day-2024@magicmirror.local
+DTSTART;VALUE=DATE:20240601
+DTEND;VALUE=DATE:20240602
+SUMMARY:Ээж, хүүхдийн баяр (Mother and Child Day)
+DESCRIPTION:International Children's Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-revolution-day-2024@magicmirror.local
+DTSTART;VALUE=DATE:20240711
+DTEND;VALUE=DATE:20240712
+SUMMARY:Хувьсгалын баяр (Revolution Day)
+DESCRIPTION:National Revolution Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-naadam-2024@magicmirror.local
+DTSTART;VALUE=DATE:20240711
+DTEND;VALUE=DATE:20240715
+SUMMARY:Наадам (Naadam Festival)
+DESCRIPTION:Traditional Mongolian festival with wrestling, horse racing, and archery
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-independence-day-2024@magicmirror.local
+DTSTART;VALUE=DATE:20241126
+DTEND;VALUE=DATE:20241127
+SUMMARY:Тусгаар тогтнолын баяр (Independence Day)
+DESCRIPTION:National Independence Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-constitution-day-2024@magicmirror.local
+DTSTART;VALUE=DATE:20241126
+DTEND;VALUE=DATE:20241127
+SUMMARY:Үндсэн хуулийн баяр (Constitution Day)
+DESCRIPTION:Constitution Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-new-year-2025@magicmirror.local
+DTSTART;VALUE=DATE:20250129
+DTEND;VALUE=DATE:20250131
+SUMMARY:Шинэ жил (New Year)
+DESCRIPTION:Traditional Mongolian New Year celebration
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-women-day-2025@magicmirror.local
+DTSTART;VALUE=DATE:20250308
+DTEND;VALUE=DATE:20250309
+SUMMARY:Эмэгтэйчүүдийн ой (Women's Day)
+DESCRIPTION:International Women's Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-soldier-day-2025@magicmirror.local
+DTSTART;VALUE=DATE:20250318
+DTEND;VALUE=DATE:20250319
+SUMMARY:Цэргийн баяр (Soldier's Day)
+DESCRIPTION:Day of the Mongolian Armed Forces
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-mother-child-day-2025@magicmirror.local
+DTSTART;VALUE=DATE:20250601
+DTEND;VALUE=DATE:20250602
+SUMMARY:Ээж, хүүхдийн баяр (Mother and Child Day)
+DESCRIPTION:International Children's Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-revolution-day-2025@magicmirror.local
+DTSTART;VALUE=DATE:20250711
+DTEND;VALUE=DATE:20250712
+SUMMARY:Хувьсгалын баяр (Revolution Day)
+DESCRIPTION:National Revolution Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-naadam-2025@magicmirror.local
+DTSTART;VALUE=DATE:20250711
+DTEND;VALUE=DATE:20250715
+SUMMARY:Наадам (Naadam Festival)
+DESCRIPTION:Traditional Mongolian festival with wrestling, horse racing, and archery
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-independence-day-2025@magicmirror.local
+DTSTART;VALUE=DATE:20251126
+DTEND;VALUE=DATE:20251127
+SUMMARY:Тусгаар тогтнолын баяр (Independence Day)
+DESCRIPTION:National Independence Day
+LOCATION:Mongolia
+END:VEVENT
+
+BEGIN:VEVENT
+UID:mongolian-constitution-day-2025@magicmirror.local
+DTSTART;VALUE=DATE:20251126
+DTEND;VALUE=DATE:20251127
+SUMMARY:Үндсэн хуулийн баяр (Constitution Day)
+DESCRIPTION:Constitution Day
+LOCATION:Mongolia
+END:VEVENT
+
+END:VCALENDAR

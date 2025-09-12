@@ -73,8 +73,13 @@ let config = {
 				calendars: [
 					{
 						symbol: "calendar",
-						url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
-						name: "Баярын өдрүүд" // "Holidays"
+						url: "https://calendar.google.com/calendar/ical/en.mongolian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+						name: "Баярын өдрүүд" // "Mongolian Holidays"
+					},
+					{
+						symbol: "calendar",
+						url: "calendars/mongolian-holidays.ics",
+						name: "Баярын өдрүүд (Backup)" // "Mongolian Holidays Backup"
 					}
 				],
 				maximumEntries: 10, // Show more holidays
@@ -86,7 +91,9 @@ let config = {
 				dateFormat: "MMM Do",
 				hidePrivate: false,
 				hideOngoing: false,
-				fetchInterval: 2 * 60 * 1000, // Update every 2 minutes
+				fetchInterval: 2 * 60 * 1000, // Update every 2 minutes for dynamic holidays
+				errorTimeout: 5000,
+				debug: false,
 				urgency: 365, // Show all events within a year
 				fade: true,
 				fadePoint: 0.25,
@@ -212,7 +219,7 @@ let config = {
 			header: "", // Hidden - only provides data to other modules
 			config: {
 				apiUrl: "https://calendar-app-production-6d2d.up.railway.app/api/magic-mirror/future-data",
-				updateInterval: 1000, // 1 second - real time
+				updateInterval: 30000, // 30 seconds - no real-time updates
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
 				maxEvents: 2,
@@ -228,7 +235,7 @@ let config = {
 			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 5000, // Check for updates every 5 seconds - very stable
+				updateInterval: 30000, // Check for updates every 30 seconds - no blinking
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
@@ -241,7 +248,7 @@ let config = {
 			position: "bottom_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 5000, // Check for updates every 5 seconds - very stable
+				updateInterval: 30000, // Check for updates every 30 seconds - no blinking
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
