@@ -234,10 +234,10 @@ Module.register("facerecognition", {
 			statusElement.innerHTML = "Царай уншиж байна...";
 			wrapper.appendChild(statusElement);
 		} else {
-			// No object detected or not active - show "come closer" message
+			// No object detected or not active - show "waiting for face recognition" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Ойртож зогсоорой";
+			statusElement.innerHTML = "Царай танилт хүлээж байна...";
 			wrapper.appendChild(statusElement);
 		}
 

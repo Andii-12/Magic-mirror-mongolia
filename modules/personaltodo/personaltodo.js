@@ -73,13 +73,14 @@ Module.register("personaltodo", {
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);
 				this.loadUserProfile();
-			} else if (payload.person === null && this.currentUser && payload.status === "waiting") {
-				// Only clear if status explicitly indicates user logout
+			} else if (payload.person === null && this.currentUser && (payload.status === "waiting" || !payload.active)) {
+				// Clear if status indicates user logout OR if no active detection
 				this.currentUser = null;
 				this.userProfile = null;
 				this.todoItems = [];
-				console.log("Personal Todo: User cleared (explicit logout)");
-				this.updateDom(this.config.animationSpeed);
+				this.lastValidData = null; // Clear cached data too
+				console.log("Personal Todo: User cleared (logout or no detection)");
+				this.updateDom(0); // Instant update, no animation
 			} else if (payload.person === this.currentUser) {
 				// Same user, just update status - don't clear data
 				console.log("Personal Todo: Same user, maintaining data");
@@ -116,7 +117,7 @@ Module.register("personaltodo", {
 					});
 					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 					console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
-					this.updateDom(this.config.animationSpeed);
+					this.updateDom(0); // Instant update, no animation
 				} else {
 					console.log(`Personal Todo: User ${this.currentUser} not found or no lists`);
 				}
@@ -151,7 +152,7 @@ Module.register("personaltodo", {
 					items: [...this.todoItems] // Create a copy
 				};
 				
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0); // Instant update, no animation
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
 				console.log("Personal Todo: Received data but no current user, ignoring");
@@ -159,7 +160,7 @@ Module.register("personaltodo", {
 				// Clear data if no user specified
 				this.todoItems = [];
 				console.log("Personal Todo: Cleared items (no user)");
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0); // Instant update, no animation
 			}
 		}
 	},
@@ -179,18 +180,19 @@ Module.register("personaltodo", {
 			if (payload.person && payload.person !== this.currentUser) {
 				// Clear old data only when user actually changes
 				this.todoItems = [];
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0); // Instant update, no animation
 				
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);
 				this.loadUserProfile();
-			} else if (payload.person === null && this.currentUser && payload.status === "waiting") {
-				// Only clear if status explicitly indicates user logout
+			} else if (payload.person === null && this.currentUser && (payload.status === "waiting" || !payload.active)) {
+				// Clear if status indicates user logout OR if no active detection
 				this.currentUser = null;
 				this.userProfile = null;
 				this.todoItems = [];
-				console.log("Personal Todo: User cleared (explicit logout)");
-				this.updateDom(this.config.animationSpeed);
+				this.lastValidData = null; // Clear cached data too
+				console.log("Personal Todo: User cleared (logout or no detection)");
+				this.updateDom(0); // Instant update, no animation
 			} else if (payload.person === this.currentUser) {
 				// Same user, just update status - don't clear data
 				console.log("Personal Todo: Same user, maintaining data");
@@ -223,7 +225,7 @@ Module.register("personaltodo", {
 					items: [...this.todoItems] // Create a copy
 				};
 				
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0); // Instant update, no animation
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
 				console.log("Personal Todo: Received data but no current user, ignoring");
@@ -231,7 +233,7 @@ Module.register("personaltodo", {
 				// Clear data if no user specified
 				this.todoItems = [];
 				console.log("Personal Todo: Cleared items (no user)");
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0); // Instant update, no animation
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Handle API data from MM notifications
@@ -259,7 +261,7 @@ Module.register("personaltodo", {
 					});
 					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 					console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
-					this.updateDom(this.config.animationSpeed);
+					this.updateDom(0); // Instant update, no animation
 				} else {
 					console.log(`Personal Todo: User ${this.currentUser} not found or no lists`);
 				}
@@ -327,8 +329,16 @@ Module.register("personaltodo", {
 		// Create todo list
 		const todoList = document.createElement("ul");
 		todoList.className = "personaltodo-list";
+		
+		// Add compact class if there are many items
+		if (this.todoItems.length > 5) {
+			todoList.className += " compact";
+		}
 
-		this.todoItems.slice(0, this.config.maxItems).forEach((item, index) => {
+		// Show all items if maxItems is 0, otherwise limit to maxItems
+		const itemsToShow = this.config.maxItems === 0 ? this.todoItems : this.todoItems.slice(0, this.config.maxItems);
+		
+		itemsToShow.forEach((item, index) => {
 			const listItem = document.createElement("li");
 			listItem.className = `personaltodo-item ${item.completed ? 'completed' : ''}`;
 			
