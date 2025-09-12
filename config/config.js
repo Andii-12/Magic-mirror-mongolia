@@ -155,7 +155,7 @@ let config = {
 			header: "", // Hidden - only provides data to other modules
 			config: {
 				apiUrl: "https://calendar-app-production-6d2d.up.railway.app/api/magic-mirror/future-data",
-				updateInterval: 30000, // 30 seconds - no real-time updates
+				updateInterval: 300000, // 5 minutes - no real-time updates
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
 				maxEvents: 2,
@@ -184,7 +184,7 @@ let config = {
 			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 30000, // Check for updates every 30 seconds - no blinking
+				updateInterval: 300000, // Check for updates every 5 minutes
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
@@ -217,6 +217,30 @@ let config = {
 					"Andii": "Тавтай морил Анди!",
 					"Jane": "Тавтай морил Жейн!"
 				}
+			}
+		},
+		{
+			module: "MMM-GoogleMapsTraffic",
+			position: "lower_third",
+			config: {
+				key: "YOUR_GOOGLE_MAPS_API_KEY", // You need to get this from Google Cloud Console
+				lat: 47.9077, // Ulaanbaatar latitude
+				lng: 106.8832, // Ulaanbaatar longitude
+				height: "200px",
+				width: "400px",
+				zoom: 12,
+				mapTypeId: "roadmap",
+				styledMapType: "dark", // Dark theme to match MagicMirror
+				disableDefaultUI: true,
+				updateInterval: 300000, // Update every 5 minutes
+				backgroundColor: "hsla(0, 0%, 0%, 0)", // Transparent background
+				markers: [
+					{
+						lat: 47.9077,
+						lng: 106.8832,
+						fillColor: "#9966ff"
+					}
+				]
 			}
 		}
 	]

@@ -45,7 +45,17 @@ Module.register("personaltodo", {
 		// Add periodic data restoration check
 		this.dataRestoreTimer = setInterval(function() {
 			self.restoreDataIfNeeded();
-		}, 2000); // Check every 2 seconds
+		}, this.config.updateInterval); // Check every 5 minutes
+		
+		// Add daily refresh to update tasks when date changes
+		this.dailyRefreshTimer = setInterval(function() {
+			if (self.currentUser && self.lastValidData) {
+				// Re-filter tasks for the new day
+				self.todoItems = self.filterTodayTasks(self.lastValidData.items);
+				self.updateDom(0);
+				console.log("Personal Todo: Daily refresh - updated tasks for new day");
+			}
+		}, this.config.updateInterval); // Check every 5 minutes
 	},
 
 	// Check face recognition status via node helper
@@ -202,22 +212,26 @@ Module.register("personaltodo", {
 			console.log("Personal Todo: Received user data:", payload);
 			if (payload.user && payload.user === this.currentUser) {
 				// Flatten all todo items from all lists
-				this.todoItems = [];
+				let allTasks = [];
 				if (payload.lists) {
 					payload.lists.forEach(list => {
 						if (list.items) {
 							list.items.forEach(item => {
-								this.todoItems.push({
+								allTasks.push({
 									title: item.title,
 									completed: item.completed,
-									listTitle: list.title
+									listTitle: list.title,
+									dueDate: item.dueDate || item.date || null
 								});
 							});
 						}
 					});
 				}
-				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
-				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+				
+				// Filter to show only today's tasks
+				this.todoItems = this.filterTodayTasks(allTasks);
+				console.log(`Personal Todo: Loaded ${this.todoItems.length} today's tasks for ${this.currentUser}`);
+				console.log("Personal Todo: Today's Items:", this.todoItems.map(i => i.title));
 				
 				// Store valid data to prevent loss during status updates
 				this.lastValidData = {
@@ -290,6 +304,20 @@ Module.register("personaltodo", {
 		this.updateDom(this.config.animationSpeed);
 	},
 
+	// Filter tasks to show only today's tasks
+	filterTodayTasks: function(tasks) {
+		const today = moment().format('YYYY-MM-DD');
+		return tasks.filter(task => {
+			// Check if task has a date and if it's today
+			if (task.dueDate) {
+				const taskDate = moment(task.dueDate).format('YYYY-MM-DD');
+				return taskDate === today;
+			}
+			// If no due date, assume it's for today
+			return true;
+		});
+	},
+
 	// Restore data if it was lost during status updates
 	restoreDataIfNeeded: function() {
 		if (this.currentUser && this.todoItems.length === 0 && this.lastValidData && this.lastValidData.user === this.currentUser) {
@@ -315,7 +343,7 @@ Module.register("personaltodo", {
 
 		// Show todo items if available
 		if (this.todoItems.length === 0) {
-			wrapper.innerHTML = `${this.currentUser}-ийн даалгавар хоосон байна`;
+			wrapper.innerHTML = `${this.currentUser}-ийн өнөөдрийн даалгавар хоосон байна`;
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
@@ -323,7 +351,7 @@ Module.register("personaltodo", {
 		// Create header
 		const header = document.createElement("div");
 		header.className = "personaltodo-header";
-		header.innerHTML = `${this.currentUser}-ийн даалгаварууд`;
+		header.innerHTML = `${this.currentUser}-ийн өнөөдрийн даалгаварууд`;
 		wrapper.appendChild(header);
 
 		// Create todo list
@@ -364,6 +392,9 @@ Module.register("personaltodo", {
 		}
 		if (this.dataRestoreTimer) {
 			clearInterval(this.dataRestoreTimer);
+		}
+		if (this.dailyRefreshTimer) {
+			clearInterval(this.dailyRefreshTimer);
 		}
 	},
 

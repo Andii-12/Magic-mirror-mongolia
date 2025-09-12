@@ -1,36 +1,36 @@
 .personalcalendar {
 	width: 100%;
-	max-width: 350px;
+	max-width: 280px;
 	margin: 0 auto;
 }
 
 .personalcalendar-header {
-	font-size: 0.95em;
+	font-size: 0.75em;
 	font-weight: bold;
 	color: #fff;
 	text-align: center;
-	margin-bottom: 6px;
-	padding: 4px 6px;
+	margin-bottom: 3px;
+	padding: 2px 4px;
 	background: rgba(255, 255, 255, 0.08);
-	border-radius: 4px;
+	border-radius: 2px;
 	backdrop-filter: blur(3px);
 }
 
 .personalcalendar-events {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 1px;
 }
 
 .personalcalendar-event {
 	display: flex;
 	align-items: center;
-	padding: 4px 6px;
+	padding: 2px 4px;
 	background: rgba(255, 255, 255, 0.08);
-	border-radius: 4px;
+	border-radius: 2px;
 	backdrop-filter: blur(2px);
 	transition: all 0.2s ease;
-	border-left: 3px solid #4CAF50;
+	border-left: 2px solid #4CAF50;
 }
 
 .personalcalendar-event:hover {
@@ -39,18 +39,18 @@
 }
 
 .personalcalendar-time {
-	font-size: 0.75em;
+	font-size: 0.6em;
 	color: #4CAF50;
 	font-weight: bold;
-	min-width: 45px;
-	margin-right: 8px;
+	min-width: 35px;
+	margin-right: 6px;
 	text-align: center;
 }
 
 .personalcalendar-title {
 	color: #fff;
-	font-size: 0.8em;
-	line-height: 1.2;
+	font-size: 0.65em;
+	line-height: 1.0;
 	flex: 1;
 }
 
@@ -87,25 +87,25 @@
 @media (max-width: 600px) {
 	.personalcalendar {
 		max-width: 100%;
-		padding: 0 5px;
+		padding: 0 3px;
 	}
 	
 	.personalcalendar-header {
-		font-size: 0.85em;
-		padding: 3px 5px;
+		font-size: 0.7em;
+		padding: 2px 3px;
 	}
 	
 	.personalcalendar-event {
-		padding: 3px 5px;
+		padding: 2px 3px;
 	}
 	
 	.personalcalendar-time {
-		font-size: 0.7em;
-		min-width: 40px;
-		margin-right: 6px;
+		font-size: 0.55em;
+		min-width: 30px;
+		margin-right: 4px;
 	}
 	
 	.personalcalendar-title {
-		font-size: 0.75em;
+		font-size: 0.6em;
 	}
 }
