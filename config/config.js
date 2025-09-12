@@ -75,6 +75,11 @@ let config = {
 						symbol: "calendar-check",
 						url: "calendars/mongolian-holidays.ics",
 						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
+					},
+					{
+						symbol: "calendar",
+						url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
+						name: "Америкийн баярын өдрүүд" // "US Holidays" as backup
 					}
 				],
 				maximumEntries: 10, // Show more holidays
@@ -86,14 +91,16 @@ let config = {
 				dateFormat: "MMM Do",
 				hidePrivate: false,
 				hideOngoing: false,
-				fetchInterval: 10 * 60 * 1000, // Update every 10 minutes
+				fetchInterval: 2 * 60 * 1000, // Update every 2 minutes
 				urgency: 365, // Show all events within a year
 				fade: true,
 				fadePoint: 0.25,
 				displaySymbol: true,
 				defaultSymbol: "calendar-check",
 				showError: true,
-				errorTimeout: 5000
+				errorTimeout: 3000,
+				debug: true,
+				reloadInterval: 0
 			}
 		},
 		{
@@ -226,7 +233,7 @@ let config = {
 			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 500, // Check for updates every 0.5 seconds - real time
+				updateInterval: 2000, // Check for updates every 2 seconds - stable
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
@@ -239,7 +246,7 @@ let config = {
 			position: "bottom_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 500, // Check for updates every 0.5 seconds - real time
+				updateInterval: 2000, // Check for updates every 2 seconds - stable
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,

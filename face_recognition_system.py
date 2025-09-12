@@ -247,10 +247,10 @@ class FaceRecognitionSystem:
                             # Don't set to "Unknown", keep trying
                             self.current_person = None
                     else:
-                        # Face already recognized, maintain the state
+                        # Face already recognized, maintain the state - NO STATUS UPDATE
                         print(f"Maintaining recognized state for {self.current_person} at {distance}cm")
                     
-                    time.sleep(0.5)  # Real-time updates every 0.5 seconds
+                    time.sleep(1)  # Check every 1 second when face is already recognized
                 else:
                     # Object moved away
                     if self.is_active:
@@ -264,9 +264,6 @@ class FaceRecognitionSystem:
                             self.shutdown_timer = None
                             # Update status file to clear user data
                             self.update_status_file()
-                
-                # Update status file for MagicMirror²
-                self.update_status_file()
                 
                 # Small delay for sensor polling (matching your code)
                 time.sleep(0.2)

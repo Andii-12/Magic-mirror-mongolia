@@ -3,7 +3,7 @@
 Module.register("facerecognition", {
 	// Default module config.
 	defaults: {
-		updateInterval: 500, // Check for updates every 0.5 seconds - real time
+		updateInterval: 1000, // Check for updates every 1 second - stable
 		proximityThreshold: 20, // 20 cm threshold
 		timeoutDelay: 10000, // 10 seconds delay before shutdown
 		greetingDuration: 5000, // Show greeting for 5 seconds
@@ -233,7 +233,7 @@ Module.register("facerecognition", {
 			statusElement.className = "facerecognition-status";
 			statusElement.innerHTML = "Ойртож зогсоорой";
 			wrapper.appendChild(statusElement);
-		} else {
+		} else if (this.currentDistance >= this.config.proximityThreshold) {
 			// No object detected - show waiting message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status dimmed";
