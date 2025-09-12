@@ -167,16 +167,19 @@ Module.register("personalapi", {
 			apiUrl: this.config.apiUrl
 		});
 		
-		// Also try to load from local profiles as fallback
-		this.loadFromLocalProfiles();
+		// Don't load from local profiles by default - only when API fails
+		// this.loadFromLocalProfiles();
 	},
 
-	// Load data from local user profiles as fallback
+	// Load data from local user profiles as fallback (only if API fails)
 	loadFromLocalProfiles: function() {
 		console.log("Personal API: Loading from local profiles as fallback");
-		this.sendSocketNotification("LOAD_USER_PROFILES", {
-			profilesFile: "user_profiles.json"
-		});
+		// Only load local profiles if API data is not available
+		if (!this.loaded) {
+			this.sendSocketNotification("LOAD_USER_PROFILES", {
+				profilesFile: "user_profiles.json"
+			});
+		}
 	},
 
 	// Override socket notification handler.
@@ -202,6 +205,18 @@ Module.register("personalapi", {
 				console.log("Personal API: No current user, waiting for face recognition");
 				// Still broadcast the data so other modules can use it
 				this.sendNotification("PERSONAL_API_DATA_READY", payload);
+			}
+			
+			// Also send individual user data notifications for each user
+			if (payload.users && payload.users.length > 0) {
+				payload.users.forEach(user => {
+					console.log(`Personal API: Sending data for user: ${user.name}`);
+					this.sendNotification("USER_DATA_LOADED", {
+						user: user.name,
+						events: user.events || [],
+						todo: user.todo || []
+					});
+				});
 			}
 		} else if (notification === "PERSONAL_API_ERROR") {
 			console.error("Personal API: Error fetching data:", payload);
