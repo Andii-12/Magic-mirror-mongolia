@@ -73,7 +73,7 @@ let config = {
 				calendars: [
 					{
 						symbol: "calendar-check",
-						url: "calendars/mongolian-holidays-api.ics",
+						url: "https://calendar.google.com/calendar/ical/en.mongolian%23holiday%40group.v.calendar.google.com/public/basic.ics",
 						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
 					}
 				],
@@ -205,23 +205,24 @@ let config = {
 		{
 			module: "personalapi",
 			position: "top_right",
-			header: "Personal Calendar", // Will be overridden by face recognition
+			header: "", // Hidden - only provides data to other modules
 			config: {
 				apiUrl: "https://calendar-app-production-6d2d.up.railway.app/api/magic-mirror/future-data",
 				updateInterval: 5 * 60 * 1000, // 5 minutes
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
 				maxEvents: 5,
-				maxLists: 0, // Hide todo lists from this module
+				maxLists: 3, // Allow todo lists to be fetched
 				showCompleted: false,
 				dateFormat: "MMM Do",
-				timeFormat: "HH:mm"
+				timeFormat: "HH:mm",
+				hidden: true // Hide this module from display
 			}
 		},
 		{
 			module: "personaltodo",
 			position: "top_right",
-			header: "Personal Todo", // Will be overridden by face recognition
+			header: "", // Will be overridden by face recognition
 			config: {
 				updateInterval: 1000, // Check for updates every 1 second
 				statusFile: "/tmp/magicmirror_face_status.json",
@@ -234,7 +235,7 @@ let config = {
 		{
 			module: "personalcalendar",
 			position: "bottom_right",
-			header: "Personal Calendar", // Will be overridden by face recognition
+			header: "", // Will be overridden by face recognition
 			config: {
 				updateInterval: 1000, // Check for updates every 1 second
 				statusFile: "/tmp/magicmirror_face_status.json",

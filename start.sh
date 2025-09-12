@@ -26,7 +26,11 @@ export DISPLAY=:0
 # Create status file if it doesn't exist
 if [ ! -f "/tmp/magicmirror_face_status.json" ]; then
     echo "📝 Creating face status file..."
-    echo '{"person": null, "active": false, "distance": 999, "status": "waiting"}' > /tmp/magicmirror_face_status.json
+    mkdir -p /tmp
+    echo '{"person": null, "active": false, "distance": 999, "status": "waiting", "timestamp": "2024-01-01T00:00:00"}' > /tmp/magicmirror_face_status.json
+    echo "✅ Status file created"
+else
+    echo "✅ Face status file already exists"
 fi
 
 # Kill any existing processes

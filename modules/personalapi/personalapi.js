@@ -313,6 +313,14 @@ Module.register("personalapi", {
 
 	// Override dom generator.
 	getDom: function() {
+		// If module is hidden, return empty wrapper
+		if (this.config.hidden) {
+			const wrapper = document.createElement("div");
+			wrapper.className = "personalapi hidden";
+			wrapper.style.display = "none";
+			return wrapper;
+		}
+
 		const wrapper = document.createElement("div");
 		wrapper.className = "personalapi";
 
