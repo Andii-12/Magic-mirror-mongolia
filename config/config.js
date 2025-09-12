@@ -66,43 +66,30 @@ let config = {
 			}
 		},
 		{
-			module: "calendar",
-			header: "Цагийн хуваарь", // "Schedule" in Mongolian
+			module: "mongolianholidays",
+			header: "Монголын баярын өдрүүд", // "Mongolian Holidays"
 			position: "top_left",
 			config: {
-				calendars: [
-					{
-						symbol: "calendar",
-						url: "calendars/mongolian-holidays.ics",
-						name: "Баярын өдрүүд" // "Mongolian Holidays"
-					},
-					{
-						symbol: "calendar",
-						url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
-						name: "Баярын өдрүүд (Fallback)" // "Holidays Fallback"
-					}
-				],
-				maximumEntries: 10, // Show more holidays
-				maximumNumberOfDays: 365, // Show events for the next year
+				apiUrl: "https://date.nager.at/api/v3/PublicHolidays",
+				updateInterval: 24 * 60 * 60 * 1000, // Update once per day
 				animationSpeed: 2000,
+				maximumEntries: 10,
+				maximumNumberOfDays: 365,
+				showDescription: true,
+				dateFormat: "MMM Do",
+				displaySymbol: true,
+				defaultSymbol: "calendar-check",
+				fade: true,
+				fadePoint: 0.25,
 				showLocation: false,
 				showEnd: false,
 				timeFormat: "relative",
-				dateFormat: "MMM Do",
 				hidePrivate: false,
 				hideOngoing: false,
-				fetchInterval: 5 * 60 * 1000, // Update every 5 minutes
+				urgency: 365,
 				errorTimeout: 10000,
 				debug: true,
-				urgency: 365, // Show all events within a year
-				fade: true,
-				fadePoint: 0.25,
-				displaySymbol: true,
-				defaultSymbol: "calendar-check",
-				showError: true,
-				errorTimeout: 3000,
-				debug: true,
-				reloadInterval: 0
+				showError: true
 			}
 		},
 		{

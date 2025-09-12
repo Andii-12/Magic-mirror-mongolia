@@ -3,6 +3,9 @@
 /* Import personal modules styling */
 @import url('personal-modules.css');
 
+/* Import Mongolian holidays styling */
+@import url('../modules/mongolianholidays/mongolianholidays.css');
+
 /* General improvements */
 body {
     font-family: 'Roboto', sans-serif;

@@ -45,10 +45,16 @@ pkill -f "node.*electron" 2>/dev/null
 pkill -f "npm start" 2>/dev/null
 sleep 2
 
-# Start face recognition system in background
-echo "🎯 Starting face recognition system..."
-python3 face_recognition_system.py &
-FACE_PID=$!
+# Check for test mode
+if [ "$1" = "test" ]; then
+    echo "🧪 Starting face recognition system in TEST MODE..."
+    FACE_RECOGNITION_TEST=true python3 face_recognition_system.py &
+    FACE_PID=$!
+else
+    echo "🎯 Starting face recognition system..."
+    python3 face_recognition_system.py &
+    FACE_PID=$!
+fi
 
 # Wait a moment for face recognition to initialize
 sleep 3

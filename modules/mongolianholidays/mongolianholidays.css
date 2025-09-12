@@ -1,0 +1,94 @@
+/* Mongolian Holidays Module Styling */
+
+.mongolianholidays {
+    font-family: 'Roboto', sans-serif;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+.mongolianholidays .module-header {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #fff;
+    text-align: center;
+    border-bottom: 2px solid #e74c3c;
+    padding-bottom: 8px;
+}
+
+.holidays-list {
+    margin-bottom: 10px;
+}
+
+.holiday-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.holiday-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.holiday-title {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+.holiday-date {
+    font-size: 0.9em;
+    color: #e74c3c;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.holiday-description {
+    font-size: 0.85em;
+    color: #aaa;
+    font-style: italic;
+}
+
+.mongolianholidays .error {
+    color: #e74c3c;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .mongolianholidays {
+        margin: 5px 0;
+        padding: 10px;
+    }
+    
+    .mongolianholidays .module-header {
+        font-size: 1.1em;
+    }
+    
+    .holiday-item {
+        padding: 8px;
+    }
+}
+
+/* Animation improvements */
+.mongolianholidays {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

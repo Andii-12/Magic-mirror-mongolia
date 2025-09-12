@@ -37,6 +37,11 @@ if platform.system() == "Windows":
     TRAINER_PATH = None
     IMAGE_BASE = None
 
+# Add test mode for ultrasonic sensor
+TEST_MODE = os.environ.get('FACE_RECOGNITION_TEST', 'false').lower() == 'true'
+if TEST_MODE:
+    print("🧪 Running in TEST MODE - ultrasonic sensor will be simulated")
+
 class FaceRecognitionSystem:
     def __init__(self):
         self.current_person = None
@@ -96,26 +101,71 @@ class FaceRecognitionSystem:
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
 
     def get_distance(self):
-        """Get distance from ultrasonic sensor in cm (matching your working code)"""
-        if not self.gpio_available:
+        """Get distance from ultrasonic sensor in cm with improved accuracy and error handling"""
+        if not self.gpio_available or TEST_MODE:
+            if TEST_MODE:
+                # Simulate distance changes for testing
+                import random
+                # Simulate someone approaching and leaving
+                if hasattr(self, '_test_distance_counter'):
+                    self._test_distance_counter += 1
+                else:
+                    self._test_distance_counter = 0
+                
+                # Simulate approaching (distance decreasing)
+                if self._test_distance_counter < 50:
+                    return max(5, 50 - self._test_distance_counter)
+                # Simulate staying close
+                elif self._test_distance_counter < 100:
+                    return random.uniform(10, 20)
+                # Simulate moving away
+                else:
+                    return random.uniform(30, 100)
             return 999  # Return far distance if GPIO not available
             
         try:
+            # Ensure trigger is low initially
             GPIO.output(TRIG_PIN, False)
-            time.sleep(0.1)
+            time.sleep(0.01)  # Reduced wait time
 
+            # Send trigger pulse
             GPIO.output(TRIG_PIN, True)
-            time.sleep(0.00001)
+            time.sleep(0.00001)  # 10 microseconds
             GPIO.output(TRIG_PIN, False)
 
+            # Wait for echo to start (with timeout)
+            timeout_start = time.time()
             while GPIO.input(ECHO_PIN) == 0:
+                if time.time() - timeout_start > 0.1:  # 100ms timeout
+                    print("Warning: Echo start timeout")
+                    return 999
                 pulse_start = time.time()
+
+            # Wait for echo to end (with timeout)
+            timeout_start = time.time()
             while GPIO.input(ECHO_PIN) == 1:
+                if time.time() - timeout_start > 0.1:  # 100ms timeout
+                    print("Warning: Echo end timeout")
+                    return 999
                 pulse_end = time.time()
 
+            # Calculate distance
             pulse_duration = pulse_end - pulse_start
-            distance = pulse_duration * 17150
+            
+            # Validate pulse duration (should be reasonable for ultrasonic sensor)
+            if pulse_duration < 0.0001 or pulse_duration > 0.1:  # 0.1ms to 100ms
+                print(f"Warning: Invalid pulse duration: {pulse_duration}")
+                return 999
+            
+            # Convert to distance (speed of sound = 34300 cm/s, divide by 2 for round trip)
+            distance = (pulse_duration * 34300) / 2
             distance = round(distance, 2)
+            
+            # Validate distance range (2cm to 400cm)
+            if distance < 2 or distance > 400:
+                print(f"Warning: Distance out of range: {distance}cm")
+                return 999
+                
             return distance
             
         except Exception as e:
@@ -212,21 +262,39 @@ class FaceRecognitionSystem:
             print(f"Error writing status file: {e}")
 
     def run(self):
-        """Main loop (based on your working combined.py logic)"""
+        """Main loop with improved proximity detection and state management"""
         print("Starting face recognition system...")
+        print(f"Proximity threshold: {PROXIMITY_THRESHOLD}cm")
+        print(f"Timeout delay: {TIMEOUT_DELAY}s")
         print("Press Ctrl+C to stop")
+        
+        # Add distance smoothing for more stable readings
+        distance_history = []
+        HISTORY_SIZE = 3
         
         try:
             while True:
                 # Get distance from ultrasonic sensor
                 distance = self.get_distance()
-                self.current_distance = distance
                 
-                # Check proximity (matching your working code)
-                if distance <= PROXIMITY_THRESHOLD:
+                # Add to history for smoothing
+                distance_history.append(distance)
+                if len(distance_history) > HISTORY_SIZE:
+                    distance_history.pop(0)
+                
+                # Calculate smoothed distance (average of last few readings)
+                smoothed_distance = sum(distance_history) / len(distance_history)
+                self.current_distance = smoothed_distance
+                
+                # Debug output every 10 iterations
+                if len(distance_history) % 10 == 0:
+                    print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}")
+                
+                # Check proximity with smoothed distance
+                if smoothed_distance <= PROXIMITY_THRESHOLD:
                     # Object detected within threshold
                     if not self.is_active:
-                        print(f"Object detected at {distance}cm - starting face recognition")
+                        print(f"🎯 Object detected at {smoothed_distance:.1f}cm - starting face recognition")
                         self.is_active = True
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
@@ -235,51 +303,51 @@ class FaceRecognitionSystem:
                     
                     # Only try face recognition if we haven't recognized anyone yet
                     if self.current_person is None:
-                        # Perform face recognition using your working method
-                        person = self.recognize_face_with_camera()
-                        if person and person != "Unknown":
-                            print(f"Face recognized: {person}")
-                            self.current_person = person
-                            # Update status file immediately when person is recognized
-                            self.update_status_file()
-                        else:
-                            print("Face not recognized yet, continuing to try...")
-                            # Don't set to "Unknown", keep trying
-                            self.current_person = None
+                        # Add small delay to ensure stable proximity before camera activation
+                        if time.time() - self.last_detection_time > 1.0:  # Wait 1 second after detection
+                            print("📷 Attempting face recognition...")
+                            person = self.recognize_face_with_camera()
+                            if person and person != "Unknown":
+                                print(f"✅ Face recognized: {person}")
+                                self.current_person = person
+                                self.update_status_file()
+                            else:
+                                print("❌ Face not recognized, will try again...")
+                                # Reset detection time to try again in 2 seconds
+                                self.last_detection_time = time.time() - 1.0
                     else:
                         # Face already recognized, maintain the state
-                        print(f"Maintaining recognized state for {self.current_person} at {distance}cm")
-                        # Start timeout timer if not already started
-                        if self.shutdown_timer is None:
-                            print(f"Starting {TIMEOUT_DELAY}s timeout timer for {self.current_person}")
-                            self.shutdown_timer = time.time()
-                        elif time.time() - self.shutdown_timer >= TIMEOUT_DELAY:
-                            print(f"Timeout reached for {self.current_person} - logging out")
-                            self.is_active = False
-                            self.current_person = None
-                            self.shutdown_timer = None
-                            self.update_status_file()
+                        print(f"👤 Maintaining recognized state for {self.current_person} at {smoothed_distance:.1f}cm")
+                        # Reset timeout timer since person is still present
+                        self.shutdown_timer = None
                     
-                    time.sleep(1)  # Check every 1 second when face is already recognized
+                    # Update status file periodically
+                    if int(time.time()) % 5 == 0:  # Every 5 seconds
+                        self.update_status_file()
+                    
+                    time.sleep(0.5)  # Check every 0.5 seconds when active
                 else:
                     # Object moved away
                     if self.is_active:
                         if self.shutdown_timer is None:
-                            print(f"Object moved away ({distance}cm) - starting {TIMEOUT_DELAY}s shutdown timer")
+                            print(f"👋 Object moved away ({smoothed_distance:.1f}cm) - starting {TIMEOUT_DELAY}s shutdown timer")
                             self.shutdown_timer = time.time()
                         elif time.time() - self.shutdown_timer >= TIMEOUT_DELAY:
-                            print("Timeout reached - logging out user")
+                            print("⏰ Timeout reached - logging out user")
                             self.is_active = False
                             self.current_person = None
                             self.shutdown_timer = None
-                            # Update status file to clear user data
+                            self.update_status_file()
+                    else:
+                        # Not active, just update status occasionally
+                        if int(time.time()) % 10 == 0:  # Every 10 seconds
                             self.update_status_file()
                 
-                # Small delay for sensor polling (matching your code)
-                time.sleep(0.2)
+                # Small delay for sensor polling
+                time.sleep(0.1)  # Reduced delay for more responsive detection
                 
         except KeyboardInterrupt:
-            print("\nStopping face recognition system...")
+            print("\n🛑 Stopping face recognition system...")
         finally:
             self.cleanup()
 

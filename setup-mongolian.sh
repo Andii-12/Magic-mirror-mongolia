@@ -72,6 +72,22 @@ if [ ! -d "modules/personalapi" ]; then
     exit 1
 fi
 
+# Setup mongolianholidays module
+echo "🔧 Setting up mongolianholidays module..."
+if [ ! -d "modules/mongolianholidays" ]; then
+    echo "❌ Error: mongolianholidays module not found!"
+    echo "   Please ensure the mongolianholidays module is in modules/mongolianholidays/"
+    exit 1
+fi
+
+# Test the holidays API
+echo "🧪 Testing Mongolian holidays API..."
+if node scripts/test-mongolian-holidays.js; then
+    echo "✅ Holidays API is working correctly!"
+else
+    echo "⚠️  Holidays API test failed, but continuing setup..."
+fi
+
 # Create tmp directory for face recognition status
 mkdir -p /tmp
 chmod 777 /tmp
