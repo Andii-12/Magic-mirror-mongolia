@@ -73,7 +73,7 @@ let config = {
 				calendars: [
 					{
 						symbol: "calendar-check",
-						url: "https://calendar.google.com/calendar/ical/en.mongolian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+						url: "calendars/mongolian-holidays.ics",
 						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
 					}
 				],
@@ -86,12 +86,14 @@ let config = {
 				dateFormat: "MMM Do",
 				hidePrivate: false,
 				hideOngoing: false,
-				fetchInterval: 5 * 60 * 1000, // Update every 5 minutes for testing
+				fetchInterval: 10 * 60 * 1000, // Update every 10 minutes
 				urgency: 365, // Show all events within a year
 				fade: true,
 				fadePoint: 0.25,
 				displaySymbol: true,
-				defaultSymbol: "calendar-check"
+				defaultSymbol: "calendar-check",
+				showError: true,
+				errorTimeout: 5000
 			}
 		},
 		{
