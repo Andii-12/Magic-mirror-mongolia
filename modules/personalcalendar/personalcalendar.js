@@ -102,10 +102,18 @@ Module.register("personalcalendar", {
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from socket notification
 			console.log("Personal Calendar: Received user data via socket:", payload);
-			if (payload.user === this.currentUser) {
+			if (payload.user && payload.user === this.currentUser) {
 				this.events = payload.events || [];
 				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+				this.updateDom(this.config.animationSpeed);
+			} else if (payload.user && !this.currentUser) {
+				// If we receive data but no current user, ignore it
+				console.log("Personal Calendar: Received data but no current user, ignoring");
+			} else if (!payload.user) {
+				// Clear data if no user specified
+				this.events = [];
+				console.log("Personal Calendar: Cleared events (no user)");
 				this.updateDom(this.config.animationSpeed);
 			}
 		}
@@ -116,6 +124,10 @@ Module.register("personalcalendar", {
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal Calendar: Received face status via MM notification:", payload);
 			if (payload.person && payload.person !== this.currentUser) {
+				// Clear old data immediately when user changes
+				this.events = [];
+				this.updateDom(this.config.animationSpeed);
+				
 				this.currentUser = payload.person;
 				console.log("Personal Calendar: User changed to", this.currentUser);
 				this.loadUserProfile();
@@ -129,10 +141,18 @@ Module.register("personalcalendar", {
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from personalapi module
 			console.log("Personal Calendar: Received user data:", payload);
-			if (payload.user === this.currentUser) {
+			if (payload.user && payload.user === this.currentUser) {
 				this.events = payload.events || [];
 				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+				this.updateDom(this.config.animationSpeed);
+			} else if (payload.user && !this.currentUser) {
+				// If we receive data but no current user, ignore it
+				console.log("Personal Calendar: Received data but no current user, ignoring");
+			} else if (!payload.user) {
+				// Clear data if no user specified
+				this.events = [];
+				console.log("Personal Calendar: Cleared events (no user)");
 				this.updateDom(this.config.animationSpeed);
 			}
 		} else if (notification === "PERSONAL_API_DATA") {

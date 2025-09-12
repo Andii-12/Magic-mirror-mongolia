@@ -72,14 +72,9 @@ let config = {
 			config: {
 				calendars: [
 					{
-						symbol: "calendar-check",
-						url: "calendars/mongolian-holidays.ics",
-						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
-					},
-					{
 						symbol: "calendar",
 						url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
-						name: "Америкийн баярын өдрүүд" // "US Holidays" as backup
+						name: "Баярын өдрүүд" // "Holidays"
 					}
 				],
 				maximumEntries: 10, // Show more holidays
@@ -220,8 +215,8 @@ let config = {
 				updateInterval: 1000, // 1 second - real time
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
-				maxEvents: 3,
-				maxLists: 3, // Allow todo lists to be fetched
+				maxEvents: 2,
+				maxLists: 2, // Allow todo lists to be fetched
 				showCompleted: false,
 				dateFormat: "MMM Do",
 				timeFormat: "HH:mm",
@@ -233,12 +228,12 @@ let config = {
 			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 2000, // Check for updates every 2 seconds - stable
+				updateInterval: 5000, // Check for updates every 5 seconds - very stable
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
 				showCompleted: false,
-				maxItems: 5
+				maxItems: 3
 			}
 		},
 		{
@@ -246,18 +241,17 @@ let config = {
 			position: "bottom_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 2000, // Check for updates every 2 seconds - stable
+				updateInterval: 5000, // Check for updates every 5 seconds - very stable
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
-				maximumEntries: 3,
+				maximumEntries: 2,
 				maximumNumberOfDays: 7,
 				displaySymbol: true,
 				defaultSymbol: "calendar",
-				maxTitleLength: 25,
+				maxTitleLength: 20,
 				wrapEvents: true,
-				fade: true,
-				fadePoint: 0.25
+				fade: false
 			}
 		},
 		{

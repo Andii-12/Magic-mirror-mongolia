@@ -33,10 +33,10 @@ else
     echo "✅ Face status file already exists"
 fi
 
-# For testing: Create a test status with recognized user
-echo "🧪 Creating test status with recognized user 'Andii'..."
-echo '{"person": "Andii", "active": true, "distance": 15, "status": "recognized", "timestamp": "2024-01-01T00:00:00"}' > /tmp/magicmirror_face_status.json
-echo "✅ Test status created - Andii should be recognized"
+# Create initial status file (no user recognized)
+echo "📝 Creating initial status file (no user recognized)..."
+echo '{"person": null, "active": false, "distance": 999, "status": "waiting", "timestamp": "2024-01-01T00:00:00"}' > /tmp/magicmirror_face_status.json
+echo "✅ Initial status created - waiting for face recognition"
 
 # Kill any existing processes
 echo "🧹 Cleaning up existing processes..."

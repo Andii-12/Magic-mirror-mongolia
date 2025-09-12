@@ -108,7 +108,7 @@ Module.register("personaltodo", {
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from socket notification
 			console.log("Personal Todo: Received user data via socket:", payload);
-			if (payload.user === this.currentUser) {
+			if (payload.user && payload.user === this.currentUser) {
 				// Flatten all todo items from all lists
 				this.todoItems = [];
 				if (payload.lists) {
@@ -127,6 +127,14 @@ Module.register("personaltodo", {
 				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
 				this.updateDom(this.config.animationSpeed);
+			} else if (payload.user && !this.currentUser) {
+				// If we receive data but no current user, ignore it
+				console.log("Personal Todo: Received data but no current user, ignoring");
+			} else if (!payload.user) {
+				// Clear data if no user specified
+				this.todoItems = [];
+				console.log("Personal Todo: Cleared items (no user)");
+				this.updateDom(this.config.animationSpeed);
 			}
 		}
 	},
@@ -136,6 +144,10 @@ Module.register("personaltodo", {
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal Todo: Received face status via MM notification:", payload);
 			if (payload.person && payload.person !== this.currentUser) {
+				// Clear old data immediately when user changes
+				this.todoItems = [];
+				this.updateDom(this.config.animationSpeed);
+				
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);
 				this.loadUserProfile();
@@ -149,7 +161,7 @@ Module.register("personaltodo", {
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from personalapi module
 			console.log("Personal Todo: Received user data:", payload);
-			if (payload.user === this.currentUser) {
+			if (payload.user && payload.user === this.currentUser) {
 				// Flatten all todo items from all lists
 				this.todoItems = [];
 				if (payload.lists) {
@@ -167,6 +179,14 @@ Module.register("personaltodo", {
 				}
 				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+				this.updateDom(this.config.animationSpeed);
+			} else if (payload.user && !this.currentUser) {
+				// If we receive data but no current user, ignore it
+				console.log("Personal Todo: Received data but no current user, ignoring");
+			} else if (!payload.user) {
+				// Clear data if no user specified
+				this.todoItems = [];
+				console.log("Personal Todo: Cleared items (no user)");
 				this.updateDom(this.config.animationSpeed);
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
