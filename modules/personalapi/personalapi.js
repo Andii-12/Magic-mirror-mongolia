@@ -65,6 +65,9 @@ Module.register("personalapi", {
 			return;
 		}
 
+		console.log(`Personal API: Looking for user: ${this.currentUser}`);
+		console.log(`Personal API: Available users:`, this.userData.users.map(u => u.name));
+
 		// Find user data from API response - match by name
 		const user = this.userData.users.find(u => 
 			u.name.toLowerCase() === this.currentUser.toLowerCase()
@@ -76,6 +79,10 @@ Module.register("personalapi", {
 			console.log(`Personal API: Loaded ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
 			console.log(`Personal API: Events:`, this.events.map(e => e.title));
 			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
+			
+			// Debug: Log the actual data structure
+			console.log(`Personal API: First event:`, this.events[0]);
+			console.log(`Personal API: First list:`, this.lists[0]);
 			
 			// Send the specific user data to other modules with retry mechanism
 			this.sendUserDataToModules();
@@ -446,43 +453,51 @@ Module.register("personalapi", {
 
 	// Format event date
 	formatEventDate: function(event) {
+		if (!event || !event.startDate) {
+			return "No date";
+		}
+		
 		const eventDate = moment(event.startDate);
 		const now = moment();
 		const diffDays = eventDate.diff(now, 'days');
 
 		if (event.allDay) {
 			if (diffDays === 0) {
-				return "Today (All Day)";
+				return "Өнөөдөр (Бүх өдөр)"; // Today (All Day)
 			} else if (diffDays === 1) {
-				return "Tomorrow (All Day)";
+				return "Маргааш (Бүх өдөр)"; // Tomorrow (All Day)
 			} else if (diffDays < 7) {
-				return eventDate.format('dddd (All Day)');
+				return eventDate.format('dddd') + " (Бүх өдөр)"; // Day name (All Day)
 			} else {
-				return eventDate.format(this.config.dateFormat) + " (All Day)";
+				return eventDate.format(this.config.dateFormat) + " (Бүх өдөр)"; // Date (All Day)
 			}
 		} else {
 			if (diffDays === 0) {
-				return "Today " + eventDate.format('HH:mm');
+				return "Өнөөдөр " + eventDate.format('HH:mm'); // Today time
 			} else if (diffDays === 1) {
-				return "Tomorrow " + eventDate.format('HH:mm');
+				return "Маргааш " + eventDate.format('HH:mm'); // Tomorrow time
 			} else if (diffDays < 7) {
-				return eventDate.format('dddd HH:mm');
+				return eventDate.format('dddd HH:mm'); // Day name time
 			} else {
-				return eventDate.format(this.config.dateFormat + ' HH:mm');
+				return eventDate.format(this.config.dateFormat + ' HH:mm'); // Date time
 			}
 		}
 	},
 
 	// Format list date
 	formatListDate: function(dateString) {
+		if (!dateString) {
+			return "Өнөөдөр"; // Today
+		}
+		
 		const listDate = moment(dateString);
 		const now = moment();
 		const diffDays = listDate.diff(now, 'days');
 
 		if (diffDays === 0) {
-			return "Today";
+			return "Өнөөдөр"; // Today
 		} else if (diffDays === 1) {
-			return "Tomorrow";
+			return "Маргааш"; // Tomorrow
 		} else {
 			return listDate.format(this.config.dateFormat);
 		}

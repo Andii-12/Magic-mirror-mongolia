@@ -192,14 +192,14 @@ Module.register("personalcalendar", {
 
 		// Show message when no user is recognized
 		if (!this.currentUser) {
-			wrapper.innerHTML = "Waiting for face recognition...<br><small>Personal calendar will appear here when a face is recognized</small>";
+			wrapper.innerHTML = "Царай танилт хүлээж байна...<br><small>Царай танигдсаны дараа хувийн цагийн хуваарь харагдана</small>";
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
 
-		// Only show if user has calendar enabled
-		if (!this.userProfile || !this.userProfile.calendar || !this.userProfile.calendar.enabled || this.events.length === 0) {
-			wrapper.innerHTML = `No calendar events for ${this.currentUser}`;
+		// Show events if available
+		if (this.events.length === 0) {
+			wrapper.innerHTML = `${this.currentUser}-ийн цагийн хуваарь хоосон байна`;
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
@@ -207,21 +207,21 @@ Module.register("personalcalendar", {
 		// Create header
 		const header = document.createElement("div");
 		header.className = "personalcalendar-header";
-		header.innerHTML = `📅 ${this.currentUser}'s Calendar`;
+		header.innerHTML = `📅 ${this.currentUser}-ийн цагийн хуваарь`;
 		wrapper.appendChild(header);
 
 		// Create events list
 		const eventsList = document.createElement("div");
 		eventsList.className = "personalcalendar-events";
 
-		this.events.forEach((event, index) => {
+		this.events.slice(0, this.config.maximumEntries).forEach((event, index) => {
 			const eventElement = document.createElement("div");
 			eventElement.className = "personalcalendar-event";
 
 			const timeElement = document.createElement("div");
 			timeElement.className = "personalcalendar-time";
 			
-			if (event.fullDayEvent) {
+			if (event.allDay) {
 				timeElement.innerHTML = this.formatDate(event.startDate);
 			} else {
 				timeElement.innerHTML = this.formatTime(event.startDate);
@@ -242,20 +242,25 @@ Module.register("personalcalendar", {
 	},
 
 	// Format time for display
-	formatTime: function(date) {
+	formatTime: function(dateString) {
+		if (!dateString) return "00:00";
+		const date = new Date(dateString);
 		return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	},
 
 	// Format date for display
-	formatDate: function(date) {
+	formatDate: function(dateString) {
+		if (!dateString) return "Өнөөдөр";
+		
+		const date = new Date(dateString);
 		const today = new Date();
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
 
 		if (date.toDateString() === today.toDateString()) {
-			return "Today";
+			return "Өнөөдөр"; // Today
 		} else if (date.toDateString() === tomorrow.toDateString()) {
-			return "Tomorrow";
+			return "Маргааш"; // Tomorrow
 		} else {
 			return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 		}

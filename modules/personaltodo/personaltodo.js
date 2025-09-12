@@ -231,14 +231,14 @@ Module.register("personaltodo", {
 
 		// Show message when no user is recognized
 		if (!this.currentUser) {
-			wrapper.innerHTML = "Waiting for face recognition...<br><small>Personal todo list will appear here when a face is recognized</small>";
+			wrapper.innerHTML = "Царай танилт хүлээж байна...<br><small>Царай танигдсаны дараа хувийн даалгаварууд харагдана</small>";
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
 
 		// Show todo items if available
 		if (this.todoItems.length === 0) {
-			wrapper.innerHTML = `No todo items for ${this.currentUser}`;
+			wrapper.innerHTML = `${this.currentUser}-ийн даалгавар хоосон байна`;
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
@@ -246,7 +246,7 @@ Module.register("personaltodo", {
 		// Create header
 		const header = document.createElement("div");
 		header.className = "personaltodo-header";
-		header.innerHTML = `📋 ${this.currentUser}'s Tasks`;
+		header.innerHTML = `📋 ${this.currentUser}-ийн даалгаварууд`;
 		wrapper.appendChild(header);
 
 		// Create todo list

@@ -1,0 +1,195 @@
+/* Personal Modules Styling */
+
+.personalapi {
+    font-family: 'Roboto', sans-serif;
+}
+
+.personalapi-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #fff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.personalapi-section-header {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin: 15px 0 10px 0;
+    color: #ccc;
+}
+
+.personalapi-events {
+    margin-bottom: 20px;
+}
+
+.personalapi-event {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-left: 4px solid #3b82f6;
+}
+
+.personalapi-event-title {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.personalapi-event-date {
+    font-size: 0.9em;
+    color: #ccc;
+}
+
+.personalapi-event-description {
+    font-size: 0.9em;
+    color: #aaa;
+    margin-top: 5px;
+}
+
+.personalapi-lists {
+    margin-bottom: 20px;
+}
+
+.personalapi-list {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.personalapi-list-header {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.personalapi-list-description {
+    font-size: 0.9em;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+
+.personalapi-list-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.personalapi-list-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.personalapi-list-item:last-child {
+    border-bottom: none;
+}
+
+.personalapi-checkbox {
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+.personalapi-item-text {
+    color: #fff;
+}
+
+.personalapi-list-item.completed .personalapi-item-text {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.personalapi-update {
+    font-size: 0.8em;
+    color: #888;
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* Personal Calendar Styling */
+.personalcalendar {
+    font-family: 'Roboto', sans-serif;
+}
+
+.personalcalendar-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #fff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.personalcalendar-events {
+    margin-bottom: 10px;
+}
+
+.personalcalendar-event {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.personalcalendar-time {
+    font-weight: bold;
+    color: #3b82f6;
+    margin-right: 15px;
+    min-width: 80px;
+}
+
+.personalcalendar-title {
+    color: #fff;
+    flex: 1;
+}
+
+/* Personal Todo Styling */
+.personaltodo {
+    font-family: 'Roboto', sans-serif;
+}
+
+.personaltodo-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #fff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.personaltodo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.personaltodo-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.personaltodo-item:last-child {
+    border-bottom: none;
+}
+
+.personaltodo-checkbox {
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+.personaltodo-text {
+    color: #fff;
+}
+
+.personaltodo-item.completed .personaltodo-text {
+    text-decoration: line-through;
+    color: #888;
+}

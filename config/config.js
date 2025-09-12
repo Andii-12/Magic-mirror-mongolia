@@ -5,10 +5,10 @@
  */
 
 let config = {
-	address: "localhost",
+	address: "0.0.0.0",
 	port: 8080,
 	basePath: "/",
-	ipWhitelist: ["127.0.0.1", "::ffff:127.0.0.1", "::1"],
+	ipWhitelist: [],
 
 	// Use HTTP for better performance on Pi 4
 	useHttps: false,
@@ -26,6 +26,7 @@ let config = {
 
 	// Performance optimizations for Pi 4
 	zoom: 1.0, // Adjust if needed for your display
+	customCss: "css/custom.css",
 	electronOptions: {
 		// Optimize for Pi 4 performance
 		webPreferences: {
@@ -39,6 +40,9 @@ let config = {
 
 	// Disable server restart checking to save resources
 	reloadAfterServerRestart: false,
+	
+	// Optimize for standalone operation (no browser)
+	kioskmode: true,
 
 	modules: [
 		{
@@ -69,7 +73,7 @@ let config = {
 				calendars: [
 					{
 						symbol: "calendar-check",
-						url: "http://localhost:8080/calendars/mongolian-holidays-api.ics",
+						url: "calendars/mongolian-holidays-api.ics",
 						name: "Монголын баярын өдрүүд" // "Mongolian Holidays"
 					}
 				],

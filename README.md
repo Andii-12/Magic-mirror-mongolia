@@ -2,7 +2,7 @@
 
 🇲🇳 **Монгол хэл дэмжлэгтэй MagicMirror²**
 
-A complete Mongolian language localization for MagicMirror², optimized for Raspberry Pi 4 with 1GB RAM.
+A complete Mongolian language localization for MagicMirror² with face recognition, optimized for Raspberry Pi 4.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Language: Mongolian](https://img.shields.io/badge/Language-Mongolian-red.svg)](https://en.wikipedia.org/wiki/Mongolian_language)
@@ -10,30 +10,14 @@ A complete Mongolian language localization for MagicMirror², optimized for Rasp
 
 ## 🌟 Features
 
-- ✅ **Complete Mongolian Translation** - 43+ translations covering all interface elements
-- ✅ **Raspberry Pi 4 Optimized** - Performance tuned for 1GB RAM devices
-- ✅ **Easy Setup** - Automated installation scripts for Linux and Windows
+- ✅ **Complete Mongolian Translation** - All interface elements in Mongolian
+- ✅ **Face Recognition** - Personalized experience with ultrasonic sensor
+- ✅ **Personal Data** - User-specific calendar and todo lists
+- ✅ **Raspberry Pi 4 Optimized** - Performance tuned for 1GB RAM
 - ✅ **Mongolian Timezone** - Asia/Ulaanbaatar timezone support
-- ✅ **Localized Content** - Weather, calendar, and news in Mongolian
-- ✅ **Performance Optimized** - Reduced memory usage and optimized update intervals
+- ✅ **Standalone Operation** - No browser needed
 
 ## 🚀 Quick Start
-
-### For Windows Users:
-
-```cmd
-# Clone this repository
-git clone https://github.com/Andii-12/Magic-mirror-mongolia.git
-cd Magic-mirror-mongolia
-
-# Run the Windows setup script
-.\setup-windows.bat
-
-# Start MagicMirror²
-npm start
-```
-
-**Note**: If you encounter Node.js version compatibility issues, the setup script will automatically use `--force` to bypass engine checks.
 
 ### For Raspberry Pi 4:
 
@@ -49,13 +33,6 @@ chmod +x setup-mongolian.sh
 # Start the complete system (face recognition + ultrasonic + MagicMirror² + personal data)
 chmod +x start.sh
 ./start.sh
-```
-
-### For Windows (Preparation):
-
-```bash
-# Run the Windows setup script
-setup-mongolian.bat
 ```
 
 ## 📋 What's Included

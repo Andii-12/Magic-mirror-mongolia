@@ -1,15 +1,32 @@
 #!/bin/bash
 
-# MagicMirror² Complete System Startup
-# ONE command to start everything
+# MagicMirror² Complete Startup Script for Raspberry Pi 4
+# Starts face recognition + ultrasonic + MagicMirror² + personal data
 
 echo "🚀 Starting MagicMirror² Complete System"
-echo "========================================"
+echo "======================================="
+
+# Check if running on Raspberry Pi
+if [ -f /proc/device-tree/model ]; then
+    echo "✅ Raspberry Pi detected: $(cat /proc/device-tree/model)"
+else
+    echo "❌ This script is designed for Raspberry Pi 4 only"
+    exit 1
+fi
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
     echo "❌ Error: Please run this from the MagicMirror directory"
     exit 1
+fi
+
+# Set display for X11
+export DISPLAY=:0
+
+# Create status file if it doesn't exist
+if [ ! -f "/tmp/magicmirror_face_status.json" ]; then
+    echo "📝 Creating face status file..."
+    echo '{"person": null, "active": false, "distance": 999, "status": "waiting"}' > /tmp/magicmirror_face_status.json
 fi
 
 # Kill any existing processes
@@ -19,35 +36,43 @@ pkill -f "node.*electron" 2>/dev/null
 pkill -f "npm start" 2>/dev/null
 sleep 2
 
-# Start face recognition system
-echo "🤖 Starting face recognition system..."
+# Start face recognition system in background
+echo "🎯 Starting face recognition system..."
 python3 face_recognition_system.py &
 FACE_PID=$!
-echo "Face recognition PID: $FACE_PID"
 
-# Wait for face recognition to initialize
+# Wait a moment for face recognition to initialize
 sleep 3
 
+# Check if face recognition started successfully
+if ps -p $FACE_PID > /dev/null; then
+    echo "✅ Face recognition system started (PID: $FACE_PID)"
+else
+    echo "❌ Failed to start face recognition system"
+    exit 1
+fi
+
 # Start MagicMirror²
-echo "🪞 Starting MagicMirror²..."
-echo "🌐 Will be available at: http://localhost:8080"
+echo "🎯 Starting MagicMirror²..."
+echo "   Address: 0.0.0.0:8080"
+echo "   Mode: Standalone (Kiosk)"
+echo "   Language: Mongolian"
+echo "   Face Recognition: Running"
 echo ""
 echo "Press Ctrl+C to stop everything"
 echo ""
 
-# Start MagicMirror² in foreground
+# Start MagicMirror² (this will block)
 npm start
 
-# Cleanup function
-cleanup() {
-    echo ""
-    echo "🛑 Shutting down system..."
-    kill $FACE_PID 2>/dev/null
-    pkill -f "node.*electron" 2>/dev/null
-    pkill -f "npm start" 2>/dev/null
-    echo "✅ System stopped"
-    exit 0
-}
+# Cleanup when MagicMirror² stops
+echo ""
+echo "🛑 MagicMirror² stopped - cleaning up..."
 
-# Trap Ctrl+C
-trap cleanup SIGINT SIGTERM
+# Stop face recognition
+if ps -p $FACE_PID > /dev/null; then
+    echo "🛑 Stopping face recognition system..."
+    kill $FACE_PID
+fi
+
+echo "✅ Cleanup complete"
