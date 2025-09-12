@@ -113,26 +113,27 @@
 /* Personal Calendar Styling */
 .personalcalendar {
     font-family: 'Roboto', sans-serif;
+    font-size: 0.9em;
 }
 
 .personalcalendar-header {
-    font-size: 1.2em;
+    font-size: 1.0em;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: #fff;
     border-bottom: 1px solid #444;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
 }
 
 .personalcalendar-events {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .personalcalendar-event {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    padding: 6px;
+    margin-bottom: 5px;
     display: flex;
     align-items: center;
 }
@@ -140,27 +141,30 @@
 .personalcalendar-time {
     font-weight: bold;
     color: #3b82f6;
-    margin-right: 15px;
-    min-width: 80px;
+    margin-right: 10px;
+    min-width: 60px;
+    font-size: 0.85em;
 }
 
 .personalcalendar-title {
     color: #fff;
     flex: 1;
+    font-size: 0.9em;
 }
 
 /* Personal Todo Styling */
 .personaltodo {
     font-family: 'Roboto', sans-serif;
+    font-size: 0.9em;
 }
 
 .personaltodo-header {
-    font-size: 1.2em;
+    font-size: 1.0em;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: #fff;
     border-bottom: 1px solid #444;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
 }
 
 .personaltodo-list {
@@ -172,7 +176,7 @@
 .personaltodo-item {
     display: flex;
     align-items: center;
-    padding: 8px 0;
+    padding: 5px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -181,12 +185,15 @@
 }
 
 .personaltodo-checkbox {
-    margin-right: 10px;
-    font-size: 1.2em;
+    margin-right: 8px;
+    font-size: 1.0em;
+    color: #3b82f6;
+    font-weight: bold;
 }
 
 .personaltodo-text {
     color: #fff;
+    font-size: 0.9em;
 }
 
 .personaltodo-item.completed .personaltodo-text {

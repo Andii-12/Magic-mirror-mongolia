@@ -257,7 +257,7 @@ Module.register("personaltodo", {
 			const listItem = document.createElement("li");
 			listItem.className = `personaltodo-item ${item.completed ? 'completed' : ''}`;
 			
-			const checkbox = item.completed ? '☑' : '☐';
+			const checkbox = item.completed ? '[✓]' : '[ ]';
 			const text = item.listTitle ? `${item.title} (${item.listTitle})` : item.title;
 			
 			listItem.innerHTML = `

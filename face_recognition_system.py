@@ -134,7 +134,7 @@ class FaceRecognitionSystem:
             if platform.system() == "Windows":
                 print("[INFO] Windows detected - simulating face recognition")
                 time.sleep(2)  # Simulate camera delay
-                return "TestUser"  # Return test user for Windows
+                return "Andii"  # Return actual user for Windows
             
             picam2 = Picamera2()
             config = picam2.create_preview_configuration(main={"size": (320, 240)})
@@ -163,9 +163,9 @@ class FaceRecognitionSystem:
                         else:
                             print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
                 else:
-                    # Simulate recognition for testing
-                    print("[INFO] Face recognition simulated - returning 'TestUser'")
-                    recognized_person = "TestUser"
+                    # Simulate recognition for testing - return actual user from profiles
+                    print("[INFO] Face recognition simulated - returning 'Andii'")
+                    recognized_person = "Andii"
             else:
                 print("[INFO] No face detected in frame!")
 
@@ -207,6 +207,7 @@ class FaceRecognitionSystem:
                 json.dump(status, f, indent=2)
             # Atomic rename to avoid partial reads
             os.rename(temp_file, STATUS_FILE)
+            print(f"Status updated: {status}")
         except Exception as e:
             print(f"Error writing status file: {e}")
 
@@ -239,6 +240,8 @@ class FaceRecognitionSystem:
                         if person and person != "Unknown":
                             print(f"Face recognized: {person}")
                             self.current_person = person
+                            # Update status file immediately when person is recognized
+                            self.update_status_file()
                         else:
                             print("Face not recognized yet, continuing to try...")
                             # Don't set to "Unknown", keep trying
@@ -247,7 +250,7 @@ class FaceRecognitionSystem:
                         # Face already recognized, maintain the state
                         print(f"Maintaining recognized state for {self.current_person} at {distance}cm")
                     
-                    time.sleep(1)  # Shorter delay for continuous recognition attempts
+                    time.sleep(0.5)  # Real-time updates every 0.5 seconds
                 else:
                     # Object moved away
                     if self.is_active:

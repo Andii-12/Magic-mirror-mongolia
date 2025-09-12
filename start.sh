@@ -33,6 +33,11 @@ else
     echo "✅ Face status file already exists"
 fi
 
+# For testing: Create a test status with recognized user
+echo "🧪 Creating test status with recognized user 'Andii'..."
+echo '{"person": "Andii", "active": true, "distance": 15, "status": "recognized", "timestamp": "2024-01-01T00:00:00"}' > /tmp/magicmirror_face_status.json
+echo "✅ Test status created - Andii should be recognized"
+
 # Kill any existing processes
 echo "🧹 Cleaning up existing processes..."
 pkill -f "face_recognition_system.py" 2>/dev/null

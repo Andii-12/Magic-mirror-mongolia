@@ -3,7 +3,7 @@
 Module.register("facerecognition", {
 	// Default module config.
 	defaults: {
-		updateInterval: 1000, // Check for updates every 1 second
+		updateInterval: 500, // Check for updates every 0.5 seconds - real time
 		proximityThreshold: 20, // 20 cm threshold
 		timeoutDelay: 10000, // 10 seconds delay before shutdown
 		greetingDuration: 5000, // Show greeting for 5 seconds
@@ -205,8 +205,9 @@ Module.register("facerecognition", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "facerecognition";
 
-		// Show greeting if person is recognized
+		// Show different messages based on status
 		if (this.currentPerson && this.currentPerson !== "Unknown") {
+			// Person recognized - show greeting
 			const greetingElement = document.createElement("div");
 			greetingElement.className = `greeting ${this.config.greetingStyle}`;
 			
@@ -220,6 +221,24 @@ Module.register("facerecognition", {
 			
 			greetingElement.innerHTML = greetingText;
 			wrapper.appendChild(greetingElement);
+		} else if (this.isActive && !this.currentPerson) {
+			// Object detected but face not recognized yet - show "reading face" message
+			const statusElement = document.createElement("div");
+			statusElement.className = "facerecognition-status";
+			statusElement.innerHTML = "Царай уншиж байна...";
+			wrapper.appendChild(statusElement);
+		} else if (this.currentDistance < this.config.proximityThreshold && !this.isActive) {
+			// Object detected but not active yet - show "come closer" message
+			const statusElement = document.createElement("div");
+			statusElement.className = "facerecognition-status";
+			statusElement.innerHTML = "Ойртож зогсоорой";
+			wrapper.appendChild(statusElement);
+		} else {
+			// No object detected - show waiting message
+			const statusElement = document.createElement("div");
+			statusElement.className = "facerecognition-status dimmed";
+			statusElement.innerHTML = "Хүлээж байна...";
+			wrapper.appendChild(statusElement);
 		}
 
 		return wrapper;

@@ -446,7 +446,7 @@ Module.register("personalapi", {
 				const itemElement = document.createElement("li");
 				itemElement.className = `personalapi-list-item ${item.completed ? 'completed' : ''}`;
 				itemElement.innerHTML = `
-					<span class="personalapi-checkbox">${item.completed ? '☑' : '☐'}</span>
+					<span class="personalapi-checkbox">${item.completed ? '[✓]' : '[ ]'}</span>
 					<span class="personalapi-item-text">${item.title}</span>
 				`;
 				itemsList.appendChild(itemElement);

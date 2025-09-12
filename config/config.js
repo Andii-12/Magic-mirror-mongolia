@@ -210,10 +210,10 @@ let config = {
 			header: "", // Hidden - only provides data to other modules
 			config: {
 				apiUrl: "https://calendar-app-production-6d2d.up.railway.app/api/magic-mirror/future-data",
-				updateInterval: 5 * 60 * 1000, // 5 minutes
+				updateInterval: 1000, // 1 second - real time
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
-				maxEvents: 5,
+				maxEvents: 3,
 				maxLists: 3, // Allow todo lists to be fetched
 				showCompleted: false,
 				dateFormat: "MMM Do",
@@ -226,12 +226,12 @@ let config = {
 			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 1000, // Check for updates every 1 second
+				updateInterval: 500, // Check for updates every 0.5 seconds - real time
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
-				animationSpeed: 2000,
+				animationSpeed: 1000,
 				showCompleted: false,
-				maxItems: 10
+				maxItems: 5
 			}
 		},
 		{
@@ -239,11 +239,11 @@ let config = {
 			position: "bottom_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 1000, // Check for updates every 1 second
+				updateInterval: 500, // Check for updates every 0.5 seconds - real time
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
-				animationSpeed: 2000,
-				maximumEntries: 5,
+				animationSpeed: 1000,
+				maximumEntries: 3,
 				maximumNumberOfDays: 7,
 				displaySymbol: true,
 				defaultSymbol: "calendar",
