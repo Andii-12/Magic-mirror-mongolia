@@ -247,8 +247,18 @@ class FaceRecognitionSystem:
                             # Don't set to "Unknown", keep trying
                             self.current_person = None
                     else:
-                        # Face already recognized, maintain the state - NO STATUS UPDATE
+                        # Face already recognized, maintain the state
                         print(f"Maintaining recognized state for {self.current_person} at {distance}cm")
+                        # Start timeout timer if not already started
+                        if self.shutdown_timer is None:
+                            print(f"Starting {TIMEOUT_DELAY}s timeout timer for {self.current_person}")
+                            self.shutdown_timer = time.time()
+                        elif time.time() - self.shutdown_timer >= TIMEOUT_DELAY:
+                            print(f"Timeout reached for {self.current_person} - logging out")
+                            self.is_active = False
+                            self.current_person = None
+                            self.shutdown_timer = None
+                            self.update_status_file()
                     
                     time.sleep(1)  # Check every 1 second when face is already recognized
                 else:

@@ -266,7 +266,7 @@ Module.register("personaltodo", {
 		// Create header
 		const header = document.createElement("div");
 		header.className = "personaltodo-header";
-		header.innerHTML = `📋 ${this.currentUser}-ийн даалгаварууд`;
+		header.innerHTML = `${this.currentUser}-ийн даалгаварууд`;
 		wrapper.appendChild(header);
 
 		// Create todo list

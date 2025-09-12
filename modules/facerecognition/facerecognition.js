@@ -17,11 +17,11 @@ Module.register("facerecognition", {
 		animationSpeed: 1000, // Animation speed for greetings
 		// Personalized greetings for different people
 		greetings: {
-			"default": "Welcome {name}!",
+			"default": "Тавтай морил {name}!",
 			"unknown": "Таныг танихгүй байна",
 			// Add specific greetings for known people
-			// "John": "Welcome John!",
-			// "Jane": "Welcome Jane!"
+			// "John": "Тавтай морил John!",
+			// "Jane": "Тавтай морил Jane!"
 		}
 	},
 
@@ -227,17 +227,11 @@ Module.register("facerecognition", {
 			statusElement.className = "facerecognition-status";
 			statusElement.innerHTML = "Царай уншиж байна...";
 			wrapper.appendChild(statusElement);
-		} else if (this.currentDistance < this.config.proximityThreshold && !this.isActive) {
-			// Object detected but not active yet - show "come closer" message
+		} else {
+			// No object detected or not active - show "come closer" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
 			statusElement.innerHTML = "Ойртож зогсоорой";
-			wrapper.appendChild(statusElement);
-		} else if (this.currentDistance >= this.config.proximityThreshold) {
-			// No object detected - show waiting message
-			const statusElement = document.createElement("div");
-			statusElement.className = "facerecognition-status dimmed top-left";
-			statusElement.innerHTML = "Хүлээж байна...";
 			wrapper.appendChild(statusElement);
 		}
 

@@ -90,6 +90,7 @@ Module.register("personalcalendar", {
 				);
 				if (user) {
 					this.events = user.events || [];
+					this.sortEventsByDate();
 					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 					console.log("Personal Calendar: Events:", this.events.map(e => e.title));
 					this.updateDom(this.config.animationSpeed);
@@ -104,6 +105,7 @@ Module.register("personalcalendar", {
 			console.log("Personal Calendar: Received user data via socket:", payload);
 			if (payload.user && payload.user === this.currentUser) {
 				this.events = payload.events || [];
+				this.sortEventsByDate();
 				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
 				this.updateDom(this.config.animationSpeed);
@@ -143,6 +145,7 @@ Module.register("personalcalendar", {
 			console.log("Personal Calendar: Received user data:", payload);
 			if (payload.user && payload.user === this.currentUser) {
 				this.events = payload.events || [];
+				this.sortEventsByDate();
 				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
 				this.updateDom(this.config.animationSpeed);
@@ -167,6 +170,7 @@ Module.register("personalcalendar", {
 				);
 				if (user) {
 					this.events = user.events || [];
+					this.sortEventsByDate();
 					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 					console.log("Personal Calendar: Events:", this.events.map(e => e.title));
 					this.updateDom(this.config.animationSpeed);
@@ -205,6 +209,17 @@ Module.register("personalcalendar", {
 		console.log(`Personal Calendar: Using API data for ${this.currentUser}`);
 	},
 
+	// Sort events by closest date
+	sortEventsByDate: function() {
+		if (this.events && this.events.length > 0) {
+			this.events.sort((a, b) => {
+				const dateA = moment(a.startDate || a.start);
+				const dateB = moment(b.startDate || b.start);
+				return dateA.diff(dateB);
+			});
+		}
+	},
+
 	// Override dom generator.
 	getDom: function() {
 		const wrapper = document.createElement("div");
@@ -227,14 +242,21 @@ Module.register("personalcalendar", {
 		// Create header
 		const header = document.createElement("div");
 		header.className = "personalcalendar-header";
-		header.innerHTML = `📅 ${this.currentUser}-ийн цагийн хуваарь`;
+		header.innerHTML = `${this.currentUser}-ийн цагийн хуваарь`;
 		wrapper.appendChild(header);
 
 		// Create events list
 		const eventsList = document.createElement("div");
 		eventsList.className = "personalcalendar-events";
 
-		this.events.slice(0, this.config.maximumEntries).forEach((event, index) => {
+		// Sort events by closest date (ascending order)
+		const sortedEvents = this.events.sort((a, b) => {
+			const dateA = moment(a.startDate || a.start);
+			const dateB = moment(b.startDate || b.start);
+			return dateA.diff(dateB);
+		});
+
+		sortedEvents.slice(0, this.config.maximumEntries).forEach((event, index) => {
 			const eventElement = document.createElement("div");
 			eventElement.className = "personalcalendar-event";
 

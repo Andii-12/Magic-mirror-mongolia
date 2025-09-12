@@ -73,13 +73,13 @@ let config = {
 				calendars: [
 					{
 						symbol: "calendar",
-						url: "https://calendar.google.com/calendar/ical/en.mongolian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+						url: "calendars/mongolian-holidays.ics",
 						name: "Баярын өдрүүд" // "Mongolian Holidays"
 					},
 					{
 						symbol: "calendar",
-						url: "calendars/mongolian-holidays.ics",
-						name: "Баярын өдрүүд (Backup)" // "Mongolian Holidays Backup"
+						url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
+						name: "Баярын өдрүүд (Fallback)" // "Holidays Fallback"
 					}
 				],
 				maximumEntries: 10, // Show more holidays
@@ -91,9 +91,9 @@ let config = {
 				dateFormat: "MMM Do",
 				hidePrivate: false,
 				hideOngoing: false,
-				fetchInterval: 2 * 60 * 1000, // Update every 2 minutes for dynamic holidays
-				errorTimeout: 5000,
-				debug: false,
+				fetchInterval: 5 * 60 * 1000, // Update every 5 minutes
+				errorTimeout: 10000,
+				debug: true,
 				urgency: 365, // Show all events within a year
 				fade: true,
 				fadePoint: 0.25,
@@ -235,7 +235,7 @@ let config = {
 			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
-				updateInterval: 30000, // Check for updates every 30 seconds - no blinking
+				updateInterval: 300000, // Check for updates every 5 minutes
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
@@ -245,14 +245,14 @@ let config = {
 		},
 		{
 			module: "personalcalendar",
-			position: "bottom_right",
+			position: "top_right",
 			header: "", // Will be overridden by face recognition
 			config: {
 				updateInterval: 30000, // Check for updates every 30 seconds - no blinking
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
 				animationSpeed: 1000,
-				maximumEntries: 2,
+				maximumEntries: 5,
 				maximumNumberOfDays: 7,
 				displaySymbol: true,
 				defaultSymbol: "calendar",
