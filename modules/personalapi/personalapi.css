@@ -1,97 +1,99 @@
-/* Personal API Module Styles */
+/* Personal API Module Styles - Compact Version */
 .personalapi {
     font-family: 'Roboto', sans-serif;
     color: #fff;
-    padding: 10px;
+    padding: 6px;
 }
 
 .personalapi-header {
-    font-size: 1.2em;
+    font-size: 1.0em;
     font-weight: bold;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     color: #fff;
     text-align: center;
     border-bottom: 1px solid #444;
-    padding-bottom: 8px;
+    padding-bottom: 4px;
 }
 
 .personalapi-section-header {
-    font-size: 1.1em;
+    font-size: 0.9em;
     font-weight: bold;
-    margin: 15px 0 10px 0;
+    margin: 8px 0 6px 0;
     color: #fff;
     border-bottom: 1px solid #666;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
 }
 
 .personalapi-events {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 .personalapi-events-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .personalapi-event {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    border-left: 4px solid #3b82f6;
-    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    border-left: 3px solid #3b82f6;
+    transition: all 0.2s ease;
 }
 
 .personalapi-event:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(3px);
 }
 
 .personalapi-event-title {
     font-weight: bold;
-    font-size: 1em;
-    margin-bottom: 4px;
+    font-size: 0.85em;
+    margin-bottom: 2px;
     color: #fff;
+    line-height: 1.2;
 }
 
 .personalapi-event-date {
-    font-size: 0.9em;
+    font-size: 0.75em;
     color: #ccc;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .personalapi-event-description {
-    font-size: 0.85em;
+    font-size: 0.7em;
     color: #aaa;
     font-style: italic;
+    line-height: 1.1;
 }
 
 .personalapi-lists {
-    margin-bottom: 15px;
+    margin-bottom: 8px;
 }
 
 .personalapi-list {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .personalapi-list-header {
     font-weight: bold;
-    font-size: 1em;
-    margin-bottom: 8px;
+    font-size: 0.85em;
+    margin-bottom: 4px;
     color: #fff;
     border-bottom: 1px solid #555;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
 }
 
 .personalapi-list-description {
-    font-size: 0.9em;
+    font-size: 0.75em;
     color: #ccc;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-style: italic;
 }
 
@@ -104,8 +106,8 @@
 .personalapi-list-item {
     display: flex;
     align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.2s ease;
 }
 
@@ -115,8 +117,8 @@
 
 .personalapi-list-item:hover {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    padding-left: 8px;
+    border-radius: 3px;
+    padding-left: 6px;
 }
 
 .personalapi-list-item.completed {
@@ -125,16 +127,17 @@
 }
 
 .personalapi-checkbox {
-    margin-right: 10px;
-    font-size: 1.1em;
+    margin-right: 6px;
+    font-size: 0.9em;
     color: #4ade80;
-    min-width: 20px;
+    min-width: 16px;
 }
 
 .personalapi-item-text {
     flex: 1;
-    font-size: 0.9em;
+    font-size: 0.8em;
     color: #fff;
+    line-height: 1.2;
 }
 
 .personalapi-update {
@@ -148,21 +151,30 @@
 /* Responsive design */
 @media (max-width: 768px) {
     .personalapi {
-        padding: 8px;
+        padding: 4px;
     }
     
     .personalapi-header {
-        font-size: 1.1em;
+        font-size: 0.9em;
     }
     
     .personalapi-event,
     .personalapi-list {
-        padding: 10px;
+        padding: 4px 6px;
     }
     
     .personalapi-event-title,
     .personalapi-list-header {
-        font-size: 0.95em;
+        font-size: 0.8em;
+    }
+    
+    .personalapi-event-date,
+    .personalapi-list-description {
+        font-size: 0.7em;
+    }
+    
+    .personalapi-item-text {
+        font-size: 0.75em;
     }
 }
 

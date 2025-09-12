@@ -73,7 +73,7 @@ let config = {
 				apiUrl: "https://date.nager.at/api/v3/PublicHolidays",
 				updateInterval: 24 * 60 * 60 * 1000, // Update once per day
 				animationSpeed: 2000,
-				maximumEntries: 10,
+				maximumEntries: 5,
 				maximumNumberOfDays: 365,
 				showDescription: true,
 				dateFormat: "MMM Do",
@@ -96,48 +96,40 @@ let config = {
 			module: "compliments",
 			position: "lower_third",
 			config: {
+				classes: "thin medium bright pre-line",
+				updateInterval: 20000,
+				fadeSpeed: 3000,
 				compliments: {
 					anytime: [
-						"Өнөөдөр ч сайхан байна шүү!", // Today is beautiful!
-						"Таны өдөр амжилттай болтугай!", // May your day be successful!
-						"Хүч чадалтай байгаарай!", // Stay strong!
+						"Сайхан өдөр байна!", // It's a beautiful day!
+						"Амжилт хүсье!", // Good luck!
+						"Хүчтэй байгаарай!", // Stay strong!
 						"Амьдрал сайхан байна!", // Life is beautiful!
 						"Бүх зүйл сайн болно!", // Everything will be fine!
-						"Өнөөдөр ч гайхалтай байна!", // Today is amazing!
-						"Таны хүсэл мөрөөдөл биелэгдэх болтугай!", // May your wishes come true!
-						"Эерэг энергитэй байгаарай!", // Stay positive!
-						"Өнөөдөр ч гайхалтай өдөр байна!", // Today is a wonderful day!
-						"Таны амьдрал сайхан болтугай!" // May your life be beautiful!
+						"Гайхалтай байна!", // It's amazing!
+						"Эерэг байгаарай!", // Stay positive!
+						"Өнөөдөр сайхан байна!", // Today is beautiful!
 					],
 					morning: [
-						"Сайн өглөө!", // Good morning!
-						"Өглөөний мэнд!", // Morning greetings!
-						"Сайхан өдөр байна шүү!", // It's a beautiful day!
-						"Өнөөдөр ч гайхалтай өглөө байна!", // Today is a wonderful morning!
-						"Амжилттай өдөр эхэлтугай!", // May a successful day begin!
-						"Өглөөний эрч хүчтэй байгаарай!", // Stay energetic in the morning!
-						"Өнөөдөр ч сайхан өдөр болтугай!", // May today be a beautiful day!
-						"Өглөөний аз жаргалтай байгаарай!" // Be happy in the morning!
+						"Өглөөний мэнд!", // Good morning!
+						"Сайхан өдөр байна!", // It's a beautiful day!
+						"Гайхалтай өглөө байна!", // It's a wonderful morning!
+						"Эрч хүчтэй байгаарай!", // Stay energetic!
+						"Аз жаргалтай байгаарай!" // Be happy!
 					],
 					afternoon: [
-						"Сайн өдөр!", // Good day!
-						"Өдрийн мэнд!", // Day greetings!
-						"Амжилттай байгаарай!", // Be successful!
-						"Өдрийн цаг сайхан өнгөрч байна!", // The day is going well!
-						"Өнөөдөр ч гайхалтай өдөр байна!", // Today is an amazing day!
-						"Амжилттай цаг болтугай!", // May it be a successful time!
-						"Өдрийн эрч хүчтэй байгаарай!", // Stay energetic during the day!
-						"Өнөөдөр ч сайхан өдөр байна шүү!" // Today is a beautiful day!
+						"Өдрийн мэнд!", // Good day!
+						"Амжилт хүсье!", // Good luck!
+						"Сайхан өдөр байна!", // It's a beautiful day!
+						"Гайхалтай өдөр байна!", // It's an amazing day!
+						"Эрч хүчтэй байгаарай!", // Stay energetic!
 					],
 					evening: [
-						"Сайн орой!", // Good evening!
-						"Оройн мэнд!", // Evening greetings!
-						"Амрах цаг болтугай!", // Have a good rest!
-						"Өнөөдөр ч сайхан өдөр байлаа!", // Today was a beautiful day!
-						"Оройн амрах цаг сайхан болтугай!", // May the evening rest be good!
-						"Өдрийн ажил амжилттай боллоо!", // The day's work was successful!
-						"Оройн аз жаргалтай байгаарай!", // Be happy in the evening!
-						"Өнөөдөр ч гайхалтай өдөр байлаа шүү!" // Today was an amazing day!
+						"Оройн мэнд!", // Good evening!
+						"Сайхан амраарай!", // Have a good rest!
+						"Сайхан өдөр байлаа!", // It was a beautiful day!
+						"Амжилттай байлаа!", // It was successful!
+						"Гайхалтай өдөр байлаа!" // It was an amazing day!
 					]
 				},
 				updateInterval: 30000 // 30 seconds
@@ -252,7 +244,22 @@ let config = {
 			module: "facerecognition",
 			position: "top_center",
 			config: {
-				statusFile: "/tmp/magicmirror_face_status.json"
+				updateInterval: 1000, // Check for updates every 1 second
+				proximityThreshold: 20, // 20 cm threshold
+				timeoutDelay: 10000, // 10 seconds delay before shutdown
+				greetingDuration: 5000, // Show greeting for 5 seconds
+				statusFile: "/tmp/magicmirror_face_status.json",
+				greetingStyle: "large bright", // CSS classes for greeting display
+				showDistance: true, // Show current distance
+				showStatus: true, // Show recognition status
+				animationSpeed: 1000, // Animation speed for greetings
+				// Personalized greetings for different people
+				greetings: {
+					"default": "Тавтай морил {name}!",
+					"unknown": "Таныг танихгүй байна",
+					"Andii": "Тавтай морил Анди!",
+					"Jane": "Тавтай морил Жейн!"
+				}
 			}
 		}
 	]

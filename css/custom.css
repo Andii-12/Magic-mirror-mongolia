@@ -6,6 +6,9 @@
 /* Import Mongolian holidays styling */
 @import url('../modules/mongolianholidays/mongolianholidays.css');
 
+/* Import compact compliments styling */
+@import url('compliments-compact.css');
+
 /* General improvements */
 body {
     font-family: 'Roboto', sans-serif;

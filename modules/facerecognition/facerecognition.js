@@ -93,9 +93,13 @@ Module.register("facerecognition", {
 		const previousDistance = this.currentDistance;
 		const previousActive = this.isActive;
 
+		console.log("Face Recognition: Processing status data:", data);
+		
 		this.currentDistance = data.distance || 0;
 		this.currentPerson = data.person || null;
 		this.isActive = data.active || false;
+		
+		console.log("Face Recognition: Current state - Person:", this.currentPerson, "Active:", this.isActive, "Distance:", this.currentDistance);
 
 		// Handle proximity detection
 		if (this.currentDistance < this.config.proximityThreshold) {
@@ -204,6 +208,8 @@ Module.register("facerecognition", {
 	getDom: function() {
 		const wrapper = document.createElement("div");
 		wrapper.className = "facerecognition";
+
+		console.log("Face Recognition: getDom called - Person:", this.currentPerson, "Active:", this.isActive, "Distance:", this.currentDistance);
 
 		// Show different messages based on status
 		if (this.currentPerson && this.currentPerson !== "Unknown") {

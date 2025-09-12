@@ -48,6 +48,7 @@
 		"test-ultrasonic": "python3 scripts/test-ultrasonic-sensor.py",
 		"test-face-recognition": "FACE_RECOGNITION_TEST=true python3 face_recognition_system.py",
 		"debug-face-recognition": "python3 scripts/debug-face-recognition.py",
+		"test-face-display": "node scripts/test-face-recognition-display.js",
 		"test": "NODE_ENV=test jest -i --forceExit",
 		"test:calendar": "node ./modules/default/calendar/debug.js",
 		"test:coverage": "NODE_ENV=test jest --coverage -i --verbose false --forceExit",

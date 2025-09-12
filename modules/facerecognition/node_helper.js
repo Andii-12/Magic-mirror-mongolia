@@ -60,6 +60,8 @@ module.exports = NodeHelper.create({
 			const data = fs.readFileSync(this.statusFile, 'utf8');
 			const status = JSON.parse(data);
 			
+			console.log("Face Recognition Node Helper: Read status:", status);
+			
 			// Send status update to module
 			this.sendSocketNotification("FACE_STATUS_UPDATE", {
 				distance: status.distance || 999,

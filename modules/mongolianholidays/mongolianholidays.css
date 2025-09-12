@@ -1,58 +1,60 @@
-/* Mongolian Holidays Module Styling */
+/* Mongolian Holidays Module Styling - Compact Version */
 
 .mongolianholidays {
     font-family: 'Roboto', sans-serif;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 10px;
-    padding: 15px;
-    margin: 10px 0;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 8px;
+    margin: 5px 0;
 }
 
 .mongolianholidays .module-header {
-    font-size: 1.3em;
+    font-size: 1.0em;
     font-weight: bold;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     color: #fff;
     text-align: center;
-    border-bottom: 2px solid #e74c3c;
-    padding-bottom: 8px;
+    border-bottom: 1px solid #e74c3c;
+    padding-bottom: 4px;
 }
 
 .holidays-list {
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 
 .holiday-item {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
 }
 
 .holiday-item:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(3px);
 }
 
 .holiday-title {
     font-weight: bold;
     color: #fff;
-    margin-bottom: 5px;
-    font-size: 1.1em;
+    margin-bottom: 2px;
+    font-size: 0.9em;
+    line-height: 1.2;
 }
 
 .holiday-date {
-    font-size: 0.9em;
+    font-size: 0.75em;
     color: #e74c3c;
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
 }
 
 .holiday-description {
-    font-size: 0.85em;
+    font-size: 0.7em;
     color: #aaa;
     font-style: italic;
+    line-height: 1.1;
 }
 
 .mongolianholidays .error {
@@ -64,16 +66,28 @@
 /* Responsive design */
 @media (max-width: 768px) {
     .mongolianholidays {
-        margin: 5px 0;
-        padding: 10px;
+        margin: 3px 0;
+        padding: 6px;
     }
     
     .mongolianholidays .module-header {
-        font-size: 1.1em;
+        font-size: 0.9em;
     }
     
     .holiday-item {
-        padding: 8px;
+        padding: 4px 6px;
+    }
+    
+    .holiday-title {
+        font-size: 0.8em;
+    }
+    
+    .holiday-date {
+        font-size: 0.7em;
+    }
+    
+    .holiday-description {
+        font-size: 0.65em;
     }
 }
 

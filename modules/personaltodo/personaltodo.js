@@ -21,6 +21,7 @@ Module.register("personaltodo", {
 		this.userProfile = null;
 		this.todoItems = [];
 		this.userProfiles = null;
+		this.lastValidData = null; // Store last valid data to prevent loss
 		this.loadUserProfiles();
 		this.startStatusCheck();
 	},
@@ -40,6 +41,11 @@ Module.register("personaltodo", {
 		this.statusCheckTimer = setInterval(function() {
 			self.checkFaceStatus();
 		}, this.config.updateInterval);
+		
+		// Add periodic data restoration check
+		this.dataRestoreTimer = setInterval(function() {
+			self.restoreDataIfNeeded();
+		}, 2000); // Check every 2 seconds
 	},
 
 	// Check face recognition status via node helper
@@ -55,16 +61,28 @@ Module.register("personaltodo", {
 		
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal Todo: Face status update:", payload);
+			
+			// Only process if we have valid payload data
+			if (!payload || typeof payload !== 'object') {
+				console.log("Personal Todo: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if person is actually different (not just undefined/null due to status update)
 			if (payload.person && payload.person !== this.currentUser) {
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);
 				this.loadUserProfile();
-			} else if (!payload.person && this.currentUser) {
+			} else if (payload.person === null && this.currentUser && payload.status === "waiting") {
+				// Only clear if status explicitly indicates user logout
 				this.currentUser = null;
 				this.userProfile = null;
 				this.todoItems = [];
-				console.log("Personal Todo: User cleared");
+				console.log("Personal Todo: User cleared (explicit logout)");
 				this.updateDom(this.config.animationSpeed);
+			} else if (payload.person === this.currentUser) {
+				// Same user, just update status - don't clear data
+				console.log("Personal Todo: Same user, maintaining data");
 			}
 		} else if (notification === "USER_PROFILES_LOADED") {
 			console.log("Personal Todo: User profiles loaded");
@@ -126,6 +144,13 @@ Module.register("personaltodo", {
 				}
 				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+				
+				// Store valid data to prevent loss during status updates
+				this.lastValidData = {
+					user: this.currentUser,
+					items: [...this.todoItems] // Create a copy
+				};
+				
 				this.updateDom(this.config.animationSpeed);
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
@@ -143,20 +168,32 @@ Module.register("personaltodo", {
 	notificationReceived: function(notification, payload, sender) {
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal Todo: Received face status via MM notification:", payload);
+			
+			// Only process if we have valid payload data
+			if (!payload || typeof payload !== 'object') {
+				console.log("Personal Todo: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if person is actually different (not just undefined/null due to status update)
 			if (payload.person && payload.person !== this.currentUser) {
-				// Clear old data immediately when user changes
+				// Clear old data only when user actually changes
 				this.todoItems = [];
 				this.updateDom(this.config.animationSpeed);
 				
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);
 				this.loadUserProfile();
-			} else if (!payload.person && this.currentUser) {
+			} else if (payload.person === null && this.currentUser && payload.status === "waiting") {
+				// Only clear if status explicitly indicates user logout
 				this.currentUser = null;
 				this.userProfile = null;
 				this.todoItems = [];
-				console.log("Personal Todo: User cleared");
+				console.log("Personal Todo: User cleared (explicit logout)");
 				this.updateDom(this.config.animationSpeed);
+			} else if (payload.person === this.currentUser) {
+				// Same user, just update status - don't clear data
+				console.log("Personal Todo: Same user, maintaining data");
 			}
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from personalapi module
@@ -179,6 +216,13 @@ Module.register("personaltodo", {
 				}
 				console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 				console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
+				
+				// Store valid data to prevent loss during status updates
+				this.lastValidData = {
+					user: this.currentUser,
+					items: [...this.todoItems] // Create a copy
+				};
+				
 				this.updateDom(this.config.animationSpeed);
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
@@ -244,10 +288,21 @@ Module.register("personaltodo", {
 		this.updateDom(this.config.animationSpeed);
 	},
 
+	// Restore data if it was lost during status updates
+	restoreDataIfNeeded: function() {
+		if (this.currentUser && this.todoItems.length === 0 && this.lastValidData && this.lastValidData.user === this.currentUser) {
+			console.log("Personal Todo: Restoring lost data for", this.currentUser);
+			this.todoItems = [...this.lastValidData.items];
+		}
+	},
+
 	// Override dom generator.
 	getDom: function() {
 		const wrapper = document.createElement("div");
 		wrapper.className = "personaltodo";
+
+		// Restore data if needed
+		this.restoreDataIfNeeded();
 
 		// Show message when no user is recognized
 		if (!this.currentUser) {
@@ -296,6 +351,9 @@ Module.register("personaltodo", {
 	suspend: function() {
 		if (this.statusCheckTimer) {
 			clearInterval(this.statusCheckTimer);
+		}
+		if (this.dataRestoreTimer) {
+			clearInterval(this.dataRestoreTimer);
 		}
 	},
 

@@ -321,8 +321,8 @@ class FaceRecognitionSystem:
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
                     
-                    # Update status file periodically
-                    if int(time.time()) % 5 == 0:  # Every 5 seconds
+                    # Update status file periodically (only if person is recognized)
+                    if int(time.time()) % 5 == 0 and self.current_person:  # Every 5 seconds, only if person is recognized
                         self.update_status_file()
                     
                     time.sleep(0.5)  # Check every 0.5 seconds when active

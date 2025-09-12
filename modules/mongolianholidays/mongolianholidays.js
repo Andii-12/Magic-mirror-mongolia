@@ -152,13 +152,7 @@ Module.register("mongolianholidays", {
 			return wrapper;
 		}
 
-		// Create header
-		const header = document.createElement("div");
-		header.className = "module-header";
-		header.innerHTML = "Монголын баярын өдрүүд";
-		wrapper.appendChild(header);
-
-		// Create holidays list
+		// Create holidays list (header is handled by MagicMirror config)
 		const holidaysList = document.createElement("div");
 		holidaysList.className = "holidays-list";
 
