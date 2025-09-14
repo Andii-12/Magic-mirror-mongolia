@@ -20,16 +20,26 @@ LABELS_FILE = "labels.json"
 # Try different cascade paths for compatibility
 def get_cascade_path():
     """Get the correct path to the face cascade file"""
-    possible_paths = [
-        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+    possible_paths = []
+    
+    # Try cv2.data.haarcascades if available
+    try:
+        if hasattr(cv2, 'data') and hasattr(cv2.data, 'haarcascades'):
+            possible_paths.append(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    except:
+        pass
+    
+    # Add common system paths
+    possible_paths.extend([
         '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
         '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
         '/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
         '/usr/local/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
         '/home/andii/haarcascades/haarcascade_frontalface_default.xml',
         'haarcascade_frontalface_default.xml'
-    ]
+    ])
     
+    # Check each path
     for path in possible_paths:
         if os.path.exists(path):
             return path
