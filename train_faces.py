@@ -15,8 +15,31 @@ import platform
 
 # Configuration
 IMAGES_DIR = "Images"
-CASCADE_PATH = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 TARGET_IMAGES = 40
+
+# Try different cascade paths for compatibility
+def get_cascade_path():
+    """Get the correct path to the face cascade file"""
+    possible_paths = [
+        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+        '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        'haarcascade_frontalface_default.xml'
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    # If none found, try to find any haarcascade file
+    import glob
+    cascade_files = glob.glob('**/haarcascade_frontalface_default.xml', recursive=True)
+    if cascade_files:
+        return cascade_files[0]
+    
+    return None
 
 class FaceTrainer:
     def __init__(self):
@@ -28,11 +51,16 @@ class FaceTrainer:
         
     def load_face_cascade(self):
         """Load face cascade classifier"""
-        if os.path.exists(CASCADE_PATH):
-            self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
-        else:
+        cascade_path = get_cascade_path()
+        
+        if cascade_path is None:
             print("❌ Face cascade not found. Please install OpenCV properly.")
+            print("   Try: sudo apt-get install python3-opencv")
+            print("   Or: pip3 install opencv-python")
             return False
+        
+        print(f"📁 Using cascade: {cascade_path}")
+        self.face_cascade = cv2.CascadeClassifier(cascade_path)
         
         if self.face_cascade.empty():
             print("❌ Could not load face cascade")

@@ -16,13 +16,31 @@ from datetime import datetime
 IMAGES_DIR = "Images"
 TRAINER_FILE = "trainer.yml"
 LABELS_FILE = "labels.json"
-CASCADE_PATH = "/home/andii/haarcascades/haarcascade_frontalface_default.xml"
 
-# Check if we're running on Windows (for development)
-import platform
-if platform.system() == "Windows":
-    print("⚠️  Running on Windows - using default cascade")
-    CASCADE_PATH = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+# Try different cascade paths for compatibility
+def get_cascade_path():
+    """Get the correct path to the face cascade file"""
+    possible_paths = [
+        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+        '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        '/home/andii/haarcascades/haarcascade_frontalface_default.xml',
+        'haarcascade_frontalface_default.xml'
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    # If none found, try to find any haarcascade file
+    import glob
+    cascade_files = glob.glob('**/haarcascade_frontalface_default.xml', recursive=True)
+    if cascade_files:
+        return cascade_files[0]
+    
+    return None
 
 def create_directories():
     """Create necessary directories if they don't exist"""
@@ -45,13 +63,22 @@ def create_directories():
 
 def get_face_cascade():
     """Load face cascade classifier"""
-    if os.path.exists(CASCADE_PATH):
-        face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
-        print(f"✅ Loaded face cascade from: {CASCADE_PATH}")
-    else:
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        print(f"⚠️  Using default face cascade")
+    cascade_path = get_cascade_path()
     
+    if cascade_path is None:
+        print("❌ Face cascade not found. Please install OpenCV properly.")
+        print("   Try: sudo apt-get install python3-opencv")
+        print("   Or: pip3 install opencv-python")
+        return None
+    
+    print(f"📁 Using cascade: {cascade_path}")
+    face_cascade = cv2.CascadeClassifier(cascade_path)
+    
+    if face_cascade.empty():
+        print("❌ Could not load face cascade")
+        return None
+    
+    print("✅ Face detector loaded")
     return face_cascade
 
 def detect_and_prepare_faces(images_dir, face_cascade):

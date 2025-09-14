@@ -10,6 +10,30 @@ import numpy as np
 import json
 from pathlib import Path
 
+# Try different cascade paths for compatibility
+def get_cascade_path():
+    """Get the correct path to the face cascade file"""
+    possible_paths = [
+        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+        '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        'haarcascade_frontalface_default.xml'
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    # If none found, try to find any haarcascade file
+    import glob
+    cascade_files = glob.glob('**/haarcascade_frontalface_default.xml', recursive=True)
+    if cascade_files:
+        return cascade_files[0]
+    
+    return None
+
 def test_training_files():
     """Test if training files exist and are valid"""
     print("🧪 Testing Face Training Files")
@@ -91,7 +115,16 @@ def test_face_detection():
     print("=" * 25)
     
     # Load face cascade
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    cascade_path = get_cascade_path()
+    if cascade_path is None:
+        print("❌ Face cascade not found. Please install OpenCV properly.")
+        print("   Try: sudo apt-get install python3-opencv")
+        return False
+    
+    face_cascade = cv2.CascadeClassifier(cascade_path)
+    if face_cascade.empty():
+        print("❌ Could not load face cascade")
+        return False
     
     if face_cascade.empty():
         print("❌ Could not load face cascade")
@@ -151,7 +184,16 @@ def test_training_process():
     try:
         # This is a simplified version of the training process
         images_dir = Path("Images")
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        cascade_path = get_cascade_path()
+    if cascade_path is None:
+        print("❌ Face cascade not found. Please install OpenCV properly.")
+        print("   Try: sudo apt-get install python3-opencv")
+        return False
+    
+    face_cascade = cv2.CascadeClassifier(cascade_path)
+    if face_cascade.empty():
+        print("❌ Could not load face cascade")
+        return False
         
         faces = []
         labels = []
