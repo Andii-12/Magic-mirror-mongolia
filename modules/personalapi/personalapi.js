@@ -58,96 +58,22 @@ Module.register("personalapi", {
 		});
 	},
 
-	// Load user-specific data
+	// Load user-specific data from API
 	loadUserData: function() {
-		if (!this.userData || !this.currentUser) {
-			console.log(`Personal API: Cannot load data - userData: ${!!this.userData}, currentUser: ${this.currentUser}`);
+		if (!this.currentUser) {
+			console.log(`Personal API: No current user to load data for`);
 			return;
 		}
 
-		console.log(`Personal API: Looking for user: ${this.currentUser}`);
-		console.log(`Personal API: Available users:`, this.userData.users.map(u => u.name));
-
-		// Find user data from API response - match by name
-		const user = this.userData.users.find(u => 
-			u.name.toLowerCase() === this.currentUser.toLowerCase()
-		);
-
-		if (user) {
-			this.events = user.events || [];
-			this.lists = user.lists || [];
-			console.log(`Personal API: Loaded ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
-			console.log(`Personal API: Events:`, this.events.map(e => e.title));
-			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
-			
-			// Debug: Log the actual data structure
-			console.log(`Personal API: First event:`, this.events[0]);
-			console.log(`Personal API: First list:`, this.lists[0]);
-			
-			// Send the specific user data to other modules with retry mechanism
-			this.sendUserDataToModules();
-		} else {
-			this.events = [];
-			this.lists = [];
-			console.log(`Personal API: No data found for user ${this.currentUser}. Available users:`, this.userData.users.map(u => u.name));
-			
-			// Still send empty data to clear the display
-			this.sendUserDataToModules();
-		}
-
-		this.updateDom(this.config.animationSpeed);
+		console.log(`Personal API: Loading data for user: ${this.currentUser}`);
+		
+		// Fetch fresh data from API when user is recognized
+		this.fetchData();
 	},
 
-	// Load user data from local profiles (fallback method)
+	// This method is no longer used - we only use API data
 	loadUserDataFromProfiles: function() {
-		if (!this.userProfiles || !this.currentUser) {
-			console.log(`Personal API: Cannot load from profiles - userProfiles: ${!!this.userProfiles}, currentUser: ${this.currentUser}`);
-			return;
-		}
-
-		const userProfile = this.userProfiles.users[this.currentUser] || this.userProfiles.default;
-		
-		if (userProfile) {
-			// Convert profile data to API format
-			this.events = userProfile.calendar && userProfile.calendar.enabled ? 
-				userProfile.calendar.events || [] : [];
-			
-			this.lists = userProfile.todo && userProfile.todo.enabled ? 
-				[{
-					title: "Personal Tasks",
-					listDate: new Date().toISOString().split('T')[0], // Today's date
-					items: (userProfile.todo.list || []).map(item => {
-						// Handle both string and object formats
-						if (typeof item === 'string') {
-							return {
-								title: item,
-								completed: false,
-								date: new Date().toISOString().split('T')[0]
-							};
-						} else {
-							return {
-								title: item.title,
-								completed: item.completed || false,
-								date: item.date || new Date().toISOString().split('T')[0]
-							};
-						}
-					})
-				}] : [];
-
-			console.log(`Personal API: Loaded from profiles - ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
-			console.log(`Personal API: Events:`, this.events.map(e => e.title || e));
-			console.log(`Personal API: Lists:`, this.lists.map(l => l.title));
-			
-			// Send the data to other modules
-			this.sendUserDataToModules();
-		} else {
-			this.events = [];
-			this.lists = [];
-			console.log(`Personal API: No profile found for user ${this.currentUser}`);
-		}
-
-		this.loaded = true;
-		this.updateDom(this.config.animationSpeed);
+		console.log("Personal API: Profiles method disabled - using API only");
 	},
 
 	// Send user data to other modules with retry mechanism
@@ -184,15 +110,9 @@ Module.register("personalapi", {
 		// this.loadFromLocalProfiles();
 	},
 
-	// Load data from local user profiles as fallback (only if API fails)
+	// This method is no longer used - we only use API data
 	loadFromLocalProfiles: function() {
-		console.log("Personal API: Loading from local profiles as fallback");
-		// Only load local profiles if API data is not available
-		if (!this.loaded) {
-			this.sendSocketNotification("LOAD_USER_PROFILES", {
-				profilesFile: "user_profiles.json"
-			});
-		}
+		console.log("Personal API: Local profiles disabled - using API only");
 	},
 
 	// Override socket notification handler.
@@ -234,37 +154,20 @@ Module.register("personalapi", {
 		} else if (notification === "PERSONAL_API_ERROR") {
 			console.error("Personal API: Error fetching data:", payload);
 			this.loaded = false;
-			// Try to load from local profiles when API fails
-			this.loadFromLocalProfiles();
-		} else if (notification === "USER_PROFILES_LOADED") {
-			console.log("Personal API: User profiles loaded as fallback");
-			this.userProfiles = payload;
-			if (this.currentUser) {
-				this.loadUserDataFromProfiles();
-			}
+			// No fallback - just show error
 		} else if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal API: Face status update:", payload);
 			if (payload.person && payload.person !== this.currentUser) {
+				// New user recognized - load their data
 				this.currentUser = payload.person;
-				console.log("Personal API: User changed to", this.currentUser);
-				console.log("Personal API: Current loaded state:", this.loaded);
-				console.log("Personal API: Current userData:", this.userData ? "Available" : "Not available");
-				
-				if (this.loaded && this.userData) {
-					console.log("Personal API: Data already loaded, loading user data");
-					this.loadUserData();
-				} else if (this.userData) {
-					console.log("Personal API: UserData available but not loaded, loading now");
-					this.loaded = true;
-					this.loadUserData();
-				} else {
-					console.log("Personal API: Data not loaded yet, will load when API data arrives");
-				}
+				console.log("Personal API: User recognized:", this.currentUser);
+				this.loadUserData();
 			} else if (!payload.person && this.currentUser) {
+				// User moved away - clear data immediately
 				this.currentUser = null;
 				this.events = [];
 				this.lists = [];
-				console.log("Personal API: User cleared");
+				console.log("Personal API: User cleared - hiding personal data");
 				this.updateDom(this.config.animationSpeed);
 			}
 		}
@@ -275,26 +178,16 @@ Module.register("personalapi", {
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal API: Received face status via MM notification:", payload);
 			if (payload.person && payload.person !== this.currentUser) {
+				// New user recognized - load their data
 				this.currentUser = payload.person;
-				console.log("Personal API: User changed to", this.currentUser);
-				console.log("Personal API: Current loaded state:", this.loaded);
-				console.log("Personal API: Current userData:", this.userData ? "Available" : "Not available");
-				
-				if (this.loaded && this.userData) {
-					console.log("Personal API: Data already loaded, loading user data");
-					this.loadUserData();
-				} else if (this.userData) {
-					console.log("Personal API: UserData available but not loaded, loading now");
-					this.loaded = true;
-					this.loadUserData();
-				} else {
-					console.log("Personal API: Data not loaded yet, will load when API data arrives");
-				}
+				console.log("Personal API: User recognized:", this.currentUser);
+				this.loadUserData();
 			} else if (!payload.person && this.currentUser) {
+				// User moved away - clear data immediately
 				this.currentUser = null;
 				this.events = [];
 				this.lists = [];
-				console.log("Personal API: User cleared");
+				console.log("Personal API: User cleared - hiding personal data");
 				this.updateDom(this.config.animationSpeed);
 			}
 		} else if (notification === "PERSONAL_API_DATA") {

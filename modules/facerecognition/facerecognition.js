@@ -218,26 +218,21 @@ Module.register("facerecognition", {
 			greetingElement.className = `greeting ${this.config.greetingStyle}`;
 			
 			// Create personalized greeting
-			let greetingText;
-			if (this.config.greetings[this.currentPerson]) {
-				greetingText = this.config.greetings[this.currentPerson];
-			} else {
-				greetingText = this.config.greetings.default.replace("{name}", this.currentPerson);
-			}
+			let greetingText = `Hello, ${this.currentPerson}`;
 			
 			greetingElement.innerHTML = greetingText;
 			wrapper.appendChild(greetingElement);
-		} else if (this.isActive && !this.currentPerson && this.currentDistance <= this.config.proximityThreshold) {
-			// Close to sensor but face not recognized yet - show "reading face" message
+		} else if (this.isActive && !this.currentPerson) {
+			// Close to sensor but face not recognized yet - show "scanning face" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Царай уншиж байна...";
+			statusElement.innerHTML = "Scanning face";
 			wrapper.appendChild(statusElement);
 		} else {
 			// Far from sensor or not active - show "come closer" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Ойртож зогсоорой";
+			statusElement.innerHTML = "Please stand closer";
 			wrapper.appendChild(statusElement);
 		}
 

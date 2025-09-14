@@ -49,6 +49,8 @@ class FaceRecognitionSystem:
         self.is_active = False
         self.last_detection_time = None
         self.shutdown_timer = None
+        self.camera_opened = False
+        self.face_recognition_attempted = False
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -238,12 +240,18 @@ class FaceRecognitionSystem:
             status_type = "waiting"
             self.is_active = False
             self.current_person = None
+            self.face_recognition_attempted = False
+            self.camera_opened = False
         elif self.current_person and self.current_person != "Unknown":
             # Face recognized - show personal data
             status_type = "recognized"
             self.is_active = True
-        elif self.current_distance <= PROXIMITY_THRESHOLD:
-            # Close to sensor but no face recognized yet - show "reading face"
+        elif self.current_distance <= PROXIMITY_THRESHOLD and not self.face_recognition_attempted:
+            # Close to sensor but haven't tried face recognition yet - show "scanning face"
+            status_type = "detecting"
+            self.is_active = True
+        elif self.current_distance <= PROXIMITY_THRESHOLD and self.face_recognition_attempted:
+            # Close to sensor but face recognition failed - show "scanning face" again
             status_type = "detecting"
             self.is_active = True
         else:
@@ -303,28 +311,31 @@ class FaceRecognitionSystem:
                 if smoothed_distance <= PROXIMITY_THRESHOLD:
                     # Object detected within threshold
                     if not self.is_active:
-                        print(f"🎯 Object detected at {smoothed_distance:.1f}cm - starting face recognition")
+                        print(f"🎯 Object detected at {smoothed_distance:.1f}cm - preparing face recognition")
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
+                        self.face_recognition_attempted = False
+                        self.camera_opened = False
                     
-                    # Only try face recognition if we haven't recognized anyone yet
-                    if self.current_person is None:
-                        # Add small delay to ensure stable proximity before camera activation
-                        if time.time() - self.last_detection_time > 1.0:  # Wait 1 second after detection
-                            print("📷 Attempting face recognition...")
+                    # Try face recognition ONLY ONCE when first detected
+                    if self.current_person is None and not self.face_recognition_attempted:
+                        # Wait 2 seconds for stable proximity before camera activation
+                        if time.time() - self.last_detection_time > 2.0:
+                            print("📷 Opening camera for face recognition...")
+                            self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
                             if person and person != "Unknown":
                                 print(f"✅ Face recognized: {person}")
                                 self.current_person = person
-                                self.shutdown_timer = None  # Reset timeout timer
+                                self.shutdown_timer = None
                             else:
-                                print("❌ Face not recognized, will try again...")
-                                # Reset detection time to try again in 2 seconds
-                                self.last_detection_time = time.time() - 1.0
-                    else:
-                        # Face already recognized, maintain the state
-                        print(f"👤 Maintaining recognized state for {self.current_person} at {smoothed_distance:.1f}cm")
+                                print("❌ Face not recognized")
+                                # Will retry after moving away and coming back
+                    
+                    # If face already recognized, just maintain the state
+                    elif self.current_person is not None:
+                        print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm")
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
                     
@@ -332,15 +343,16 @@ class FaceRecognitionSystem:
                     self.update_status_file()
                     time.sleep(0.5)  # Check every 0.5 seconds when active
                 else:
-                    # Object moved away - start timeout countdown
-                    if self.current_person is not None:  # Only if someone was recognized
-                        if self.shutdown_timer is None:
-                            print(f"👋 Object moved away ({smoothed_distance:.1f}cm) - starting {TIMEOUT_DELAY}s shutdown timer")
-                            self.shutdown_timer = time.time()
-                        elif time.time() - self.shutdown_timer >= TIMEOUT_DELAY:
-                            print("⏰ Timeout reached - logging out user")
-                            self.current_person = None
-                            self.shutdown_timer = None
+                    # Object moved away - immediately reset everything
+                    if self.current_person is not None:
+                        print(f"👋 User {self.current_person} moved away ({smoothed_distance:.1f}cm)")
+                    
+                    # Reset all states immediately when moving away
+                    self.current_person = None
+                    self.is_active = False
+                    self.face_recognition_attempted = False
+                    self.camera_opened = False
+                    self.shutdown_timer = None
                     
                     # Update status file (will show "waiting" state when far from sensor)
                     self.update_status_file()

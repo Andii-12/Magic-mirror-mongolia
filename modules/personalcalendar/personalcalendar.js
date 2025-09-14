@@ -31,13 +31,9 @@ Module.register("personalcalendar", {
 		this.startStatusCheck();
 	},
 
-	// Load user profiles from JSON file
+	// This method is no longer used - we only use API data
 	loadUserProfiles: function() {
-		const self = this;
-		// Load profiles via node helper instead of fetch
-		this.sendSocketNotification("LOAD_USER_PROFILES", {
-			profilesFile: this.config.profilesFile
-		});
+		console.log("Personal Calendar: Profiles disabled - using API only");
 	},
 
 	// Start checking for face recognition status
@@ -71,12 +67,6 @@ Module.register("personalcalendar", {
 				this.events = [];
 				console.log("Personal Calendar: User cleared");
 				this.updateDom(this.config.animationSpeed);
-			}
-		} else if (notification === "USER_PROFILES_LOADED") {
-			console.log("Personal Calendar: User profiles loaded");
-			this.userProfiles = payload;
-			if (this.currentUser) {
-				this.loadUserProfile();
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Get events from the API data
