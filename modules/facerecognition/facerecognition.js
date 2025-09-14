@@ -51,9 +51,11 @@ Module.register("facerecognition", {
 	// Start checking for status updates from Python script
 	startStatusChecking: function() {
 		const self = this;
+		// Increase interval to reduce CPU usage
+		const checkInterval = Math.max(this.config.updateInterval, 1000); // At least 1 second
 		this.statusCheckTimer = setInterval(function() {
 			self.checkStatus();
-		}, this.config.updateInterval);
+		}, checkInterval);
 	},
 
 	// Check status from Python script
@@ -93,13 +95,14 @@ Module.register("facerecognition", {
 		const previousDistance = this.currentDistance;
 		const previousActive = this.isActive;
 
-		console.log("Face Recognition: Processing status data:", data);
+		// Only log significant changes
+		if (previousPerson !== data.person || previousActive !== data.active) {
+			console.log("Face Recognition: Status change - Person:", data.person, "Active:", data.active, "Distance:", data.distance);
+		}
 		
 		this.currentDistance = data.distance || 0;
 		this.currentPerson = data.person || null;
 		this.isActive = data.active || false;
-		
-		console.log("Face Recognition: Current state - Person:", this.currentPerson, "Active:", this.isActive, "Distance:", this.currentDistance);
 
 		// Handle proximity detection
 		if (this.currentDistance < this.config.proximityThreshold) {
@@ -115,7 +118,6 @@ Module.register("facerecognition", {
 				this.onFaceRecognized(this.currentPerson);
 			} else if (this.currentPerson && this.currentPerson === previousPerson) {
 				// Face already recognized, maintain the state
-				console.log("Maintaining recognized state for:", this.currentPerson);
 				// Clear any existing greeting timer to keep showing the greeting
 				if (this.greetingTimer) {
 					clearTimeout(this.greetingTimer);
@@ -130,8 +132,10 @@ Module.register("facerecognition", {
 			}
 		}
 
-		// Update display
-		this.updateDom(this.config.animationSpeed);
+		// Only update DOM if there's a significant change
+		if (previousPerson !== this.currentPerson || previousActive !== this.isActive) {
+			this.updateDom(this.config.animationSpeed);
+		}
 	},
 
 	// Handle proximity detected

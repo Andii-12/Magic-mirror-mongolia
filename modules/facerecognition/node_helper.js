@@ -37,10 +37,10 @@ module.exports = NodeHelper.create({
 	startFileWatcher: function() {
 		const self = this;
 		
-		// Check file every 500ms
+		// Check file every 1 second to reduce CPU usage
 		this.watchTimer = setInterval(() => {
 			self.readStatusFile();
-		}, 500);
+		}, 1000);
 	},
 
 	// Read status from file
@@ -60,7 +60,22 @@ module.exports = NodeHelper.create({
 			const data = fs.readFileSync(this.statusFile, 'utf8');
 			const status = JSON.parse(data);
 			
-			console.log("Face Recognition Node Helper: Read status:", status);
+			// Only log when status changes significantly or every 10 reads
+			if (!this.lastStatus || 
+				this.lastStatus.person !== status.person || 
+				this.lastStatus.active !== status.active ||
+				(this.readCount && this.readCount % 10 === 0)) {
+				console.log("Face Recognition Node Helper: Status update:", {
+					distance: status.distance,
+					person: status.person,
+					active: status.active,
+					status: status.status
+				});
+				this.lastStatus = { ...status };
+			}
+			
+			// Increment read count
+			this.readCount = (this.readCount || 0) + 1;
 			
 			// Send status update to module
 			this.sendSocketNotification("FACE_STATUS_UPDATE", {

@@ -175,61 +175,79 @@ class FaceRecognitionSystem:
             return 999
 
     def recognize_face_with_camera(self):
-        """Recognize faces using Picamera2 (matching your working code)"""
+        """Recognize faces using Picamera2 - optimized for single attempt"""
         try:
             print(f"[INFO] Object detected at {self.current_distance}cm. Opening camera...")
-            
-            # Update status to show "detecting" state
-            self.update_status_file()
             
             # Check if we're on Windows (simulation mode)
             if platform.system() == "Windows":
                 print("[INFO] Windows detected - simulating face recognition")
-                time.sleep(2)  # Simulate camera delay
+                time.sleep(1)  # Simulate camera delay
                 return "Andii"  # Return actual user for Windows
             
+            # Initialize camera with minimal configuration
             picam2 = Picamera2()
             config = picam2.create_preview_configuration(main={"size": (320, 240)})
             picam2.configure(config)
             picam2.start()
-            time.sleep(1)  # small delay to let camera initialize
+            time.sleep(0.5)  # Reduced delay for faster initialization
 
-            frame = picam2.capture_array()
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
-
+            # Try to capture and recognize faces with multiple attempts
             recognized_person = None
-            if len(faces) > 0:
-                print(f"[INFO] {len(faces)} face(s) detected")
-                if self.recognizer:
-                    for (x, y, w, h) in faces:
-                        face_img = gray[y:y+h, x:x+w]
-                        label, confidence = self.recognizer.predict(face_img)
-                        name = self.label_map.get(label, "Unknown")
-                        print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
-                        
-                        # Only return known persons, not "Unknown"
-                        if name != "Unknown":
-                            recognized_person = name
-                            break
-                        else:
-                            print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
-                else:
-                    # Simulate recognition for testing - return actual user from profiles
-                    print("[INFO] Face recognition simulated - returning 'Andii'")
-                    recognized_person = "Andii"
-            else:
-                print("[INFO] No face detected in frame!")
+            max_attempts = 3
+            
+            for attempt in range(max_attempts):
+                try:
+                    frame = picam2.capture_array()
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    faces = self.face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(50, 50))
 
+                    if len(faces) > 0:
+                        print(f"[INFO] {len(faces)} face(s) detected (attempt {attempt + 1})")
+                        if self.recognizer:
+                            for (x, y, w, h) in faces:
+                                face_img = gray[y:y+h, x:x+w]
+                                face_img = cv2.resize(face_img, (100, 100))  # Resize for consistency
+                                label, confidence = self.recognizer.predict(face_img)
+                                name = self.label_map.get(label, "Unknown")
+                                print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
+                                
+                                # Only return known persons with good confidence
+                                if name != "Unknown" and confidence < 100:  # Lower confidence threshold
+                                    recognized_person = name
+                                    break
+                                else:
+                                    print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
+                        else:
+                            # Simulate recognition for testing - return actual user from profiles
+                            print("[INFO] Face recognition simulated - returning 'Andii'")
+                            recognized_person = "Andii"
+                            break
+                    else:
+                        print(f"[INFO] No face detected in frame (attempt {attempt + 1})")
+                        time.sleep(0.2)  # Brief pause before next attempt
+                        
+                except Exception as e:
+                    print(f"[WARNING] Camera capture attempt {attempt + 1} failed: {e}")
+                    time.sleep(0.1)
+                    continue
+                
+                # If we found a person, break out of attempts
+                if recognized_person:
+                    break
+
+            # Always close camera
             picam2.close()
             
-            # Don't update current_person here, let the main loop handle it
+            if recognized_person:
+                print(f"✅ Face recognition successful: {recognized_person}")
+            else:
+                print("❌ Face recognition failed after all attempts")
+            
             return recognized_person
             
         except Exception as e:
             print(f"Error in face recognition: {e}")
-            self.current_person = None
-            self.update_status_file()
             return None
 
     def update_status_file(self):
@@ -274,7 +292,10 @@ class FaceRecognitionSystem:
                 json.dump(status, f, indent=2)
             # Atomic rename to avoid partial reads
             os.rename(temp_file, STATUS_FILE)
-            print(f"Status updated: {status}")
+            # Only print status updates when they change significantly
+            if not hasattr(self, 'last_printed_status') or self.last_printed_status != status:
+                print(f"Status updated: {status}")
+                self.last_printed_status = status.copy()
         except Exception as e:
             print(f"Error writing status file: {e}")
 
@@ -288,6 +309,8 @@ class FaceRecognitionSystem:
         # Add distance smoothing for more stable readings
         distance_history = []
         HISTORY_SIZE = 3
+        last_status_update = 0
+        STATUS_UPDATE_INTERVAL = 1.0  # Update status every 1 second instead of constantly
         
         try:
             while True:
@@ -303,8 +326,8 @@ class FaceRecognitionSystem:
                 smoothed_distance = sum(distance_history) / len(distance_history)
                 self.current_distance = smoothed_distance
                 
-                # Debug output every 10 iterations
-                if len(distance_history) % 10 == 0:
+                # Debug output every 20 iterations (reduced frequency)
+                if len(distance_history) % 20 == 0:
                     print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}")
                 
                 # Check proximity with smoothed distance
@@ -317,11 +340,12 @@ class FaceRecognitionSystem:
                         self.current_person = None  # Reset person
                         self.face_recognition_attempted = False
                         self.camera_opened = False
+                        self.is_active = True
                     
                     # Try face recognition ONLY ONCE when first detected
                     if self.current_person is None and not self.face_recognition_attempted:
-                        # Wait 2 seconds for stable proximity before camera activation
-                        if time.time() - self.last_detection_time > 2.0:
+                        # Wait 3 seconds for stable proximity before camera activation
+                        if time.time() - self.last_detection_time > 3.0:
                             print("📷 Opening camera for face recognition...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
@@ -330,17 +354,24 @@ class FaceRecognitionSystem:
                                 self.current_person = person
                                 self.shutdown_timer = None
                             else:
-                                print("❌ Face not recognized")
-                                # Will retry after moving away and coming back
+                                print("❌ Face not recognized - will not retry until person moves away")
+                                # Don't retry face recognition - wait for person to move away
                     
                     # If face already recognized, just maintain the state
                     elif self.current_person is not None:
-                        print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm")
+                        # Only log every 10 seconds to reduce spam
+                        if time.time() - self.last_detection_time > 10:
+                            print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm")
+                            self.last_detection_time = time.time()
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
                     
-                    # Update status file with current state
-                    self.update_status_file()
+                    # Update status file less frequently
+                    current_time = time.time()
+                    if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
+                        self.update_status_file()
+                        last_status_update = current_time
+                    
                     time.sleep(0.5)  # Check every 0.5 seconds when active
                 else:
                     # Object moved away - immediately reset everything
@@ -356,9 +387,10 @@ class FaceRecognitionSystem:
                     
                     # Update status file (will show "waiting" state when far from sensor)
                     self.update_status_file()
+                    last_status_update = time.time()
                 
                 # Small delay for sensor polling
-                time.sleep(0.1)  # Reduced delay for more responsive detection
+                time.sleep(0.2)  # Slightly increased delay to reduce CPU usage
                 
         except KeyboardInterrupt:
             print("\n🛑 Stopping face recognition system...")
