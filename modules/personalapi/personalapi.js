@@ -97,6 +97,11 @@ Module.register("personalapi", {
 			console.log("Personal API: Retrying user data send...");
 			this.sendNotification("USER_DATA_LOADED", userData);
 		}, 1000);
+		
+		// Also send the full API data to personalcalendar module
+		if (this.userData) {
+			this.sendNotification("PERSONAL_API_DATA", this.userData);
+		}
 	},
 
 	// Fetch data from API via node helper
@@ -147,7 +152,7 @@ Module.register("personalapi", {
 					this.sendNotification("USER_DATA_LOADED", {
 						user: user.name,
 						events: user.events || [],
-						todo: user.todo || []
+						lists: user.lists || []
 					});
 				});
 			}

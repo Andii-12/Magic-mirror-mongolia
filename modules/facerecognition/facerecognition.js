@@ -227,12 +227,20 @@ Module.register("facerecognition", {
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
 			statusElement.innerHTML = "Scanning face";
+			statusElement.style.position = "absolute";
+			statusElement.style.top = "20px";
+			statusElement.style.left = "20px";
+			statusElement.style.zIndex = "1001";
 			wrapper.appendChild(statusElement);
 		} else {
 			// Far from sensor or not active - show "come closer" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
 			statusElement.innerHTML = "Please stand closer";
+			statusElement.style.position = "absolute";
+			statusElement.style.top = "20px";
+			statusElement.style.left = "20px";
+			statusElement.style.zIndex = "1001";
 			wrapper.appendChild(statusElement);
 		}
 

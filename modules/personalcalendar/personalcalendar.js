@@ -173,23 +173,16 @@ Module.register("personalcalendar", {
 		}
 	},
 
-	// Load user profile and calendar
+	// Load user profile and calendar (API only)
 	loadUserProfile: function() {
-		if (!this.userProfiles || !this.currentUser) {
+		if (!this.currentUser) {
+			console.log("Personal Calendar: No current user to load profile for");
 			return;
 		}
 
-		const userProfile = this.userProfiles.users[this.currentUser] || this.userProfiles.default;
-		this.userProfile = userProfile;
-
-		if (userProfile.calendar && userProfile.calendar.enabled) {
-			// Load calendar events
-			this.loadCalendarEvents(userProfile.calendar);
-		} else {
-			this.events = [];
-		}
-
-		this.updateDom(this.config.animationSpeed);
+		console.log(`Personal Calendar: Loading profile for user: ${this.currentUser}`);
+		// Events will be loaded when API data is received
+		// This method is called when user is recognized, but actual data comes from API
 	},
 
 	// Load calendar events from API data
