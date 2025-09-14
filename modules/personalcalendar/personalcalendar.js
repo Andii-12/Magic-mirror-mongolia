@@ -225,10 +225,11 @@ Module.register("personalcalendar", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "personalcalendar";
 
-		// Show message when no user is recognized
+		// Hide when no user is recognized
 		if (!this.currentUser) {
-			wrapper.innerHTML = "Царай танилт хүлээж байна...<br><small>Царай танигдсаны дараа хувийн цагийн хуваарь харагдана</small>";
-			wrapper.className = "dimmed light small";
+			wrapper.innerHTML = "";
+			wrapper.className = "personalcalendar hidden";
+			wrapper.style.display = "none";
 			return wrapper;
 		}
 

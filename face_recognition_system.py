@@ -232,15 +232,24 @@ class FaceRecognitionSystem:
 
     def update_status_file(self):
         """Update the status file for MagicMirror²"""
-        # Determine current status
-        if not self.is_active:
+        # Determine current status based on distance and recognition state
+        if self.current_distance > PROXIMITY_THRESHOLD:
+            # Far from sensor - show "come closer" message
             status_type = "waiting"
+            self.is_active = False
+            self.current_person = None
         elif self.current_person and self.current_person != "Unknown":
+            # Face recognized - show personal data
             status_type = "recognized"
-        elif self.is_active and self.current_person is None:
+            self.is_active = True
+        elif self.current_distance <= PROXIMITY_THRESHOLD:
+            # Close to sensor but no face recognized yet - show "reading face"
             status_type = "detecting"
+            self.is_active = True
         else:
+            # Default state
             status_type = "waiting"
+            self.is_active = False
         
         status = {
             "distance": self.current_distance,
@@ -295,11 +304,9 @@ class FaceRecognitionSystem:
                     # Object detected within threshold
                     if not self.is_active:
                         print(f"🎯 Object detected at {smoothed_distance:.1f}cm - starting face recognition")
-                        self.is_active = True
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
-                        self.update_status_file()  # Update status to show detecting
                     
                     # Only try face recognition if we haven't recognized anyone yet
                     if self.current_person is None:
@@ -310,7 +317,7 @@ class FaceRecognitionSystem:
                             if person and person != "Unknown":
                                 print(f"✅ Face recognized: {person}")
                                 self.current_person = person
-                                self.update_status_file()
+                                self.shutdown_timer = None  # Reset timeout timer
                             else:
                                 print("❌ Face not recognized, will try again...")
                                 # Reset detection time to try again in 2 seconds
@@ -321,27 +328,22 @@ class FaceRecognitionSystem:
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
                     
-                    # Update status file periodically (only if person is recognized)
-                    if int(time.time()) % 5 == 0 and self.current_person:  # Every 5 seconds, only if person is recognized
-                        self.update_status_file()
-                    
+                    # Update status file with current state
+                    self.update_status_file()
                     time.sleep(0.5)  # Check every 0.5 seconds when active
                 else:
-                    # Object moved away
-                    if self.is_active:
+                    # Object moved away - start timeout countdown
+                    if self.current_person is not None:  # Only if someone was recognized
                         if self.shutdown_timer is None:
                             print(f"👋 Object moved away ({smoothed_distance:.1f}cm) - starting {TIMEOUT_DELAY}s shutdown timer")
                             self.shutdown_timer = time.time()
                         elif time.time() - self.shutdown_timer >= TIMEOUT_DELAY:
                             print("⏰ Timeout reached - logging out user")
-                            self.is_active = False
                             self.current_person = None
                             self.shutdown_timer = None
-                            self.update_status_file()
-                    else:
-                        # Not active, just update status occasionally
-                        if int(time.time()) % 10 == 0:  # Every 10 seconds
-                            self.update_status_file()
+                    
+                    # Update status file (will show "waiting" state when far from sensor)
+                    self.update_status_file()
                 
                 # Small delay for sensor polling
                 time.sleep(0.1)  # Reduced delay for more responsive detection

@@ -227,17 +227,17 @@ Module.register("facerecognition", {
 			
 			greetingElement.innerHTML = greetingText;
 			wrapper.appendChild(greetingElement);
-		} else if (this.isActive && !this.currentPerson) {
-			// Object detected but face not recognized yet - show "reading face" message
+		} else if (this.isActive && !this.currentPerson && this.currentDistance <= this.config.proximityThreshold) {
+			// Close to sensor but face not recognized yet - show "reading face" message
 			const statusElement = document.createElement("div");
-			statusElement.className = "facerecognition-status";
+			statusElement.className = "facerecognition-status top-left";
 			statusElement.innerHTML = "Царай уншиж байна...";
 			wrapper.appendChild(statusElement);
 		} else {
-			// No object detected or not active - show "waiting for face recognition" message
+			// Far from sensor or not active - show "come closer" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Царай танилт хүлээж байна...";
+			statusElement.innerHTML = "Ойртож зогсоорой";
 			wrapper.appendChild(statusElement);
 		}
 

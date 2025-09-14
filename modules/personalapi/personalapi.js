@@ -115,10 +115,23 @@ Module.register("personalapi", {
 			this.lists = userProfile.todo && userProfile.todo.enabled ? 
 				[{
 					title: "Personal Tasks",
-					items: (userProfile.todo.list || []).map(item => ({
-						title: item,
-						completed: false
-					}))
+					listDate: new Date().toISOString().split('T')[0], // Today's date
+					items: (userProfile.todo.list || []).map(item => {
+						// Handle both string and object formats
+						if (typeof item === 'string') {
+							return {
+								title: item,
+								completed: false,
+								date: new Date().toISOString().split('T')[0]
+							};
+						} else {
+							return {
+								title: item.title,
+								completed: item.completed || false,
+								date: item.date || new Date().toISOString().split('T')[0]
+							};
+						}
+					})
 				}] : [];
 
 			console.log(`Personal API: Loaded from profiles - ${this.events.length} events and ${this.lists.length} lists for ${this.currentUser}`);
@@ -346,9 +359,10 @@ Module.register("personalapi", {
 		}
 
 		if (!this.currentUser) {
-			// Show default data for testing when no face is recognized
-			wrapper.innerHTML = "Waiting for face recognition...<br><small>Personal data will appear here when a face is recognized</small>";
-			wrapper.className = "dimmed light small";
+			// Hide personal data when no face is recognized
+			wrapper.innerHTML = "";
+			wrapper.className = "personalapi hidden";
+			wrapper.style.display = "none";
 			return wrapper;
 		}
 
@@ -431,47 +445,97 @@ Module.register("personalapi", {
 
 		const header = document.createElement("div");
 		header.className = "personalapi-section-header";
-		header.innerHTML = "📋 Todo Lists";
+		header.innerHTML = "📋 Өнөөдрийн даалгаварууд";
 		section.appendChild(header);
 
-		this.lists.slice(0, this.config.maxLists).forEach(list => {
-			const listElement = document.createElement("div");
-			listElement.className = "personalapi-list";
+		// Filter tasks for today
+		const todayTasks = this.getTodayTasks();
+		
+		if (todayTasks.length === 0) {
+			// Show "no tasks for today" message
+			const noTasksElement = document.createElement("div");
+			noTasksElement.className = "personalapi-no-tasks";
+			noTasksElement.innerHTML = "Өнөөдөр хийх зүйлс байхгүй байна";
+			section.appendChild(noTasksElement);
+			return section;
+		}
 
-			const listHeader = document.createElement("div");
-			listHeader.className = "personalapi-list-header";
-			listHeader.innerHTML = `${list.title} - ${this.formatListDate(list.listDate)}`;
-			listElement.appendChild(listHeader);
+		// Show today's tasks (max 5)
+		const tasksList = document.createElement("ul");
+		tasksList.className = "personalapi-today-tasks";
 
-			if (list.description) {
-				const descElement = document.createElement("div");
-				descElement.className = "personalapi-list-description";
-				descElement.innerHTML = list.description;
-				listElement.appendChild(descElement);
-			}
-
-			const itemsList = document.createElement("ul");
-			itemsList.className = "personalapi-list-items";
-
-			list.items.forEach(item => {
-				if (!this.config.showCompleted && item.completed) {
-					return; // Skip completed items if not showing them
-				}
-
-				const itemElement = document.createElement("li");
-				itemElement.className = `personalapi-list-item ${item.completed ? 'completed' : ''}`;
-				itemElement.innerHTML = `
-					<span class="personalapi-checkbox">${item.completed ? '[✓]' : '[ ]'}</span>
-					<span class="personalapi-item-text">${item.title}</span>
-				`;
-				itemsList.appendChild(itemElement);
-			});
-
-			listElement.appendChild(itemsList);
-			section.appendChild(listElement);
+		todayTasks.slice(0, 5).forEach(task => {
+			const taskElement = document.createElement("li");
+			taskElement.className = `personalapi-today-task ${task.completed ? 'completed' : ''}`;
+			taskElement.innerHTML = `
+				<span class="personalapi-checkbox">${task.completed ? '[✓]' : '[ ]'}</span>
+				<span class="personalapi-task-text">${task.title}</span>
+			`;
+			tasksList.appendChild(taskElement);
 		});
 
+		section.appendChild(tasksList);
+
+		// Show count if more than 5 tasks
+		if (todayTasks.length > 5) {
+			const countElement = document.createElement("div");
+			countElement.className = "personalapi-task-count";
+			countElement.innerHTML = `... болон ${todayTasks.length - 5} даалгавар илүү`;
+			section.appendChild(countElement);
+		}
+
 		return section;
+	},
+
+	// Get tasks for today
+	getTodayTasks: function() {
+		const today = moment().startOf('day');
+		const todayTasks = [];
+
+		// Check if we have any lists
+		if (!this.lists || this.lists.length === 0) {
+			return todayTasks;
+		}
+
+		// Process all lists to find today's tasks
+		this.lists.forEach(list => {
+			if (list && list.items && list.items.length > 0) {
+				list.items.forEach(item => {
+					// Check if task is for today based on list date or item date
+					let taskDate = null;
+					
+					// Try to get date from list
+					if (list.listDate) {
+						taskDate = moment(list.listDate).startOf('day');
+					}
+					// Try to get date from item
+					else if (item.date) {
+						taskDate = moment(item.date).startOf('day');
+					}
+					// If no specific date, assume it's for today
+					else {
+						taskDate = today;
+					}
+
+					// Add task if it's for today
+					if (taskDate.isSame(today, 'day')) {
+						todayTasks.push({
+							title: item.title,
+							completed: item.completed || false,
+							date: taskDate.format('YYYY-MM-DD')
+						});
+					}
+				});
+			}
+		});
+
+		// Sort tasks: incomplete first, then completed
+		todayTasks.sort((a, b) => {
+			if (a.completed === b.completed) return 0;
+			return a.completed ? 1 : -1;
+		});
+
+		return todayTasks;
 	},
 
 	// Format event date

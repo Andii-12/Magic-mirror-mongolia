@@ -15,7 +15,38 @@
       },
       "todo": {
         "enabled": true,
-        "list": []
+        "list": [
+          {
+            "title": "Цаг агаарыг шалгах",
+            "completed": false,
+            "date": "2024-12-19"
+          },
+          {
+            "title": "Мэдээ унших",
+            "completed": true,
+            "date": "2024-12-19"
+          },
+          {
+            "title": "Цагийн хуваарийг шалгах",
+            "completed": false,
+            "date": "2024-12-19"
+          },
+          {
+            "title": "Хоол хийх",
+            "completed": false,
+            "date": "2024-12-19"
+          },
+          {
+            "title": "Гэрээ цэвэрлэх",
+            "completed": false,
+            "date": "2024-12-19"
+          },
+          {
+            "title": "Ном унших",
+            "completed": false,
+            "date": "2024-12-19"
+          }
+        ]
       },
       "weather": {
         "enabled": true,
