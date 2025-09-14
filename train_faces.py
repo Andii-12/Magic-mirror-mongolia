@@ -145,11 +145,58 @@ After adding photos, run: python3 train_faces.py
             print("   Supported formats: .jpg, .jpeg, .png, .bmp")
             return True
         
-        # Initialize camera
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("❌ Could not open camera")
+        # Try different camera backends and indices
+        camera_backends = [
+            (cv2.CAP_V4L2, 0),      # V4L2 backend (Linux)
+            (cv2.CAP_V4L2, 1),      # V4L2 backend, camera 1
+            (cv2.CAP_ANY, 0),       # Any backend, camera 0
+            (cv2.CAP_ANY, 1),       # Any backend, camera 1
+            (cv2.CAP_GSTREAMER, 0), # GStreamer backend
+        ]
+        
+        cap = None
+        for backend, camera_index in camera_backends:
+            try:
+                print(f"🔍 Trying camera {camera_index} with backend {backend}...")
+                cap = cv2.VideoCapture(camera_index, backend)
+                
+                if cap.isOpened():
+                    # Test if we can read a frame
+                    ret, frame = cap.read()
+                    if ret and frame is not None:
+                        print(f"✅ Camera {camera_index} working with backend {backend}")
+                        break
+                    else:
+                        cap.release()
+                        cap = None
+                else:
+                    cap.release()
+                    cap = None
+            except Exception as e:
+                print(f"   ❌ Failed: {e}")
+                if cap:
+                    cap.release()
+                    cap = None
+        
+        if cap is None or not cap.isOpened():
+            print("❌ Could not open any camera")
+            print("\n🔧 Troubleshooting:")
+            print("   1. Check if camera is connected")
+            print("   2. Try: ls /dev/video*")
+            print("   3. Check camera permissions")
+            print("   4. Try: sudo usermod -a -G video $USER")
+            print("   5. Reboot and try again")
+            print(f"\n💡 Alternative: Manually add photos to {person_dir}")
             return False
+        
+        # Configure camera settings
+        try:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS, 30)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer size
+        except:
+            pass  # Ignore if settings can't be applied
         
         print(f"🎯 Target: {TARGET_IMAGES} images")
         print("📋 Instructions:")
@@ -162,11 +209,19 @@ After adding photos, run: python3 train_faces.py
         image_count = 0
         last_capture_time = 0
         min_capture_interval = 1.0  # Minimum 1 second between captures
+        frame_skip_count = 0
+        max_frame_skips = 10  # Maximum consecutive frame skips
         
         while image_count < TARGET_IMAGES:
             ret, frame = cap.read()
             if not ret:
-                break
+                frame_skip_count += 1
+                if frame_skip_count >= max_frame_skips:
+                    print("❌ Too many failed frame reads. Camera may have disconnected.")
+                    break
+                continue
+            
+            frame_skip_count = 0  # Reset skip count on successful read
             
             # Get current time
             current_time = datetime.now().timestamp()
