@@ -17,6 +17,144 @@ A complete Mongolian language localization for MagicMirror² with face recogniti
 - ✅ **Mongolian Timezone** - Asia/Ulaanbaatar timezone support
 - ✅ **Standalone Operation** - No browser needed
 
+## 🎭 Face Recognition Training
+
+### Quick Training Guide
+
+The MagicMirror² Mongolian project includes a comprehensive face recognition system. To train the system to recognize faces:
+
+#### **Option 1: All-in-One Training Script**
+```bash
+# Run the complete training system
+python3 train_faces.py
+
+# Follow the interactive menu:
+# 1. Setup directories
+# 2. Collect images with webcam
+# 3. Process existing images
+# 4. Train face recognition model
+# 5. Test trained model
+# 6. Show training status
+# 7. Complete training workflow (recommended)
+```
+
+#### **Option 2: Step-by-Step Training**
+
+**Step 1: Setup Training Environment**
+```bash
+# Create directory structure
+python3 setup_face_training.py
+
+# This creates:
+# Images/
+# ├── Andii/          # Add 40+ photos here
+# ├── Jane/           # Add 40+ photos here
+# └── Default/        # Add 40+ photos here
+```
+
+**Step 2: Add Face Photos**
+- Add **40+ clear face photos** per person to their directory
+- Use good lighting and front-facing photos
+- Supported formats: `.jpg`, `.jpeg`, `.png`, `.bmp`
+- Avoid blurry or side-profile photos
+
+**Step 3: Train the Model**
+```bash
+# Simple training (recommended)
+python3 simple_train_faces.py
+
+# Advanced training with more options
+python3 train_face_recognition.py
+```
+
+**Step 4: Test the Training**
+```bash
+# Verify training setup
+python3 test_face_training.py
+
+# Test with live camera
+python3 train_faces.py
+# Select option 5: Test trained model
+```
+
+### 📸 Image Collection Tips
+
+#### **Best Practices:**
+- **Quantity**: 40+ photos per person (more = better accuracy)
+- **Quality**: High resolution, good lighting
+- **Variety**: Different expressions and angles
+- **Consistency**: Recent photos that look like you now
+
+#### **Good Photos:**
+- ✅ Clear, well-lit face
+- ✅ Front-facing angle
+- ✅ Different expressions
+- ✅ Good contrast
+- ✅ Recent photos
+
+#### **Avoid These:**
+- ❌ Blurry or dark photos
+- ❌ Side profiles
+- ❌ Sunglasses or hats
+- ❌ Very old photos
+- ❌ Group photos
+
+### 🔧 Training Scripts
+
+| Script | Purpose | Best For |
+|--------|---------|----------|
+| `train_faces.py` | **Complete training system** | **All users** |
+| `simple_train_faces.py` | Quick and easy training | Beginners |
+| `train_face_recognition.py` | Advanced training options | Power users |
+| `setup_face_training.py` | Directory setup | Initial setup |
+| `test_face_training.py` | Verify training | Testing |
+
+### 🎯 Training Results
+
+After successful training, you'll get:
+- `trainer.yml` - The trained face recognition model
+- `labels.json` - Person labels and IDs
+- `training_summary.json` - Training statistics
+
+### 🚀 Integration with MagicMirror²
+
+Once training is complete:
+1. Copy `trainer.yml` to your MagicMirror² directory
+2. Copy `labels.json` to your MagicMirror² directory
+3. Start the complete system: `./start.sh`
+
+The face recognition system will:
+- Detect when someone approaches (ultrasonic sensor)
+- Recognize faces and greet users in Mongolian
+- Show personalized content (calendar, todos, news)
+- Display Mongolian greetings and messages
+
+### 🐛 Troubleshooting Face Training
+
+#### **"No faces detected" Error:**
+- Add more photos (40+ recommended)
+- Use better quality photos
+- Ensure good lighting
+- Check face is clearly visible
+
+#### **"Low confidence" Results:**
+- Add more training photos
+- Use better quality photos
+- Mix different expressions
+- Ensure consistent lighting
+
+#### **Camera Issues:**
+- Check camera permissions
+- Ensure camera is not in use by other apps
+- Try different camera (if available)
+- On Windows: Use manual photo collection
+
+### 📚 Detailed Documentation
+
+For complete face training documentation, see:
+- [FACE_TRAINING_README.md](FACE_TRAINING_README.md) - Comprehensive training guide
+- [MagicMirror² Face Recognition](https://docs.magicmirror.builders/modules/face-recognition.html)
+
 ## 🚀 Quick Start
 
 ### For Raspberry Pi 4:
@@ -45,6 +183,19 @@ chmod +x start.sh
 | `setup-mongolian.bat` | Windows setup script |
 | `test-mongolian.js` | Validation test script |
 | `MONGOLIAN_SETUP.md` | Detailed documentation |
+
+### 🎭 Face Recognition Training Scripts
+
+| Script | Purpose | Best For |
+|--------|---------|----------|
+| `train_faces.py` | **Complete training system** | **All users** |
+| `simple_train_faces.py` | Quick and easy training | Beginners |
+| `train_face_recognition.py` | Advanced training options | Power users |
+| `setup_face_training.py` | Directory setup | Initial setup |
+| `test_face_training.py` | Verify training | Testing |
+| `collect_face_images.py` | Webcam image collection | Image gathering |
+| `prepare_images.py` | Image processing | Quality enhancement |
+| `FACE_TRAINING_README.md` | Complete training guide | Documentation |
 
 ## 🌐 Mongolian Translations
 
@@ -168,6 +319,38 @@ If you encounter any issues:
 1. Check the [troubleshooting section](MONGOLIAN_SETUP.md#-troubleshooting) in the documentation
 2. Run the test script: `node test-mongolian.js`
 3. Open an [issue](https://github.com/Andii-12/Magic-mirror-mongolia/issues) on GitHub
+
+## 🎯 Quick Reference
+
+### Face Training Commands
+```bash
+# Complete training workflow
+python3 train_faces.py
+
+# Quick training
+python3 simple_train_faces.py
+
+# Test training
+python3 test_face_training.py
+```
+
+### MagicMirror² Commands
+```bash
+# Start complete system
+./start.sh
+
+# Start MagicMirror² only
+npm start
+
+# Test Mongolian setup
+node test-mongolian.js
+```
+
+### File Locations
+- **Face Training**: `Images/` directory
+- **Trained Model**: `trainer.yml`, `labels.json`
+- **Config**: `config/config.mn.js`
+- **Translations**: `translations/mn.json`
 
 ---
 
