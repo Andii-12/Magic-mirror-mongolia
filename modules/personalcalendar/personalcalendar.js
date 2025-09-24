@@ -115,20 +115,32 @@ Module.register("personalcalendar", {
 	notificationReceived: function(notification, payload, sender) {
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal Calendar: Received face status via MM notification:", payload);
+			
+			// Only process if we have valid payload data
+			if (!payload || typeof payload !== 'object') {
+				console.log("Personal Calendar: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if person is actually different (not just undefined/null due to status update)
 			if (payload.person && payload.person !== this.currentUser) {
-				// Clear old data immediately when user changes
+				// Clear old data only when user actually changes
 				this.events = [];
 				this.updateDom(this.config.animationSpeed);
 				
 				this.currentUser = payload.person;
 				console.log("Personal Calendar: User changed to", this.currentUser);
 				this.loadUserProfile();
-			} else if (!payload.person && this.currentUser) {
+			} else if (payload.person === null && this.currentUser && (payload.status === "waiting" || !payload.active)) {
+				// User moved away - clear data only if status indicates logout
 				this.currentUser = null;
 				this.userProfile = null;
 				this.events = [];
 				console.log("Personal Calendar: User cleared");
 				this.updateDom(this.config.animationSpeed);
+			} else if (payload.person === this.currentUser) {
+				// Same user, just update status - don't clear data
+				console.log("Personal Calendar: Same user, maintaining data");
 			}
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from personalapi module

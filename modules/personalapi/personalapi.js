@@ -182,18 +182,29 @@ Module.register("personalapi", {
 	notificationReceived: function(notification, payload, sender) {
 		if (notification === "FACE_STATUS_UPDATE") {
 			console.log("Personal API: Received face status via MM notification:", payload);
+			
+			// Only process if we have valid payload data
+			if (!payload || typeof payload !== 'object') {
+				console.log("Personal API: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if person is actually different (not just undefined/null due to status update)
 			if (payload.person && payload.person !== this.currentUser) {
 				// New user recognized - load their data
 				this.currentUser = payload.person;
 				console.log("Personal API: User recognized:", this.currentUser);
 				this.loadUserData();
-			} else if (!payload.person && this.currentUser) {
-				// User moved away - clear data immediately
+			} else if (payload.person === null && this.currentUser && (payload.status === "waiting" || !payload.active)) {
+				// User moved away - clear data only if status indicates logout
 				this.currentUser = null;
 				this.events = [];
 				this.lists = [];
 				console.log("Personal API: User cleared - hiding personal data");
 				this.updateDom(this.config.animationSpeed);
+			} else if (payload.person === this.currentUser) {
+				// Same user, just update status - don't clear data
+				console.log("Personal API: Same user, maintaining data");
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Handle API data from MM notifications

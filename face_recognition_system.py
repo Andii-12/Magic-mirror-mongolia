@@ -256,10 +256,12 @@ class FaceRecognitionSystem:
         if self.current_distance > PROXIMITY_THRESHOLD:
             # Far from sensor - show "come closer" message
             status_type = "waiting"
-            self.is_active = False
-            self.current_person = None
-            self.face_recognition_attempted = False
-            self.camera_opened = False
+            # Don't change active state or person if we're in timeout period
+            if self.shutdown_timer is None:
+                self.is_active = False
+                self.current_person = None
+                self.face_recognition_attempted = False
+                self.camera_opened = False
         elif self.current_person and self.current_person != "Unknown":
             # Face recognized - show personal data
             status_type = "recognized"
@@ -268,14 +270,18 @@ class FaceRecognitionSystem:
             # Close to sensor but haven't tried face recognition yet - show "scanning face"
             status_type = "detecting"
             self.is_active = True
-        elif self.current_distance <= PROXIMITY_THRESHOLD and self.face_recognition_attempted:
+        elif self.current_distance <= PROXIMITY_THRESHOLD and self.face_recognition_attempted and not self.current_person:
             # Close to sensor but face recognition failed - show "scanning face" again
             status_type = "detecting"
             self.is_active = True
         else:
-            # Default state
-            status_type = "waiting"
-            self.is_active = False
+            # Default state - maintain current state
+            if self.current_person:
+                status_type = "recognized"
+            elif self.is_active:
+                status_type = "detecting"
+            else:
+                status_type = "waiting"
         
         status = {
             "distance": self.current_distance,
@@ -308,9 +314,15 @@ class FaceRecognitionSystem:
         
         # Add distance smoothing for more stable readings
         distance_history = []
-        HISTORY_SIZE = 3
+        HISTORY_SIZE = 5  # Increased for more stability
         last_status_update = 0
-        STATUS_UPDATE_INTERVAL = 1.0  # Update status every 1 second instead of constantly
+        STATUS_UPDATE_INTERVAL = 0.5  # Update more frequently for better responsiveness
+        
+        # State tracking variables
+        proximity_stable_count = 0
+        PROXIMITY_STABLE_THRESHOLD = 3  # Need 3 consecutive readings under threshold
+        away_stable_count = 0
+        AWAY_STABLE_THRESHOLD = 2  # Need 2 consecutive readings over threshold
         
         try:
             while True:
@@ -326,26 +338,31 @@ class FaceRecognitionSystem:
                 smoothed_distance = sum(distance_history) / len(distance_history)
                 self.current_distance = smoothed_distance
                 
-                # Debug output every 20 iterations (reduced frequency)
-                if len(distance_history) % 20 == 0:
+                # Debug output every 10 iterations
+                if len(distance_history) % 10 == 0:
                     print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}")
                 
                 # Check proximity with smoothed distance
                 if smoothed_distance <= PROXIMITY_THRESHOLD:
                     # Object detected within threshold
-                    if not self.is_active:
-                        print(f"🎯 Object detected at {smoothed_distance:.1f}cm - preparing face recognition")
+                    proximity_stable_count += 1
+                    away_stable_count = 0  # Reset away counter
+                    
+                    # Only activate if proximity is stable
+                    if proximity_stable_count >= PROXIMITY_STABLE_THRESHOLD and not self.is_active:
+                        print(f"🎯 Object detected at {smoothed_distance:.1f}cm - activating face recognition")
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
                         self.face_recognition_attempted = False
                         self.camera_opened = False
                         self.is_active = True
+                        self.update_status_file()
                     
-                    # Try face recognition ONLY ONCE when first detected
-                    if self.current_person is None and not self.face_recognition_attempted:
-                        # Wait 3 seconds for stable proximity before camera activation
-                        if time.time() - self.last_detection_time > 3.0:
+                    # Try face recognition ONLY ONCE when first activated
+                    if self.is_active and self.current_person is None and not self.face_recognition_attempted:
+                        # Wait 2 seconds for stable proximity before camera activation
+                        if time.time() - self.last_detection_time > 2.0:
                             print("📷 Opening camera for face recognition...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
@@ -353,44 +370,69 @@ class FaceRecognitionSystem:
                                 print(f"✅ Face recognized: {person}")
                                 self.current_person = person
                                 self.shutdown_timer = None
+                                self.update_status_file()
                             else:
                                 print("❌ Face not recognized - will not retry until person moves away")
-                                # Don't retry face recognition - wait for person to move away
+                                self.update_status_file()
                     
-                    # If face already recognized, just maintain the state
+                    # If face already recognized, maintain the state and reset timeout
                     elif self.current_person is not None:
-                        # Only log every 10 seconds to reduce spam
-                        if time.time() - self.last_detection_time > 10:
-                            print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm")
-                            self.last_detection_time = time.time()
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
+                        # Only log every 15 seconds to reduce spam
+                        if time.time() - self.last_detection_time > 15:
+                            print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm")
+                            self.last_detection_time = time.time()
                     
-                    # Update status file less frequently
+                    # Update status file regularly when active
                     current_time = time.time()
                     if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
                         self.update_status_file()
                         last_status_update = current_time
                     
-                    time.sleep(0.5)  # Check every 0.5 seconds when active
+                    time.sleep(0.3)  # Check every 0.3 seconds when active
                 else:
-                    # Object moved away - immediately reset everything
-                    if self.current_person is not None:
-                        print(f"👋 User {self.current_person} moved away ({smoothed_distance:.1f}cm)")
+                    # Object moved away - count consecutive away readings
+                    away_stable_count += 1
+                    proximity_stable_count = 0  # Reset proximity counter
                     
-                    # Reset all states immediately when moving away
-                    self.current_person = None
-                    self.is_active = False
-                    self.face_recognition_attempted = False
-                    self.camera_opened = False
-                    self.shutdown_timer = None
+                    # Only deactivate if away for stable period
+                    if away_stable_count >= AWAY_STABLE_THRESHOLD:
+                        if self.current_person is not None:
+                            print(f"👋 User {self.current_person} moved away ({smoothed_distance:.1f}cm) - starting timeout")
+                            # Start timeout timer instead of immediate logout
+                            if self.shutdown_timer is None:
+                                self.shutdown_timer = time.time()
+                        elif self.is_active and self.shutdown_timer is None:
+                            # No person recognized but was active - start timeout
+                            self.shutdown_timer = time.time()
+                            print(f"⏰ No face recognized, starting {TIMEOUT_DELAY}s timeout")
                     
-                    # Update status file (will show "waiting" state when far from sensor)
-                    self.update_status_file()
-                    last_status_update = time.time()
-                
-                # Small delay for sensor polling
-                time.sleep(0.2)  # Slightly increased delay to reduce CPU usage
+                    # Check if timeout has elapsed
+                    if self.shutdown_timer is not None:
+                        elapsed = time.time() - self.shutdown_timer
+                        if elapsed >= TIMEOUT_DELAY:
+                            print(f"⏰ Timeout reached ({TIMEOUT_DELAY}s) - logging out user")
+                            # Reset all states after timeout
+                            self.current_person = None
+                            self.is_active = False
+                            self.face_recognition_attempted = False
+                            self.camera_opened = False
+                            self.shutdown_timer = None
+                            self.update_status_file()
+                        else:
+                            # Still in timeout period - show countdown
+                            remaining = TIMEOUT_DELAY - elapsed
+                            if int(remaining) % 2 == 0:  # Log every 2 seconds during timeout
+                                print(f"⏰ Timeout countdown: {remaining:.0f}s remaining")
+                    
+                    # Update status file during timeout
+                    current_time = time.time()
+                    if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
+                        self.update_status_file()
+                        last_status_update = current_time
+                    
+                    time.sleep(0.5)  # Check every 0.5 seconds when away
                 
         except KeyboardInterrupt:
             print("\n🛑 Stopping face recognition system...")
