@@ -10,6 +10,7 @@ module.exports = NodeHelper.create({
 		console.log("Starting node helper for: " + this.name);
 		this.statusFile = null;
 		this.watchTimer = null;
+		this.lastSent = null; // throttle duplicate updates
 	},
 
 	// Override socketNotificationReceived method.
@@ -47,12 +48,14 @@ module.exports = NodeHelper.create({
 	readStatusFile: function() {
 		if (!this.statusFile || !fs.existsSync(this.statusFile)) {
 			// File doesn't exist, send default status
-			this.sendSocketNotification("FACE_STATUS_UPDATE", {
+			const payload = {
 				distance: 999,
 				person: null,
 				active: false,
+				status: "waiting",
 				timestamp: Date.now()
-			});
+			};
+			this._maybeSend(payload);
 			return;
 		}
 
@@ -77,22 +80,43 @@ module.exports = NodeHelper.create({
 			// Increment read count
 			this.readCount = (this.readCount || 0) + 1;
 			
-			// Send status update to module
-			this.sendSocketNotification("FACE_STATUS_UPDATE", {
+			// Build payload
+			const payload = {
 				distance: status.distance || 999,
 				person: status.person || null,
 				active: status.active || false,
+				status: status.status || "waiting",
 				timestamp: status.timestamp || Date.now()
-			});
+			};
+			// Throttle duplicate updates to prevent flicker
+			this._maybeSend(payload);
 		} catch (error) {
 			console.log("Error reading face status file:", error.message);
 			// Send default status on error
-			this.sendSocketNotification("FACE_STATUS_UPDATE", {
+			const payload = {
 				distance: 999,
 				person: null,
 				active: false,
+				status: "waiting",
 				timestamp: Date.now()
-			});
+			};
+			this._maybeSend(payload);
+		}
+	},
+
+	// Only send if meaningful change occurred
+	_maybeSend: function(payload) {
+		const last = this.lastSent;
+		const significantDistanceChange = !last || Math.abs((payload.distance || 0) - (last.distance || 0)) > 5;
+		const changed =
+			!last ||
+			last.person !== payload.person ||
+			last.active !== payload.active ||
+			last.status !== payload.status ||
+			significantDistanceChange;
+		if (changed) {
+			this.lastSent = { ...payload };
+			this.sendSocketNotification("FACE_STATUS_UPDATE", payload);
 		}
 	},
 
