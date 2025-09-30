@@ -371,6 +371,10 @@ class FaceRecognitionSystem:
                     if not self.is_active and (time.time() - last_status_update > STATUS_UPDATE_INTERVAL):
                         self.update_status_file()
                         last_status_update = time.time()
+
+                    # Ensure we have a baseline detection time for timing-based checks
+                    if self.last_detection_time is None:
+                        self.last_detection_time = time.time()
                     
                     # Only activate if proximity is stable
                     if proximity_stable_count >= PROXIMITY_STABLE_THRESHOLD and not self.is_active:
@@ -381,10 +385,15 @@ class FaceRecognitionSystem:
                         self.face_recognition_attempted = False
                         self.camera_opened = False
                         self.is_active = True
+                        # Pre-warm camera for faster recognition
+                        self.initialize_camera()
                         self.update_status_file()
                     
                     # Try face recognition when first activated
                     if self.is_active and self.current_person is None and not self.face_recognition_attempted:
+                        # Ensure detection time is set
+                        if self.last_detection_time is None:
+                            self.last_detection_time = time.time()
                         # Wait only 0.5 seconds for stable proximity before camera activation
                         if time.time() - self.last_detection_time > 0.5:
                             print("📷 Starting face recognition...")
