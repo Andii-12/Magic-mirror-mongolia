@@ -72,7 +72,7 @@ Module.register("personaltodo", {
 			if (self.currentUser && self.lastValidData) {
 				// Re-filter tasks for the new day
 				self.todoItems = self.filterTodayTasks(self.lastValidData.items);
-				self.updateDom(0);
+				self.maybeUpdateDom(0);
 				console.log("Personal Todo: Daily refresh - updated tasks for new day");
 			}
 		}, this.config.updateInterval); // Check every 5 minutes
@@ -147,7 +147,7 @@ Module.register("personaltodo", {
 					});
 					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 					console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
-					this.updateDom(0); // Instant update, no animation
+					this.maybeUpdateDom(0); // Prevent flicker
 				} else {
 					console.log(`Personal Todo: User ${this.currentUser} not found or no lists`);
 				}
@@ -267,7 +267,7 @@ Module.register("personaltodo", {
 				// Clear data if no user specified
 				this.todoItems = [];
 				console.log("Personal Todo: Cleared items (no user)");
-				this.updateDom(0); // Instant update, no animation
+				this.maybeUpdateDom(0); // Prevent flicker
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Handle API data from MM notifications
@@ -295,7 +295,7 @@ Module.register("personaltodo", {
 					});
 					console.log(`Personal Todo: Loaded ${this.todoItems.length} items for ${this.currentUser}`);
 					console.log("Personal Todo: Items:", this.todoItems.map(i => i.title));
-					this.updateDom(0); // Instant update, no animation
+					this.maybeUpdateDom(0); // Prevent flicker
 				} else {
 					console.log(`Personal Todo: User ${this.currentUser} not found or no lists`);
 				}
