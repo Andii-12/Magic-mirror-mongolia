@@ -14,7 +14,7 @@ Module.register("facerecognition", {
 		greetingStyle: "large bright", // CSS classes for greeting display
 		showDistance: true, // Show current distance
 		showStatus: true, // Show recognition status
-		animationSpeed: 1000, // Animation speed for greetings
+		animationSpeed: 0, // Disable animation to avoid blinking
 		// Personalized greetings for different people
 		greetings: {
 			"default": "Тавтай морил {name}!",
@@ -45,6 +45,8 @@ Module.register("facerecognition", {
 		this.shutdownTimer = null;
 		this.statusCheckTimer = null;
 
+		this.lastRecognizedPerson = null;
+		this.recognitionLocked = false;
 		this.startStatusChecking();
 	},
 

@@ -4,7 +4,7 @@ Module.register("personaltodo", {
 		updateInterval: 5000, // Check for updates every 5 seconds - reduce blinking
 		statusFile: "/tmp/magicmirror_face_status.json",
 		profilesFile: "user_profiles.json",
-		animationSpeed: 2000,
+		animationSpeed: 0,
 		showCompleted: false,
 		maxItems: 10
 	},
