@@ -272,14 +272,15 @@ class FaceRecognitionSystem:
         """Update the status file for MagicMirror²"""
         # Determine current status based on distance and recognition state
         if self.current_distance > PROXIMITY_THRESHOLD:
-            # Far from sensor - show "come closer" message
-            status_type = "waiting"
-            # Don't change active state or person if we're in timeout period
-            if self.shutdown_timer is None:
-                self.is_active = False
-                self.current_person = None
-                self.face_recognition_attempted = False
-                self.camera_opened = False
+            # Far from sensor
+            if self.shutdown_timer is not None:
+                # In timeout countdown: keep user and active state
+                status_type = "timeout"
+                self.is_active = True
+            else:
+                # Just stepped away but no timeout started yet: keep current state
+                # If user is recognized, keep showing their data
+                status_type = "recognized" if self.current_person else "waiting"
         elif self.current_person and self.current_person != "Unknown":
             # Face recognized - show personal data
             status_type = "recognized"
