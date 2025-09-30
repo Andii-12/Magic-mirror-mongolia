@@ -219,28 +219,34 @@ let config = {
 				}
 			}
 		},
+		// Enable current weather (left side)
 		{
-			module: "MMM-GoogleMapsTraffic",
-			position: "lower_third",
+			module: "weather",
+			position: "bottom_left",
 			config: {
-				key: "YOUR_GOOGLE_MAPS_API_KEY", // You need to get this from Google Cloud Console
-				lat: 47.9077, // Ulaanbaatar latitude
-				lng: 106.8832, // Ulaanbaatar longitude
-				height: "200px",
-				width: "400px",
-				zoom: 12,
-				mapTypeId: "roadmap",
-				styledMapType: "dark", // Dark theme to match MagicMirror
-				disableDefaultUI: true,
-				updateInterval: 300000, // Update every 5 minutes
-				backgroundColor: "hsla(0, 0%, 0%, 0)", // Transparent background
-				markers: [
-					{
-						lat: 47.9077,
-						lng: 106.8832,
-						fillColor: "#9966ff"
-					}
-				]
+				weatherProvider: "openmeteo", // Free weather provider
+				type: "current",
+				// Ulaanbaatar coordinates (adjust for your location)
+				lat: 47.8864,
+				lon: 106.9057,
+				updateInterval: 10 * 60 * 1000, // 10 minutes
+				animationSpeed: 1000,
+				showFeelsLike: true,
+				showHumidity: "wind"
+			}
+		},
+		// Enable forecast weather (left side)
+		{
+			module: "weather",
+			position: "bottom_left",
+			header: "Цаг агаарын урьдчилсан мэдээ", // "Weather Forecast" in Mongolian
+			config: {
+				weatherProvider: "openmeteo",
+				type: "forecast",
+				lat: 47.8864,
+				lon: 106.9057,
+				maxNumberOfDays: 3, // Limit for Pi 4 performance
+				updateInterval: 10 * 60 * 1000
 			}
 		}
 	]

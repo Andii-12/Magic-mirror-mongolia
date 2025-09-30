@@ -106,16 +106,26 @@ def capture_photos(person_name, num_photos=40):
             frame = picam2.capture_array()
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             
-            # Detect faces
-            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+            # Detect faces with optimized parameters (same as recognition)
+            faces = face_cascade.detectMultiScale(
+                gray, 
+                scaleFactor=1.05,  # Same as recognition
+                minNeighbors=3,    # Same as recognition
+                minSize=(60, 60),  # Same as recognition
+                flags=cv2.CASCADE_SCALE_IMAGE
+            )
             
             if len(faces) > 0:
-                # Use the first face found
-                (x, y, w, h) = faces[0]
+                # Use the largest face found (same as recognition)
+                largest_face = max(faces, key=lambda face: face[2] * face[3])
+                (x, y, w, h) = largest_face
                 face_img = gray[y:y+h, x:x+w]
                 
                 # Resize face to standard size
                 face_img = cv2.resize(face_img, (100, 100))
+                
+                # Apply histogram equalization for better recognition (same as recognition)
+                face_img = cv2.equalizeHist(face_img)
                 
                 # Save the face image
                 photo_path = os.path.join(person_path, f"photo_{captured_count + 1:03d}.jpg")

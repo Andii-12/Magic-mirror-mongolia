@@ -226,7 +226,7 @@ Module.register("facerecognition", {
 			// Close to sensor but face not recognized yet - show "scanning face" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Царай уншиж байна..."; // "Scanning face" in Mongolian
+			statusElement.innerHTML = "Царай уншиж байна"; // "Scanning face" in Mongolian
 			wrapper.appendChild(statusElement);
 		} else {
 			// Far from sensor or not active - show "come closer" message

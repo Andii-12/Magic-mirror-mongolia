@@ -51,6 +51,7 @@ class FaceRecognitionSystem:
         self.shutdown_timer = None
         self.camera_opened = False
         self.face_recognition_attempted = False
+        self.camera = None  # Reuse camera instance
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -174,77 +175,94 @@ class FaceRecognitionSystem:
             print(f"Error reading distance: {e}")
             return 999
 
+    def initialize_camera(self):
+        """Initialize camera once and reuse it"""
+        if self.camera is None and platform.system() != "Windows":
+            try:
+                print("[INFO] Initializing camera...")
+                self.camera = Picamera2()
+                config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                self.camera.configure(config)
+                self.camera.start()
+                time.sleep(1)  # Let camera stabilize
+                print("[INFO] Camera initialized successfully")
+            except Exception as e:
+                print(f"[ERROR] Camera initialization failed: {e}")
+                self.camera = None
+
     def recognize_face_with_camera(self):
-        """Recognize faces using Picamera2 - optimized for single attempt"""
+        """Ultra-fast face recognition with camera reuse"""
         try:
-            print(f"[INFO] Object detected at {self.current_distance}cm. Opening camera...")
+            print(f"[INFO] Object detected at {self.current_distance}cm. Starting recognition...")
             
             # Check if we're on Windows (simulation mode)
             if platform.system() == "Windows":
                 print("[INFO] Windows detected - simulating face recognition")
-                time.sleep(1)  # Simulate camera delay
+                time.sleep(0.5)  # Reduced simulation delay
                 return "Andii"  # Return actual user for Windows
             
-            # Initialize camera with minimal configuration
-            picam2 = Picamera2()
-            config = picam2.create_preview_configuration(main={"size": (320, 240)})
-            picam2.configure(config)
-            picam2.start()
-            time.sleep(0.5)  # Reduced delay for faster initialization
-
-            # Try to capture and recognize faces with multiple attempts
-            recognized_person = None
-            max_attempts = 3
+            # Initialize camera if not already done
+            if self.camera is None:
+                self.initialize_camera()
+                if self.camera is None:
+                    return None
             
-            for attempt in range(max_attempts):
-                try:
-                    frame = picam2.capture_array()
-                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    faces = self.face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(50, 50))
+            # Single fast attempt with optimized parameters
+            try:
+                # Instant cancel if user moved away
+                live_distance = self.get_distance()
+                if live_distance > PROXIMITY_THRESHOLD:
+                    print(f"[INFO] Recognition cancelled - user moved away ({live_distance:.1f}cm)")
+                    return None
 
-                    if len(faces) > 0:
-                        print(f"[INFO] {len(faces)} face(s) detected (attempt {attempt + 1})")
-                        if self.recognizer:
-                            for (x, y, w, h) in faces:
-                                face_img = gray[y:y+h, x:x+w]
-                                face_img = cv2.resize(face_img, (100, 100))  # Resize for consistency
-                                label, confidence = self.recognizer.predict(face_img)
-                                name = self.label_map.get(label, "Unknown")
-                                print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
-                                
-                                # Only return known persons with good confidence
-                                if name != "Unknown" and confidence < 100:  # Lower confidence threshold
-                                    recognized_person = name
-                                    break
-                                else:
-                                    print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
-                        else:
-                            # Simulate recognition for testing - return actual user from profiles
-                            print("[INFO] Face recognition simulated - returning 'Andii'")
-                            recognized_person = "Andii"
-                            break
-                    else:
-                        print(f"[INFO] No face detected in frame (attempt {attempt + 1})")
-                        time.sleep(0.2)  # Brief pause before next attempt
-                        
-                except Exception as e:
-                    print(f"[WARNING] Camera capture attempt {attempt + 1} failed: {e}")
-                    time.sleep(0.1)
-                    continue
+                # Capture frame
+                frame = self.camera.capture_array()
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 
-                # If we found a person, break out of attempts
-                if recognized_person:
-                    break
+                # Optimized face detection - faster parameters
+                faces = self.face_cascade.detectMultiScale(
+                    gray, 
+                    scaleFactor=1.05,  # Faster than 1.1
+                    minNeighbors=3,    # Faster than 4
+                    minSize=(60, 60),  # Slightly larger minimum size
+                    flags=cv2.CASCADE_SCALE_IMAGE
+                )
 
-            # Always close camera
-            picam2.close()
+                if len(faces) > 0:
+                    print(f"[INFO] {len(faces)} face(s) detected")
+                    if self.recognizer:
+                        # Process the largest face (most likely to be the person)
+                        largest_face = max(faces, key=lambda face: face[2] * face[3])
+                        x, y, w, h = largest_face
+                        
+                        face_img = gray[y:y+h, x:x+w]
+                        face_img = cv2.resize(face_img, (100, 100))
+                        
+                        # Apply histogram equalization for better recognition
+                        face_img = cv2.equalizeHist(face_img)
+                        
+                        label, confidence = self.recognizer.predict(face_img)
+                        name = self.label_map.get(label, "Unknown")
+                        print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
+                        
+                        # More lenient confidence threshold for LBPH
+                        if name != "Unknown" and confidence < 80:  # Much lower threshold
+                            print(f"✅ Face recognition successful: {name}")
+                            return name
+                        else:
+                            print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
+                    else:
+                        # Simulate recognition for testing
+                        print("[INFO] Face recognition simulated - returning 'Andii'")
+                        return "Andii"
+                else:
+                    print("[INFO] No face detected in frame")
+                    
+            except Exception as e:
+                print(f"[WARNING] Camera capture failed: {e}")
+                return None
             
-            if recognized_person:
-                print(f"✅ Face recognition successful: {recognized_person}")
-            else:
-                print("❌ Face recognition failed after all attempts")
-            
-            return recognized_person
+            return None
             
         except Exception as e:
             print(f"Error in face recognition: {e}")
@@ -347,6 +365,12 @@ class FaceRecognitionSystem:
                     # Object detected within threshold
                     proximity_stable_count += 1
                     away_stable_count = 0  # Reset away counter
+
+                    # Immediately publish 'detecting' status so UI shows scanning text
+                    # even before full activation kicks in
+                    if not self.is_active and (time.time() - last_status_update > STATUS_UPDATE_INTERVAL):
+                        self.update_status_file()
+                        last_status_update = time.time()
                     
                     # Only activate if proximity is stable
                     if proximity_stable_count >= PROXIMITY_STABLE_THRESHOLD and not self.is_active:
@@ -361,9 +385,9 @@ class FaceRecognitionSystem:
                     
                     # Try face recognition when first activated
                     if self.is_active and self.current_person is None and not self.face_recognition_attempted:
-                        # Wait 1 second for stable proximity before camera activation
-                        if time.time() - self.last_detection_time > 1.0:
-                            print("📷 Opening camera for face recognition...")
+                        # Wait only 0.5 seconds for stable proximity before camera activation
+                        if time.time() - self.last_detection_time > 0.5:
+                            print("📷 Starting face recognition...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
                             if person and person != "Unknown":
@@ -372,10 +396,10 @@ class FaceRecognitionSystem:
                                 self.shutdown_timer = None
                                 self.update_status_file()
                             else:
-                                print("❌ Face not recognized - will retry in 3 seconds")
+                                print("❌ Face not recognized or cancelled - will retry in 2 seconds")
                                 # Reset recognition attempt to retry
                                 self.face_recognition_attempted = False
-                                self.last_detection_time = time.time() - 1.0  # Allow retry in 1 second
+                                self.last_detection_time = time.time() - 0.5  # Allow retry in 0.5 seconds
                     
                     # If face already recognized, maintain the state and reset timeout
                     elif self.current_person is not None:
@@ -443,6 +467,12 @@ class FaceRecognitionSystem:
 
     def cleanup(self):
         """Clean up resources"""
+        if self.camera is not None:
+            try:
+                self.camera.close()
+                print("[INFO] Camera closed")
+            except Exception as e:
+                print(f"[WARNING] Error closing camera: {e}")
         GPIO.cleanup()
         print("Cleanup completed")
 
