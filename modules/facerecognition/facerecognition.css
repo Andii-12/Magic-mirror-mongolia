@@ -126,6 +126,10 @@
 	justify-content: flex-end;
 	align-items: flex-start;
 	backdrop-filter: blur(10px);
+	/* Smooth transitions to prevent blinking */
+	transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+	opacity: 1;
+	transform: translateY(0);
 }
 
 /* Clean styling - no extra indicators */

@@ -52,6 +52,7 @@ class FaceRecognitionSystem:
         self.camera_opened = False
         self.face_recognition_attempted = False
         self.camera = None  # Reuse camera instance
+        self.recognition_locked = False  # Prevent re-recognition until user leaves
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -335,7 +336,7 @@ class FaceRecognitionSystem:
         distance_history = []
         HISTORY_SIZE = 3  # Reduced for faster response
         last_status_update = 0
-        STATUS_UPDATE_INTERVAL = 0.2  # Update more frequently for better responsiveness
+        STATUS_UPDATE_INTERVAL = 1.0  # Update every 1 second to reduce blinking
         
         # State tracking variables
         proximity_stable_count = 0
@@ -391,7 +392,7 @@ class FaceRecognitionSystem:
                         self.update_status_file()
                     
                     # Try face recognition when first activated
-                    if self.is_active and self.current_person is None and not self.face_recognition_attempted:
+                    if self.is_active and self.current_person is None and not self.face_recognition_attempted and not self.recognition_locked:
                         # Ensure detection time is set
                         if self.last_detection_time is None:
                             self.last_detection_time = time.time()
@@ -404,6 +405,8 @@ class FaceRecognitionSystem:
                                 print(f"✅ Face recognized: {person}")
                                 self.current_person = person
                                 self.shutdown_timer = None
+                                # Lock recognition until user leaves and logs out
+                                self.recognition_locked = True
                                 self.update_status_file()
                             else:
                                 print("❌ Face not recognized or cancelled - will retry in 2 seconds")
@@ -455,6 +458,7 @@ class FaceRecognitionSystem:
                             self.face_recognition_attempted = False
                             self.camera_opened = False
                             self.shutdown_timer = None
+                            self.recognition_locked = False  # Allow recognition next time
                             self.update_status_file()
                         else:
                             # Still in timeout period - show countdown

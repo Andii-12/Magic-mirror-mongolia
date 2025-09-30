@@ -1,7 +1,7 @@
 Module.register("personalcalendar", {
 	// Default module config.
 	defaults: {
-		updateInterval: 1000, // Check for updates every 1 second
+		updateInterval: 5000, // Check for updates every 5 seconds - reduce blinking
 		statusFile: "/tmp/magicmirror_face_status.json",
 		profilesFile: "user_profiles.json",
 		animationSpeed: 2000,

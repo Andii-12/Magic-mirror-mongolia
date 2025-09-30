@@ -2,6 +2,13 @@
 
 .personalapi {
     font-family: 'Roboto', sans-serif;
+    /* Smooth transitions to prevent blinking */
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.personaltodo, .personalcalendar {
+    /* Smooth transitions to prevent blinking */
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
 .personalapi-header {

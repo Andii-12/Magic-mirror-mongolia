@@ -3,7 +3,7 @@
 Module.register("facerecognition", {
 	// Default module config.
 	defaults: {
-		updateInterval: 1000, // Check for updates every 1 second - stable
+		updateInterval: 2000, // Check for updates every 2 seconds - reduce blinking
 		proximityThreshold: 20, // 20 cm threshold
 		timeoutDelay: 10000, // 10 seconds delay before shutdown
 		greetingDuration: 5000, // Show greeting for 5 seconds
