@@ -217,34 +217,22 @@ Module.register("facerecognition", {
 
 		// Show different messages based on status
 		if (this.currentPerson && this.currentPerson !== "Unknown") {
-			// Person recognized - show greeting
-			const greetingElement = document.createElement("div");
-			greetingElement.className = `greeting ${this.config.greetingStyle}`;
-			
-			// Create personalized greeting
-			let greetingText = `Hello, ${this.currentPerson}`;
-			
-			greetingElement.innerHTML = greetingText;
-			wrapper.appendChild(greetingElement);
+			// Person recognized - show name in top-right
+			const statusElement = document.createElement("div");
+			statusElement.className = "facerecognition-status top-right";
+			statusElement.innerHTML = `Сайн уу, ${this.currentPerson}`; // "Hello" in Mongolian
+			wrapper.appendChild(statusElement);
 		} else if (this.isActive && !this.currentPerson) {
 			// Close to sensor but face not recognized yet - show "scanning face" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Scanning face";
-			statusElement.style.position = "absolute";
-			statusElement.style.top = "20px";
-			statusElement.style.left = "20px";
-			statusElement.style.zIndex = "1001";
+			statusElement.innerHTML = "Царай уншиж байна..."; // "Scanning face" in Mongolian
 			wrapper.appendChild(statusElement);
 		} else {
 			// Far from sensor or not active - show "come closer" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Please stand closer";
-			statusElement.style.position = "absolute";
-			statusElement.style.top = "20px";
-			statusElement.style.left = "20px";
-			statusElement.style.zIndex = "1001";
+			statusElement.innerHTML = "Ойртож зогсоорой"; // "Please stand closer" in Mongolian
 			wrapper.appendChild(statusElement);
 		}
 

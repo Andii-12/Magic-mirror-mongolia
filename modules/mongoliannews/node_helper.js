@@ -3,6 +3,8 @@
 const NodeHelper = require("node_helper");
 const https = require("https");
 const http = require("http");
+const FeedMe = require("feedme");
+const iconv = require("iconv-lite");
 
 module.exports = NodeHelper.create({
 	// Override start method.
@@ -21,59 +23,116 @@ module.exports = NodeHelper.create({
 	getMongolianNews: function(payload) {
 		const self = this;
 		const maxNewsItems = payload.maxNewsItems || 5;
+		const ignoreOlderThan = payload.ignoreOlderThan || 24 * 60 * 60 * 1000; // 24 hours
 		
 		// Mongolian news RSS feeds
 		const rssFeeds = [
 			"https://www.mnb.mn/rss",
-			"https://ubpost.mn/rss",
+			"https://ubpost.mn/rss", 
 			"https://www.news.mn/rss",
 			"https://www.ikon.mn/rss"
 		];
 		
 		console.log("Fetching Mongolian news from RSS feeds");
 		
-		// For now, let's create some sample Mongolian news items
-		const sampleNews = [
-			{
-				title: "Монгол Улсын Ерөнхийлөгч У.Хүрэлсүх ОХУ-д айлчлал хийж байна",
-				description: "Монгол Улсын Ерөнхийлөгч У.Хүрэлсүх Оросын Холбооны Улсад албан ёсны айлчлал хийж, хоёр орны хоорондын харилцаа, эдийн засгийн хамтын ажиллагааны талаар хэлэлцэх юм.",
-				source_name: "Монголын Үндэсний Телевиз",
-				pubDate: new Date().toISOString()
-			},
-			{
-				title: "Улаанбаатар хотод шинэ метроны төсөл эхэлж байна",
-				description: "Улаанбаатар хотын тээврийн асуудлыг шийдэхийн тулд метроны төсөл эхэлж, эхний шугамыг 2027 онд ашиглалтад оруулахаар төлөвлөж байна.",
-				source_name: "UB Post",
-				pubDate: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-			},
-			{
-				title: "Монголын эдийн засаг 2025 онд 5.2 хувиар өсөх төлөвтэй",
-				description: "Олон улсын валютын сангийн тайланд Монголын эдийн засаг 2025 онд 5.2 хувиар өсөх төлөвтэй байгааг тэмдэглэжээ.",
-				source_name: "News.mn",
-				pubDate: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
-			},
-			{
-				title: "Монголын хөлбөмбөгийн шигшээ баг Азийн цомд оролцоно",
-				description: "Монголын хөлбөмбөгийн шигшээ баг 2025 оны Азийн цомын тэмцээнд оролцож, анхны тоглолтоо Японтой хийхээр төлөвлөж байна.",
-				source_name: "Ikon.mn",
-				pubDate: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-			},
-			{
-				title: "Монголын уул уурхайн салбарт шинэ хөрөнгө оруулалт",
-				description: "Монголын уул уурхайн салбарт 2 тэрбум долларын шинэ хөрөнгө оруулалт хийгдэхээр төлөвлөж, энэ нь эдийн засгийн өсөлтөд эерэг нөлөө үзүүлэх юм.",
-				source_name: "Монголын Үндэсний Телевиз",
-				pubDate: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()
-			}
-		];
+		let allNewsItems = [];
+		let completedFeeds = 0;
 		
-		// Send sample news items
-		self.sendSocketNotification("MONGOLIAN_NEWS_ITEMS", sampleNews.slice(0, maxNewsItems));
+		// Function to process each RSS feed
+		const processFeed = (feedUrl) => {
+			return new Promise((resolve, reject) => {
+				const parser = new FeedMe();
+				const items = [];
+				
+				parser.on("item", (item) => {
+					const title = item.title;
+					const description = item.description || item.summary || item.content || "";
+					const pubdate = item.pubdate || item.published || item.updated || item["dc:date"] || item["a10:updated"];
+					const url = item.url || item.link || "";
+					const source = item.source || feedUrl;
+					
+					if (title && pubdate) {
+						items.push({
+							title: title,
+							description: description,
+							source_name: source,
+							pubDate: pubdate,
+							url: url
+						});
+					}
+				});
+				
+				parser.on("end", () => {
+					resolve(items);
+				});
+				
+				parser.on("error", (error) => {
+					console.error(`Error parsing feed ${feedUrl}:`, error);
+					resolve([]); // Return empty array on error
+				});
+				
+				// Make HTTP request
+				const protocol = feedUrl.startsWith("https") ? https : http;
+				protocol.get(feedUrl, (res) => {
+					if (res.statusCode === 200) {
+						res.pipe(parser);
+					} else {
+						console.error(`HTTP error ${res.statusCode} for ${feedUrl}`);
+						resolve([]);
+					}
+				}).on("error", (error) => {
+					console.error(`Request error for ${feedUrl}:`, error);
+					resolve([]);
+				});
+			});
+		};
+		
+		// Process all feeds
+		Promise.all(rssFeeds.map(processFeed))
+			.then((results) => {
+				// Flatten all results
+				results.forEach((feedItems, index) => {
+					console.log(`Feed ${index + 1} returned ${feedItems.length} items`);
+					allNewsItems = allNewsItems.concat(feedItems);
+				});
+				
+				console.log(`Total news items collected: ${allNewsItems.length}`);
+				
+				// Process and filter news items
+				const processedItems = self.processNewsItems(allNewsItems, maxNewsItems, ignoreOlderThan);
+				
+				if (processedItems.length === 0) {
+					console.log("No fresh news found, using fallback news");
+					// Fallback to sample news if no real news is available
+					const fallbackNews = [
+						{
+							title: "Монгол Улсын Ерөнхийлөгч У.Хүрэлсүх ОХУ-д айлчлал хийж байна",
+							description: "Монгол Улсын Ерөнхийлөгч У.Хүрэлсүх Оросын Холбооны Улсад албан ёсны айлчлал хийж, хоёр орны хоорондын харилцаа, эдийн засгийн хамтын ажиллагааны талаар хэлэлцэх юм.",
+							source_name: "Монголын Үндэсний Телевиз",
+							pubDate: new Date().toISOString()
+						}
+					];
+					self.sendSocketNotification("MONGOLIAN_NEWS_ITEMS", fallbackNews);
+				} else {
+					console.log(`Fetched ${processedItems.length} fresh news items`);
+					// Log the first few items for debugging
+					processedItems.slice(0, 3).forEach((item, index) => {
+						console.log(`News ${index + 1}: ${item.title} (${item.pubDate})`);
+					});
+					self.sendSocketNotification("MONGOLIAN_NEWS_ITEMS", processedItems);
+				}
+			})
+			.catch((error) => {
+				console.error("Error fetching news:", error);
+				self.sendSocketNotification("MONGOLIAN_NEWS_ERROR", "Failed to fetch news");
+			});
 	},
 
 	// Process news items.
 	processNewsItems: function(results, maxNewsItems, ignoreOlderThan) {
 		const now = new Date().getTime();
 		const cutoffTime = now - ignoreOlderThan;
+		const seenTitles = new Set();
 		
 		// Filter out old items and duplicates
 		const filteredItems = results.filter(function(item) {
@@ -86,7 +145,11 @@ module.exports = NodeHelper.create({
 			}
 			
 			// Check for duplicates (same title)
-			return !this.seenTitles || !this.seenTitles.has(item.title);
+			if (seenTitles.has(item.title)) {
+				return false;
+			}
+			seenTitles.add(item.title);
+			return true;
 		});
 
 		// Sort by publication date (newest first)
