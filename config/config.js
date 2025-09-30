@@ -156,7 +156,7 @@ let config = {
 			config: {
 				apiUrl: "https://calendar-app-production-6d2d.up.railway.app/api/magic-mirror/future-data",
 				updateInterval: 300000, // 5 minutes - no real-time updates
-				animationSpeed: 2000,
+				animationSpeed: 0,
 				statusFile: "/tmp/magicmirror_face_status.json", // Linux path
 				maxEvents: 2,
 				maxLists: 2, // Allow todo lists to be fetched
@@ -174,7 +174,7 @@ let config = {
 				updateInterval: 300000, // Check for updates every 5 minutes
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
-				animationSpeed: 1000,
+				animationSpeed: 0,
 				showCompleted: false,
 				maxItems: 0 // 0 = show all items (no limit)
 			}
@@ -187,7 +187,7 @@ let config = {
 				updateInterval: 300000, // Check for updates every 5 minutes
 				statusFile: "/tmp/magicmirror_face_status.json",
 				profilesFile: "user_profiles.json",
-				animationSpeed: 1000,
+				animationSpeed: 0,
 				maximumEntries: 5,
 				maximumNumberOfDays: 7,
 				displaySymbol: true,
@@ -209,7 +209,7 @@ let config = {
 				greetingStyle: "large bright", // CSS classes for greeting display
 				showDistance: true, // Show current distance
 				showStatus: true, // Show recognition status
-				animationSpeed: 1000, // Animation speed for greetings
+				animationSpeed: 0, // Disable animation to prevent flicker
 				// Personalized greetings for different people
 				greetings: {
 					"default": "Тавтай морил {name}!",

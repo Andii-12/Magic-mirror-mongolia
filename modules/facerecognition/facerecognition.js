@@ -94,48 +94,26 @@ Module.register("facerecognition", {
 	// Process status data from Python script
 	processStatusData: function(data) {
 		const previousPerson = this.currentPerson;
-		const previousDistance = this.currentDistance;
 		const previousActive = this.isActive;
+		const previousStatus = this.currentStatus;
 
-		// Only log significant changes
-		if (previousPerson !== data.person || previousActive !== data.active) {
-			console.log("Face Recognition: Status change - Person:", data.person, "Active:", data.active, "Distance:", data.distance);
-		}
-		
+		// Trust backend status entirely to avoid UI oscillation
 		this.currentDistance = data.distance || 0;
-		this.currentPerson = data.person || null;
-		this.isActive = data.active || false;
+		this.currentPerson = (typeof data.person === "string" && data.person.length > 0) ? data.person : null;
+		this.isActive = !!data.active;
+		this.currentStatus = data.status || (this.isActive ? (this.currentPerson ? "recognized" : "detecting") : "waiting");
 
-		// Handle proximity detection
-		if (this.currentDistance < this.config.proximityThreshold) {
-			// Object detected within threshold
-			if (!previousActive) {
-				console.log("Object detected within", this.config.proximityThreshold, "cm");
-				this.onProximityDetected();
-			}
-
-			// Handle face recognition - only trigger on new recognition
-			if (this.currentPerson && this.currentPerson !== previousPerson) {
-				console.log("Face recognized:", this.currentPerson);
-				this.onFaceRecognized(this.currentPerson);
-			} else if (this.currentPerson && this.currentPerson === previousPerson) {
-				// Face already recognized, maintain the state
-				// Clear any existing greeting timer to keep showing the greeting
-				if (this.greetingTimer) {
-					clearTimeout(this.greetingTimer);
-					this.greetingTimer = null;
-				}
-			}
-		} else {
-			// Object moved away
-			if (previousActive) {
-				console.log("Object moved away, starting shutdown timer");
-				this.onProximityLost();
-			}
+		// Fire recognition notification only on first recognition or person change
+		if (this.currentPerson && this.currentPerson !== previousPerson) {
+			console.log("Face recognized:", this.currentPerson);
+			this.sendNotification("FACE_RECOGNIZED", {
+				person: this.currentPerson,
+				distance: this.currentDistance
+			});
 		}
 
-		// Only update DOM if there's a significant change
-		if (previousPerson !== this.currentPerson || previousActive !== this.isActive) {
+		// Update DOM only when person/active/status actually changes
+		if (previousPerson !== this.currentPerson || previousActive !== this.isActive || previousStatus !== this.currentStatus) {
 			this.updateDom(this.config.animationSpeed);
 		}
 	},
@@ -215,26 +193,22 @@ Module.register("facerecognition", {
 		const wrapper = document.createElement("div");
 		wrapper.className = "facerecognition";
 
-		console.log("Face Recognition: getDom called - Person:", this.currentPerson, "Active:", this.isActive, "Distance:", this.currentDistance);
-
-		// Show different messages based on status
+		// Show different messages based on backend-driven status
+		// Keep greeting as long as person is recognized; only show "Ойртож зогсоорой" after backend timeout
 		if (this.currentPerson && this.currentPerson !== "Unknown") {
-			// Person recognized - show name in top-right
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-right";
-			statusElement.innerHTML = `Сайн уу, ${this.currentPerson}`; // "Hello" in Mongolian
+			statusElement.innerHTML = `Сайн уу, ${this.currentPerson}`;
 			wrapper.appendChild(statusElement);
-		} else if (this.isActive && !this.currentPerson) {
-			// Close to sensor but face not recognized yet - show "scanning face" message
+		} else if (this.currentStatus === "detecting") {
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Царай уншиж байна"; // "Scanning face" in Mongolian
+			statusElement.innerHTML = "Царай уншиж байна";
 			wrapper.appendChild(statusElement);
 		} else {
-			// Far from sensor or not active - show "come closer" message
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Ойртож зогсоорой"; // "Please stand closer" in Mongolian
+			statusElement.innerHTML = "Ойртож зогсоорой";
 			wrapper.appendChild(statusElement);
 		}
 

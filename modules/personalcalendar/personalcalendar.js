@@ -66,7 +66,7 @@ Module.register("personalcalendar", {
 				this.userProfile = null;
 				this.events = [];
 				console.log("Personal Calendar: User cleared");
-				this.updateDom(this.config.animationSpeed);
+			this.updateDom(0);
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
 			// Get events from the API data
@@ -98,7 +98,7 @@ Module.register("personalcalendar", {
 				this.sortEventsByDate();
 				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
 				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0);
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
 				console.log("Personal Calendar: Received data but no current user, ignoring");
@@ -106,7 +106,7 @@ Module.register("personalcalendar", {
 				// Clear data if no user specified
 				this.events = [];
 				console.log("Personal Calendar: Cleared events (no user)");
-				this.updateDom(this.config.animationSpeed);
+				this.updateDom(0);
 			}
 		}
 	},
