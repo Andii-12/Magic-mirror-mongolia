@@ -22,8 +22,28 @@ Module.register("personaltodo", {
 		this.todoItems = [];
 		this.userProfiles = null;
 		this.lastValidData = null; // Store last valid data to prevent loss
+		this._lastRenderKey = ""; // Used to prevent unnecessary re-renders (blinking)
 		this.loadUserProfiles();
 		this.startStatusCheck();
+	},
+
+	// Compute a stable signature for current render state
+	_computeRenderKey: function() {
+		try {
+			const itemsKey = (this.todoItems || []).map(i => `${i.id || i.title || ""}|${i.completed ? 1 : 0}`).join(";");
+			return `${this.currentUser || ""}::${itemsKey}`;
+		} catch (e) {
+			return String(Date.now());
+		}
+	},
+
+	// Only update DOM if the render key actually changed
+	maybeUpdateDom: function(animation) {
+		const key = this._computeRenderKey();
+		if (key !== this._lastRenderKey) {
+			this._lastRenderKey = key;
+			this.updateDom(animation || 0);
+		}
 	},
 
 	// Load user profiles from JSON file
@@ -90,7 +110,7 @@ Module.register("personaltodo", {
 				this.todoItems = [];
 				this.lastValidData = null; // Clear cached data too
 				console.log("Personal Todo: User cleared (logout or no detection)");
-				this.updateDom(0); // Instant update, no animation
+				this.maybeUpdateDom(0); // Prevent blinking
 			} else if (payload.person === this.currentUser) {
 				// Same user, just update status - don't clear data
 				console.log("Personal Todo: Same user, maintaining data");
@@ -162,7 +182,7 @@ Module.register("personaltodo", {
 					items: [...this.todoItems] // Create a copy
 				};
 				
-				this.updateDom(0); // Instant update, no animation
+				this.maybeUpdateDom(0); // Prevent blinking
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
 				console.log("Personal Todo: Received data but no current user, ignoring");
@@ -170,7 +190,7 @@ Module.register("personaltodo", {
 				// Clear data if no user specified
 				this.todoItems = [];
 				console.log("Personal Todo: Cleared items (no user)");
-				this.updateDom(0); // Instant update, no animation
+				this.maybeUpdateDom(0); // Prevent blinking
 			}
 		}
 	},
@@ -190,7 +210,7 @@ Module.register("personaltodo", {
 			if (payload.person && payload.person !== this.currentUser) {
 				// Clear old data only when user actually changes
 				this.todoItems = [];
-				this.updateDom(0); // Instant update, no animation
+			this.maybeUpdateDom(0); // Prevent blinking
 				
 				this.currentUser = payload.person;
 				console.log("Personal Todo: User changed to", this.currentUser);
@@ -202,7 +222,7 @@ Module.register("personaltodo", {
 				this.todoItems = [];
 				this.lastValidData = null; // Clear cached data too
 				console.log("Personal Todo: User cleared (logout or no detection)");
-				this.updateDom(0); // Instant update, no animation
+				this.maybeUpdateDom(0); // Prevent blinking
 			} else if (payload.person === this.currentUser) {
 				// Same user, just update status - don't clear data
 				console.log("Personal Todo: Same user, maintaining data");
@@ -239,7 +259,7 @@ Module.register("personaltodo", {
 					items: [...this.todoItems] // Create a copy
 				};
 				
-				this.updateDom(0); // Instant update, no animation
+			this.maybeUpdateDom(0); // Prevent blinking
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
 				console.log("Personal Todo: Received data but no current user, ignoring");
@@ -301,7 +321,7 @@ Module.register("personaltodo", {
 			this.todoItems = [];
 		}
 
-		this.updateDom(this.config.animationSpeed);
+		this.maybeUpdateDom(this.config.animationSpeed);
 	},
 
 	// Filter tasks to show only today's tasks
