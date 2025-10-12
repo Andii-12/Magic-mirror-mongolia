@@ -54,7 +54,6 @@ class FaceRecognitionSystem:
         self.camera = None  # Reuse camera instance
         self.recognition_locked = False  # Prevent re-recognition until user leaves
         self.photo_saved_this_session = False  # Track if photo was saved for current recognition
-        self.last_captured_frame = None  # Store frame from recognition for skin photo
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -296,55 +295,85 @@ class FaceRecognitionSystem:
             
             # Real camera capture for Raspberry Pi - Try multiple methods
             
-            # Method 0: Use already captured frame from face recognition (BEST!)
-            print(f"[INFO] Method 0: Using frame from face recognition...")
+            # Method 0: Capture NEW high-res photo with Picamera2 (BEST for quality!)
+            print(f"[INFO] Method 0: Capturing high-res photo with Picamera2...")
             try:
-                if hasattr(self, 'last_captured_frame') and self.last_captured_frame is not None:
-                    print(f"[INFO] Found existing frame from recognition")
+                if self.camera is not None:
+                    print(f"[INFO] Using Raspberry Pi Camera Module for high-res capture")
                     
-                    # Get the frame
-                    frame = self.last_captured_frame
-                    print(f"[INFO] Frame shape: {frame.shape}")
+                    # Stop the current camera configuration
+                    try:
+                        self.camera.stop()
+                    except:
+                        pass
                     
-                    # Upscale to higher resolution if needed
-                    current_height, current_width = frame.shape[:2]
-                    if current_width < 1920 or current_height < 1080:
-                        print(f"[INFO] Upscaling from {current_width}x{current_height} to 1920x1080...")
-                        frame = cv2.resize(frame, (1920, 1080), interpolation=cv2.INTER_CUBIC)
+                    # Create high-resolution still configuration
+                    # Pi Camera Module v2 can do 3280x2464, but we'll use 1920x1080 for speed
+                    still_config = self.camera.create_still_configuration(
+                        main={"size": (1920, 1080), "format": "RGB888"},
+                        buffer_count=1
+                    )
                     
-                    # Convert RGB to BGR for saving
-                    if len(frame.shape) == 3 and frame.shape[2] == 3:
-                        # Check if it's RGB or BGR
-                        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                    else:
-                        frame_bgr = frame
+                    print(f"[INFO] Configuring camera for high-res still capture...")
+                    self.camera.configure(still_config)
+                    self.camera.start()
+                    time.sleep(0.3)  # Let camera adjust
+                    
+                    print(f"[INFO] Capturing high-res frame...")
+                    frame = self.camera.capture_array("main")
+                    print(f"[INFO] Captured frame shape: {frame.shape}")
+                    
+                    # Picamera2 returns RGB format, convert to BGR for OpenCV
+                    print(f"[INFO] Converting RGB to BGR for saving...")
+                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                     
                     # Save the image
-                    print(f"[INFO] Saving image to: {photo_path}")
+                    print(f"[INFO] Saving high-quality image...")
                     success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    
+                    # Restart preview configuration for face recognition
+                    try:
+                        self.camera.stop()
+                        preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                        self.camera.configure(preview_config)
+                        self.camera.start()
+                        print(f"[INFO] Camera reset to preview mode")
+                    except Exception as e:
+                        print(f"[WARNING] Failed to reset camera: {e}")
                     
                     if success and os.path.exists(photo_path):
                         file_size = os.path.getsize(photo_path)
-                        print(f"✅ Photo saved using recognition frame!")
+                        print(f"✅ High-res photo captured successfully!")
                         print(f"   Path: {photo_path}")
                         print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
                         print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                         print(f"   Person: {person_name}")
-                        print(f"   Method: Reused recognition frame")
-                        print(f"   Resolution: 1920x1080 (upscaled)")
+                        print(f"   Method: Picamera2 high-res capture")
+                        print(f"   Resolution: 1920x1080")
+                        print(f"   Color: Full RGB color")
                         print(f"{'='*60}\n")
                         
-                        # Clear the frame
-                        self.last_captured_frame = None
                         self.photo_saved_this_session = True
                         return True
                     else:
-                        print(f"[WARNING] Failed to save frame")
+                        print(f"[WARNING] Failed to save photo")
                 else:
-                    print(f"[WARNING] No captured frame available")
+                    print(f"[WARNING] Camera not initialized")
                     
             except Exception as e:
                 print(f"[WARNING] Method 0 failed: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Try to restart camera in preview mode
+                try:
+                    if self.camera is not None:
+                        self.camera.stop()
+                        preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                        self.camera.configure(preview_config)
+                        self.camera.start()
+                except:
+                    pass
             
             # Method 1: Try libcamera-still (system command - most reliable)
             print(f"[INFO] Method 1: Trying libcamera-still...")
@@ -548,10 +577,6 @@ class FaceRecognitionSystem:
 
                 # Capture frame
                 frame = self.camera.capture_array()
-                
-                # Store the captured frame for skin photo (before converting to gray)
-                self.last_captured_frame = frame.copy()
-                
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 
                 # Optimized face detection - faster parameters
