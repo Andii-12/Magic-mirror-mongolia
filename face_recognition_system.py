@@ -195,28 +195,58 @@ class FaceRecognitionSystem:
     def save_skin_photo(self, person_name):
         """Save high-resolution photo after successful face recognition"""
         try:
+            print(f"\n{'='*60}")
+            print(f"[SKIN PHOTO] Starting photo capture for: {person_name}")
+            print(f"{'='*60}")
+            
             # Skip if photo already saved for this session
             if self.photo_saved_this_session:
                 print(f"[INFO] Photo already saved for this recognition session")
                 return False
             
-            # Skip on Windows (no camera)
-            if platform.system() == "Windows":
-                print("[INFO] Windows detected - skipping photo save")
-                return False
+            # Check platform
+            current_platform = platform.system()
+            print(f"[INFO] Platform detected: {current_platform}")
+            
+            # Skip on Windows (no camera) - but allow if SKIN_PHOTO_TEST env variable is set
+            if current_platform == "Windows":
+                if not os.environ.get('SKIN_PHOTO_TEST'):
+                    print("[INFO] Windows detected - skipping photo save")
+                    print("[INFO] To test on Windows, set SKIN_PHOTO_TEST=1 environment variable")
+                    return False
+                else:
+                    print("[WARNING] Windows test mode - photo will be simulated")
             
             # Check if camera is available
-            if self.camera is None:
+            if self.camera is None and current_platform != "Windows":
                 print("[ERROR] Camera not initialized, cannot save photo")
                 return False
             
             # Create directory structure: Skin/{PersonName}/
-            skin_base_dir = "Skin"
+            # Use absolute path to be sure where files are saved
+            skin_base_dir = os.path.join(os.getcwd(), "Skin")
             person_dir = os.path.join(skin_base_dir, person_name)
             
+            print(f"[INFO] Base directory: {skin_base_dir}")
+            print(f"[INFO] Person directory: {person_dir}")
+            
             # Create directories if they don't exist
-            os.makedirs(person_dir, exist_ok=True)
-            print(f"[INFO] Saving skin photo to: {person_dir}")
+            try:
+                os.makedirs(person_dir, exist_ok=True)
+                print(f"✅ Directories created/verified: {person_dir}")
+                
+                # Verify directory was actually created
+                if os.path.isdir(person_dir):
+                    print(f"✅ Directory exists and is accessible")
+                else:
+                    print(f"[ERROR] Directory not accessible: {person_dir}")
+                    return False
+                    
+            except Exception as e:
+                print(f"[ERROR] Failed to create directory: {e}")
+                import traceback
+                traceback.print_exc()
+                return False
             
             # Get current date for filename (YYYY-MM-DD format)
             current_date = datetime.now().strftime("%Y-%m-%d")
@@ -225,36 +255,91 @@ class FaceRecognitionSystem:
             photo_filename = f"{current_date}.jpg"
             photo_path = os.path.join(person_dir, photo_filename)
             
+            print(f"[INFO] Photo filename: {photo_filename}")
+            print(f"[INFO] Full path: {photo_path}")
+            
             # If file exists, add time to make it unique
             if os.path.exists(photo_path):
+                print(f"[INFO] File already exists, adding timestamp")
                 current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                 photo_filename = f"{current_datetime}.jpg"
                 photo_path = os.path.join(person_dir, photo_filename)
+                print(f"[INFO] New filename: {photo_filename}")
             
             # Capture high-resolution frame
             # Use higher resolution for skin photos (1920x1080 if supported, fallback to 1280x720)
+            
+            # Windows test mode - create dummy file
+            if current_platform == "Windows" and os.environ.get('SKIN_PHOTO_TEST'):
+                print(f"[TEST MODE] Creating test file...")
+                try:
+                    # Create a simple test file
+                    with open(photo_path, 'w') as f:
+                        f.write(f"Test photo for {person_name} on {current_date}\n")
+                    
+                    # Verify file was created
+                    if os.path.exists(photo_path):
+                        file_size = os.path.getsize(photo_path)
+                        print(f"✅ Test file created: {photo_path}")
+                        print(f"   File size: {file_size} bytes")
+                        self.photo_saved_this_session = True
+                        return True
+                    else:
+                        print(f"[ERROR] Test file not created")
+                        return False
+                except Exception as e:
+                    print(f"[ERROR] Failed to create test file: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return False
+            
+            # Real camera capture for Raspberry Pi
             try:
+                print(f"[INFO] Reconfiguring camera for high-res capture...")
                 # Temporarily reconfigure camera for high-res capture
                 config = self.camera.create_still_configuration(main={"size": (1920, 1080)})
                 self.camera.configure(config)
                 time.sleep(0.2)  # Brief stabilization
+                print(f"[INFO] Camera configured to 1920x1080")
                 
                 # Capture high-res frame
+                print(f"[INFO] Capturing frame...")
                 frame = self.camera.capture_array()
+                print(f"[INFO] Frame captured: {frame.shape}")
                 
                 # Convert from RGB to BGR for OpenCV
+                print(f"[INFO] Converting color space...")
                 frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 
                 # Save the image
-                cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                print(f"[INFO] Writing image to disk...")
+                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                
+                if not success:
+                    print(f"[ERROR] cv2.imwrite returned False")
+                    return False
+                
+                # Verify file was actually created
+                if os.path.exists(photo_path):
+                    file_size = os.path.getsize(photo_path)
+                    print(f"✅ File created successfully!")
+                    print(f"   Path: {photo_path}")
+                    print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                else:
+                    print(f"[ERROR] File does not exist after write: {photo_path}")
+                    return False
                 
                 # Reconfigure back to preview resolution for face recognition
+                print(f"[INFO] Reconfiguring camera back to preview mode...")
                 config = self.camera.create_preview_configuration(main={"size": (640, 480)})
                 self.camera.configure(config)
                 time.sleep(0.2)
                 
-                print(f"✅ Skin photo saved successfully: {photo_path}")
+                print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
+                print(f"   Person: {person_name}")
+                print(f"   File: {photo_path}")
                 print(f"   Resolution: 1920x1080, Quality: 95%")
+                print(f"{'='*60}\n")
                 
                 # Mark photo as saved for this session
                 self.photo_saved_this_session = True
@@ -262,37 +347,70 @@ class FaceRecognitionSystem:
                 
             except Exception as e:
                 # Fallback to lower resolution if high-res fails
-                print(f"[WARNING] High-res capture failed: {e}, trying lower resolution...")
+                print(f"\n[WARNING] High-res capture failed: {e}")
+                import traceback
+                traceback.print_exc()
+                print(f"[INFO] Trying lower resolution (1280x720)...")
+                
                 try:
                     config = self.camera.create_still_configuration(main={"size": (1280, 720)})
                     self.camera.configure(config)
                     time.sleep(0.2)
+                    print(f"[INFO] Camera configured to 1280x720")
                     
                     frame = self.camera.capture_array()
+                    print(f"[INFO] Frame captured: {frame.shape}")
+                    
                     frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    
+                    if not success:
+                        print(f"[ERROR] cv2.imwrite returned False")
+                        return False
+                    
+                    # Verify file was created
+                    if os.path.exists(photo_path):
+                        file_size = os.path.getsize(photo_path)
+                        print(f"✅ File created successfully (720p)!")
+                        print(f"   Path: {photo_path}")
+                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                    else:
+                        print(f"[ERROR] File does not exist after write")
+                        return False
                     
                     # Reconfigure back to preview resolution
                     config = self.camera.create_preview_configuration(main={"size": (640, 480)})
                     self.camera.configure(config)
                     time.sleep(0.2)
                     
-                    print(f"✅ Skin photo saved (720p): {photo_path}")
+                    print(f"\n✅ SKIN PHOTO SAVED (720p)!")
+                    print(f"   Person: {person_name}")
+                    print(f"   File: {photo_path}")
+                    print(f"   Resolution: 1280x720, Quality: 95%")
+                    print(f"{'='*60}\n")
+                    
                     self.photo_saved_this_session = True
                     return True
                     
                 except Exception as e2:
-                    print(f"[ERROR] Failed to save photo at any resolution: {e2}")
+                    print(f"\n[ERROR] Failed to save photo at any resolution: {e2}")
+                    import traceback
+                    traceback.print_exc()
+                    
                     # Ensure camera is back to preview config
                     try:
                         config = self.camera.create_preview_configuration(main={"size": (640, 480)})
                         self.camera.configure(config)
-                    except:
-                        pass
+                        print(f"[INFO] Camera reset to preview mode")
+                    except Exception as e3:
+                        print(f"[ERROR] Failed to reset camera: {e3}")
                     return False
             
         except Exception as e:
-            print(f"[ERROR] Error saving skin photo: {e}")
+            print(f"\n[ERROR] Error saving skin photo: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"{'='*60}\n")
             return False
 
     def recognize_face_with_camera(self):
