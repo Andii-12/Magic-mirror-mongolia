@@ -481,6 +481,10 @@ class FaceRecognitionSystem:
                     else:
                         # Simulate recognition for testing
                         print("[INFO] Face recognition simulated - returning 'Andii'")
+                        
+                        # Save photo even in simulation mode
+                        self.save_skin_photo("Andii")
+                        
                         return "Andii"
                 else:
                     print("[INFO] No face detected in frame")
