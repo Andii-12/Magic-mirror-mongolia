@@ -293,121 +293,178 @@ class FaceRecognitionSystem:
                     traceback.print_exc()
                     return False
             
-            # Real camera capture for Raspberry Pi
+            # Real camera capture for Raspberry Pi - Try multiple methods
+            
+            # Method 1: Try libcamera-still (system command - most reliable)
+            print(f"[INFO] Method 1: Trying libcamera-still...")
             try:
-                print(f"[INFO] Reconfiguring camera for high-res capture...")
-                # Temporarily reconfigure camera for high-res capture
-                config = self.camera.create_still_configuration(main={"size": (1920, 1080)})
-                self.camera.configure(config)
-                time.sleep(0.2)  # Brief stabilization
-                print(f"[INFO] Camera configured to 1920x1080")
+                import subprocess
                 
-                # Capture high-res frame
-                print(f"[INFO] Capturing frame...")
-                frame = self.camera.capture_array()
-                print(f"[INFO] Frame captured: {frame.shape}")
+                # Use libcamera-still to capture high-res photo
+                cmd = [
+                    "libcamera-still",
+                    "-o", photo_path,
+                    "--width", "1920",
+                    "--height", "1080",
+                    "-t", "1000",  # 1 second timeout
+                    "-n"  # No preview
+                ]
                 
-                # Convert from RGB to BGR for OpenCV
-                print(f"[INFO] Converting color space...")
-                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                 
-                # Save the image
-                print(f"[INFO] Writing image to disk...")
-                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                
-                if not success:
-                    print(f"[ERROR] cv2.imwrite returned False")
-                    return False
-                
-                # Verify file was actually created
-                if os.path.exists(photo_path):
+                if result.returncode == 0 and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
-                    print(f"✅ File created successfully!")
+                    print(f"✅ Photo captured with libcamera-still!")
                     print(f"   Path: {photo_path}")
                     print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
+                    print(f"   Person: {person_name}")
+                    print(f"   Method: libcamera-still")
+                    print(f"   Resolution: 1920x1080")
+                    print(f"{'='*60}\n")
+                    self.photo_saved_this_session = True
+                    return True
                 else:
-                    print(f"[ERROR] File does not exist after write: {photo_path}")
-                    return False
-                
-                # Reconfigure back to preview resolution for face recognition
-                print(f"[INFO] Reconfiguring camera back to preview mode...")
-                config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                self.camera.configure(config)
-                time.sleep(0.2)
-                
-                print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
-                print(f"   Person: {person_name}")
-                print(f"   File: {photo_path}")
-                print(f"   Resolution: 1920x1080, Quality: 95%")
-                print(f"{'='*60}\n")
-                
-                # Mark photo as saved for this session
-                self.photo_saved_this_session = True
-                return True
-                
+                    print(f"[WARNING] libcamera-still failed: {result.stderr}")
+                    
             except Exception as e:
-                # Fallback to lower resolution if high-res fails
-                print(f"\n[WARNING] High-res capture failed: {e}")
-                import traceback
-                traceback.print_exc()
-                print(f"[INFO] Trying lower resolution (1280x720)...")
+                print(f"[WARNING] libcamera-still method failed: {e}")
+            
+            # Method 2: Try fswebcam (alternative camera tool)
+            print(f"[INFO] Method 2: Trying fswebcam...")
+            try:
+                import subprocess
                 
-                try:
-                    config = self.camera.create_still_configuration(main={"size": (1280, 720)})
+                cmd = [
+                    "fswebcam",
+                    "-r", "1920x1080",
+                    "--jpeg", "95",
+                    "--no-banner",
+                    photo_path
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                
+                if os.path.exists(photo_path):
+                    file_size = os.path.getsize(photo_path)
+                    print(f"✅ Photo captured with fswebcam!")
+                    print(f"   Path: {photo_path}")
+                    print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
+                    print(f"   Person: {person_name}")
+                    print(f"   Method: fswebcam")
+                    print(f"   Resolution: 1920x1080")
+                    print(f"{'='*60}\n")
+                    self.photo_saved_this_session = True
+                    return True
+                else:
+                    print(f"[WARNING] fswebcam failed")
+                    
+            except Exception as e:
+                print(f"[WARNING] fswebcam method failed: {e}")
+            
+            # Method 3: Try Picamera2 (original method)
+            print(f"[INFO] Method 3: Trying Picamera2...")
+            try:
+                if self.camera is not None:
+                    print(f"[INFO] Reconfiguring camera for high-res capture...")
+                    config = self.camera.create_still_configuration(main={"size": (1920, 1080)})
                     self.camera.configure(config)
                     time.sleep(0.2)
-                    print(f"[INFO] Camera configured to 1280x720")
+                    print(f"[INFO] Camera configured to 1920x1080")
                     
+                    # Capture high-res frame
+                    print(f"[INFO] Capturing frame...")
                     frame = self.camera.capture_array()
                     print(f"[INFO] Frame captured: {frame.shape}")
                     
+                    # Convert from RGB to BGR for OpenCV
+                    print(f"[INFO] Converting color space...")
                     frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    
+                    # Save the image
+                    print(f"[INFO] Writing image to disk...")
                     success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
                     
                     if not success:
                         print(f"[ERROR] cv2.imwrite returned False")
-                        return False
+                        raise Exception("cv2.imwrite failed")
                     
                     # Verify file was created
                     if os.path.exists(photo_path):
                         file_size = os.path.getsize(photo_path)
-                        print(f"✅ File created successfully (720p)!")
+                        print(f"✅ File created successfully!")
                         print(f"   Path: {photo_path}")
                         print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
                     else:
                         print(f"[ERROR] File does not exist after write")
-                        return False
+                        raise Exception("File not created")
                     
                     # Reconfigure back to preview resolution
+                    print(f"[INFO] Reconfiguring camera back to preview mode...")
                     config = self.camera.create_preview_configuration(main={"size": (640, 480)})
                     self.camera.configure(config)
                     time.sleep(0.2)
                     
-                    print(f"\n✅ SKIN PHOTO SAVED (720p)!")
+                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                     print(f"   Person: {person_name}")
+                    print(f"   Method: Picamera2")
                     print(f"   File: {photo_path}")
-                    print(f"   Resolution: 1280x720, Quality: 95%")
+                    print(f"   Resolution: 1920x1080, Quality: 95%")
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
                     return True
+                else:
+                    print(f"[WARNING] Camera object is None")
                     
-                except Exception as e2:
-                    print(f"\n[ERROR] Failed to save photo at any resolution: {e2}")
-                    import traceback
-                    traceback.print_exc()
-                    
-                    # Ensure camera is back to preview config
-                    try:
-                        config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                        self.camera.configure(config)
-                        print(f"[INFO] Camera reset to preview mode")
-                    except Exception as e3:
-                        print(f"[ERROR] Failed to reset camera: {e3}")
-                    return False
+            except Exception as e:
+                print(f"[WARNING] Picamera2 method failed: {e}")
             
+            # Method 4: Try OpenCV VideoCapture
+            print(f"[INFO] Method 4: Trying OpenCV VideoCapture...")
+            try:
+                cap = cv2.VideoCapture(0)
+                
+                if cap.isOpened():
+                    # Set resolution
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+                    
+                    # Capture frame
+                    ret, frame = cap.read()
+                    cap.release()
+                    
+                    if ret and frame is not None:
+                        # Save image
+                        success = cv2.imwrite(photo_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                        
+                        if success and os.path.exists(photo_path):
+                            file_size = os.path.getsize(photo_path)
+                            print(f"✅ Photo captured with OpenCV!")
+                            print(f"   Path: {photo_path}")
+                            print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                            print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
+                            print(f"   Person: {person_name}")
+                            print(f"   Method: OpenCV")
+                            print(f"{'='*60}\n")
+                            self.photo_saved_this_session = True
+                            return True
+                else:
+                    print(f"[WARNING] Could not open camera with OpenCV")
+                    
+            except Exception as e:
+                print(f"[WARNING] OpenCV method failed: {e}")
+            
+            # All methods failed
+            print(f"\n[ERROR] All camera capture methods failed!")
+            print(f"Tried: libcamera-still, fswebcam, Picamera2, OpenCV")
+            print(f"Camera hardware may not be properly connected or enabled")
+            return False
+        
         except Exception as e:
-            print(f"\n[ERROR] Error saving skin photo: {e}")
+            # Overall error handler
+            print(f"\n[ERROR] Unexpected error in save_skin_photo: {e}")
             import traceback
             traceback.print_exc()
             print(f"{'='*60}\n")
