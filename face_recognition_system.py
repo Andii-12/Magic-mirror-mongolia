@@ -309,23 +309,21 @@ class FaceRecognitionSystem:
                     
                     # Create high-resolution still configuration
                     # Pi Camera Module v2 can do 3280x2464, but we'll use 1920x1080 for speed
+                    # Use BGR888 format directly - no conversion needed!
                     still_config = self.camera.create_still_configuration(
-                        main={"size": (1920, 1080), "format": "RGB888"},
+                        main={"size": (1920, 1080), "format": "BGR888"},
                         buffer_count=1
                     )
                     
                     print(f"[INFO] Configuring camera for high-res still capture...")
                     self.camera.configure(still_config)
                     self.camera.start()
-                    time.sleep(0.3)  # Let camera adjust
+                    time.sleep(0.5)  # Let camera adjust and auto-balance
                     
-                    print(f"[INFO] Capturing high-res frame...")
-                    frame = self.camera.capture_array("main")
-                    print(f"[INFO] Captured frame shape: {frame.shape}")
-                    
-                    # Picamera2 returns RGB format, convert to BGR for OpenCV
-                    print(f"[INFO] Converting RGB to BGR for saving...")
-                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    print(f"[INFO] Capturing high-res frame in BGR format...")
+                    frame_bgr = self.camera.capture_array("main")
+                    print(f"[INFO] Captured frame shape: {frame_bgr.shape}")
+                    print(f"[INFO] Frame format: BGR888 (ready for OpenCV)")
                     
                     # Save the image
                     print(f"[INFO] Saving high-quality image...")
