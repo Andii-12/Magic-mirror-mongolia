@@ -53,6 +53,7 @@ class FaceRecognitionSystem:
         self.face_recognition_attempted = False
         self.camera = None  # Reuse camera instance
         self.recognition_locked = False  # Prevent re-recognition until user leaves
+        self.photo_saved_this_session = False  # Track if photo was saved for current recognition
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -191,6 +192,109 @@ class FaceRecognitionSystem:
                 print(f"[ERROR] Camera initialization failed: {e}")
                 self.camera = None
 
+    def save_skin_photo(self, person_name):
+        """Save high-resolution photo after successful face recognition"""
+        try:
+            # Skip if photo already saved for this session
+            if self.photo_saved_this_session:
+                print(f"[INFO] Photo already saved for this recognition session")
+                return False
+            
+            # Skip on Windows (no camera)
+            if platform.system() == "Windows":
+                print("[INFO] Windows detected - skipping photo save")
+                return False
+            
+            # Check if camera is available
+            if self.camera is None:
+                print("[ERROR] Camera not initialized, cannot save photo")
+                return False
+            
+            # Create directory structure: Skin/{PersonName}/
+            skin_base_dir = "Skin"
+            person_dir = os.path.join(skin_base_dir, person_name)
+            
+            # Create directories if they don't exist
+            os.makedirs(person_dir, exist_ok=True)
+            print(f"[INFO] Saving skin photo to: {person_dir}")
+            
+            # Get current date for filename (YYYY-MM-DD format)
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Check if photo with this date already exists
+            photo_filename = f"{current_date}.jpg"
+            photo_path = os.path.join(person_dir, photo_filename)
+            
+            # If file exists, add time to make it unique
+            if os.path.exists(photo_path):
+                current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                photo_filename = f"{current_datetime}.jpg"
+                photo_path = os.path.join(person_dir, photo_filename)
+            
+            # Capture high-resolution frame
+            # Use higher resolution for skin photos (1920x1080 if supported, fallback to 1280x720)
+            try:
+                # Temporarily reconfigure camera for high-res capture
+                config = self.camera.create_still_configuration(main={"size": (1920, 1080)})
+                self.camera.configure(config)
+                time.sleep(0.2)  # Brief stabilization
+                
+                # Capture high-res frame
+                frame = self.camera.capture_array()
+                
+                # Convert from RGB to BGR for OpenCV
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                
+                # Save the image
+                cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                
+                # Reconfigure back to preview resolution for face recognition
+                config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                self.camera.configure(config)
+                time.sleep(0.2)
+                
+                print(f"✅ Skin photo saved successfully: {photo_path}")
+                print(f"   Resolution: 1920x1080, Quality: 95%")
+                
+                # Mark photo as saved for this session
+                self.photo_saved_this_session = True
+                return True
+                
+            except Exception as e:
+                # Fallback to lower resolution if high-res fails
+                print(f"[WARNING] High-res capture failed: {e}, trying lower resolution...")
+                try:
+                    config = self.camera.create_still_configuration(main={"size": (1280, 720)})
+                    self.camera.configure(config)
+                    time.sleep(0.2)
+                    
+                    frame = self.camera.capture_array()
+                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    
+                    # Reconfigure back to preview resolution
+                    config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                    self.camera.configure(config)
+                    time.sleep(0.2)
+                    
+                    print(f"✅ Skin photo saved (720p): {photo_path}")
+                    self.photo_saved_this_session = True
+                    return True
+                    
+                except Exception as e2:
+                    print(f"[ERROR] Failed to save photo at any resolution: {e2}")
+                    # Ensure camera is back to preview config
+                    try:
+                        config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                        self.camera.configure(config)
+                    except:
+                        pass
+                    return False
+            
+        except Exception as e:
+            print(f"[ERROR] Error saving skin photo: {e}")
+            return False
+
     def recognize_face_with_camera(self):
         """Ultra-fast face recognition with camera reuse"""
         try:
@@ -249,6 +353,10 @@ class FaceRecognitionSystem:
                         # More lenient confidence threshold for LBPH
                         if name != "Unknown" and confidence < 80:  # Much lower threshold
                             print(f"✅ Face recognition successful: {name}")
+                            
+                            # Save high-resolution skin photo after successful recognition
+                            self.save_skin_photo(name)
+                            
                             return name
                         else:
                             print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
@@ -386,6 +494,7 @@ class FaceRecognitionSystem:
                         self.current_person = None  # Reset person
                         self.face_recognition_attempted = False
                         self.camera_opened = False
+                        self.photo_saved_this_session = False  # Reset for new session
                         self.is_active = True
                         # Pre-warm camera for faster recognition
                         self.initialize_camera()
@@ -459,6 +568,7 @@ class FaceRecognitionSystem:
                             self.camera_opened = False
                             self.shutdown_timer = None
                             self.recognition_locked = False  # Allow recognition next time
+                            self.photo_saved_this_session = False  # Allow new photo on next recognition
                             self.update_status_file()
                         else:
                             # Still in timeout period - show countdown
