@@ -14,6 +14,7 @@ import numpy as np
 from datetime import datetime
 import RPi.GPIO as GPIO
 from picamera2 import Picamera2
+import libcamera
 
 # GPIO pins for ultrasonic sensor (matching your working code)
 TRIG_PIN = 23  # GPIO pin for TRIG
@@ -183,7 +184,10 @@ class FaceRecognitionSystem:
             try:
                 print("[INFO] Initializing camera...")
                 self.camera = Picamera2()
-                config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                config = self.camera.create_preview_configuration(
+                    main={"size": (640, 480), "format": "RGB888"},
+                    transform=libcamera.Transform(hflip=0, vflip=0)
+                )
                 self.camera.configure(config)
                 self.camera.start()
                 time.sleep(1)  # Let camera stabilize
@@ -307,12 +311,12 @@ class FaceRecognitionSystem:
                     except:
                         pass
                     
-                    # Create high-resolution still configuration
+                    # Create high-resolution still configuration with proper color correction
                     # Pi Camera Module v2 can do 3280x2464, but we'll use 1920x1080 for speed
-                    # Use BGR888 format directly - no conversion needed!
                     still_config = self.camera.create_still_configuration(
-                        main={"size": (1920, 1080), "format": "BGR888"},
-                        buffer_count=1
+                        main={"size": (1920, 1080), "format": "RGB888"},
+                        buffer_count=1,
+                        transform=libcamera.Transform(hflip=0, vflip=0)  # Correct orientation
                     )
                     
                     print(f"[INFO] Configuring camera for high-res still capture...")
@@ -320,10 +324,14 @@ class FaceRecognitionSystem:
                     self.camera.start()
                     time.sleep(0.5)  # Let camera adjust and auto-balance
                     
-                    print(f"[INFO] Capturing high-res frame in BGR format...")
-                    frame_bgr = self.camera.capture_array("main")
-                    print(f"[INFO] Captured frame shape: {frame_bgr.shape}")
-                    print(f"[INFO] Frame format: BGR888 (ready for OpenCV)")
+                    print(f"[INFO] Capturing high-res frame in RGB format...")
+                    frame_rgb = self.camera.capture_array("main")
+                    print(f"[INFO] Captured frame shape: {frame_rgb.shape}")
+                    print(f"[INFO] Frame format: RGB888")
+                    
+                    # Convert RGB to BGR for OpenCV (OpenCV uses BGR format)
+                    print(f"[INFO] Converting RGB to BGR for OpenCV...")
+                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                     
                     # Save the image
                     print(f"[INFO] Saving high-quality image...")
@@ -378,14 +386,18 @@ class FaceRecognitionSystem:
             try:
                 import subprocess
                 
-                # Use libcamera-still to capture high-res photo
+                # Use libcamera-still to capture high-res photo with color correction
                 cmd = [
                     "libcamera-still",
                     "-o", photo_path,
                     "--width", "1920",
                     "--height", "1080",
                     "-t", "1000",  # 1 second timeout
-                    "-n"  # No preview
+                    "-n",  # No preview
+                    "--awb", "auto",  # Auto white balance
+                    "--metering", "average",  # Average metering
+                    "--exposure", "auto",  # Auto exposure
+                    "--gain", "auto"  # Auto gain
                 ]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -574,7 +586,9 @@ class FaceRecognitionSystem:
                     return None
 
                 # Capture frame
-                frame = self.camera.capture_array()
+                frame_rgb = self.camera.capture_array()
+                # Convert RGB to BGR for OpenCV processing
+                frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 
                 # Optimized face detection - faster parameters

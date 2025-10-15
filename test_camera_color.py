@@ -1,115 +1,145 @@
 #!/usr/bin/env python3
 """
-Test script to verify camera color output
+Camera Color Test Script for MagicMirror²
+Tests different camera configurations to fix color issues
 """
 
 import cv2
 import time
-import os
-from datetime import datetime
 from picamera2 import Picamera2
+import libcamera
 
-print("="*70)
-print("CAMERA COLOR TEST")
-print("="*70)
-
-# Initialize camera
-print("\n1. Initializing camera...")
-try:
-    camera = Picamera2()
-    print("✅ Camera initialized")
-except Exception as e:
-    print(f"❌ Camera initialization failed: {e}")
-    exit(1)
-
-# Test different formats
-formats_to_test = [
-    ("RGB888", cv2.COLOR_RGB2BGR),
-    ("BGR888", None),  # No conversion needed
-]
-
-test_dir = "Skin/ColorTest"
-os.makedirs(test_dir, exist_ok=True)
-
-for format_name, conversion in formats_to_test:
-    print(f"\n{'='*70}")
-    print(f"Testing format: {format_name}")
-    print(f"{'='*70}")
+def test_camera_configs():
+    """Test different camera configurations to find the best color settings"""
     
-    try:
-        # Stop camera if running
+    print("🎨 Testing Camera Color Configurations")
+    print("=" * 50)
+    
+    configs = [
+        {
+            "name": "RGB888 Format",
+            "config": {
+                "main": {"size": (640, 480), "format": "RGB888"},
+                "transform": libcamera.Transform(hflip=0, vflip=0)
+            }
+        },
+        {
+            "name": "BGR888 Format", 
+            "config": {
+                "main": {"size": (640, 480), "format": "BGR888"},
+                "transform": libcamera.Transform(hflip=0, vflip=0)
+            }
+        },
+        {
+            "name": "XRGB8888 Format",
+            "config": {
+                "main": {"size": (640, 480), "format": "XRGB8888"},
+                "transform": libcamera.Transform(hflip=0, vflip=0)
+            }
+        }
+    ]
+    
+    for i, test_config in enumerate(configs):
+        print(f"\n📸 Testing Configuration {i+1}: {test_config['name']}")
+        
         try:
+            # Initialize camera
+            camera = Picamera2()
+            camera.configure(test_config['config'])
+            camera.start()
+            time.sleep(1)  # Let camera stabilize
+            
+            # Capture frame
+            frame = camera.capture_array()
+            print(f"   Frame shape: {frame.shape}")
+            print(f"   Frame dtype: {frame.dtype}")
+            
+            # Save test image
+            filename = f"test_color_{i+1}_{test_config['name'].lower().replace(' ', '_')}.jpg"
+            
+            if test_config['name'] == "RGB888 Format":
+                # Convert RGB to BGR for OpenCV
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(filename, frame_bgr)
+            elif test_config['name'] == "BGR888 Format":
+                # Already in BGR format
+                cv2.imwrite(filename, frame)
+            else:
+                # XRGB8888 - convert to BGR
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                cv2.imwrite(filename, frame_bgr)
+            
+            print(f"   ✅ Saved: {filename}")
+            
+            # Stop camera
             camera.stop()
-        except:
-            pass
-        
-        # Configure for high-res capture
-        config = camera.create_still_configuration(
-            main={"size": (1920, 1080), "format": format_name},
-            buffer_count=1
-        )
-        
-        print(f"[INFO] Configuring camera with {format_name}...")
-        camera.configure(config)
-        camera.start()
-        
-        # Let camera adjust (important for color balance!)
-        print(f"[INFO] Waiting for auto white balance and exposure...")
-        time.sleep(1.0)  # Longer wait for better color
-        
-        # Capture frame
-        print(f"[INFO] Capturing frame...")
-        frame = camera.capture_array("main")
-        print(f"[INFO] Captured shape: {frame.shape}")
-        
-        # Convert if needed
-        if conversion is not None:
-            print(f"[INFO] Converting color space...")
-            frame = cv2.cvtColor(frame, conversion)
-            save_name = f"{format_name}_converted"
-        else:
-            print(f"[INFO] No conversion needed (already BGR)")
-            save_name = format_name
-        
-        # Save image
-        filename = f"{test_dir}/test_{save_name}_{datetime.now().strftime('%H-%M-%S')}.jpg"
-        print(f"[INFO] Saving to: {filename}")
-        success = cv2.imwrite(filename, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        
-        if success and os.path.exists(filename):
-            file_size = os.path.getsize(filename)
-            print(f"✅ Saved successfully!")
-            print(f"   File: {filename}")
-            print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+            camera.close()
             
-            # Analyze colors
-            b, g, r = cv2.split(frame)
-            print(f"   Color channels:")
-            print(f"      Blue  (B): min={b.min()}, max={b.max()}, mean={b.mean():.1f}")
-            print(f"      Green (G): min={g.min()}, max={g.max()}, mean={g.mean():.1f}")
-            print(f"      Red   (R): min={r.min()}, max={r.max()}, mean={r.mean():.1f}")
-        else:
-            print(f"❌ Failed to save")
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
+    
+    print("\n🎯 Color Test Complete!")
+    print("Check the saved images to see which configuration gives the best colors.")
+    print("Look for natural skin tones and proper color balance.")
+
+def test_libcamera_still():
+    """Test libcamera-still with different color settings"""
+    
+    print("\n📷 Testing libcamera-still Color Settings")
+    print("=" * 50)
+    
+    import subprocess
+    
+    settings = [
+        {
+            "name": "Auto White Balance",
+            "cmd": ["libcamera-still", "-o", "test_awb_auto.jpg", "-t", "1000", "-n", "--awb", "auto"]
+        },
+        {
+            "name": "Daylight White Balance", 
+            "cmd": ["libcamera-still", "-o", "test_awb_daylight.jpg", "-t", "1000", "-n", "--awb", "daylight"]
+        },
+        {
+            "name": "Cloudy White Balance",
+            "cmd": ["libcamera-still", "-o", "test_awb_cloudy.jpg", "-t", "1000", "-n", "--awb", "cloudy"]
+        },
+        {
+            "name": "Tungsten White Balance",
+            "cmd": ["libcamera-still", "-o", "test_awb_tungsten.jpg", "-t", "1000", "-n", "--awb", "tungsten"]
+        },
+        {
+            "name": "Fluorescent White Balance",
+            "cmd": ["libcamera-still", "-o", "test_awb_fluorescent.jpg", "-t", "1000", "-n", "--awb", "fluorescent"]
+        }
+    ]
+    
+    for setting in settings:
+        print(f"\n📸 Testing: {setting['name']}")
+        
+        try:
+            result = subprocess.run(setting['cmd'], capture_output=True, text=True, timeout=5)
             
-    except Exception as e:
-        print(f"❌ Test failed: {e}")
-        import traceback
-        traceback.print_exc()
+            if result.returncode == 0:
+                print(f"   ✅ Success: {setting['cmd'][-2]}")
+            else:
+                print(f"   ❌ Failed: {result.stderr}")
+                
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
+    
+    print("\n🎯 libcamera-still Test Complete!")
+    print("Check the saved images to see which white balance setting works best.")
 
-# Cleanup
-try:
-    camera.stop()
-    camera.close()
-except:
-    pass
-
-print("\n" + "="*70)
-print("TEST COMPLETE")
-print("="*70)
-print(f"\nTest images saved to: {test_dir}/")
-print(f"View them to see which format has correct colors!")
-print(f"\nCommand to view files:")
-print(f"  ls -lh {test_dir}/")
-print(f"\nExpected: BGR888 (no conversion) should have correct colors")
-print("="*70)
-
+if __name__ == "__main__":
+    print("🔧 MagicMirror² Camera Color Test")
+    print("This script will help identify the best camera settings for proper colors.")
+    print("\nMake sure you're in good lighting conditions for accurate testing.")
+    print("Press Enter to continue...")
+    input()
+    
+    test_camera_configs()
+    test_libcamera_still()
+    
+    print("\n✅ All tests completed!")
+    print("Review the generated test images to determine the best color configuration.")
+    print("Update your face_recognition_system.py with the settings that produce the best results.")
