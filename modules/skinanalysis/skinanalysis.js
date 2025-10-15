@@ -42,6 +42,8 @@ Module.register("skinanalysis", {
 		this.analysisTimer = null;
 		this.statusCheckTimer = null;
 		this.lastAnalysisRequest = 0; // Track last analysis request time
+		this.analysisRetryCount = 0; // Track retry attempts
+		this.maxRetries = 2; // Maximum retry attempts
 
 		this.startStatusChecking();
 		this.scheduleAnalysis();
@@ -115,6 +117,25 @@ Module.register("skinanalysis", {
 		console.error("Skin analysis error:", error);
 		this.isAnalyzing = false;
 		
+		// Check if we should retry
+		if (this.analysisRetryCount < this.maxRetries && 
+			(error.includes("Invalid response format") || error.includes("Response too short"))) {
+			this.analysisRetryCount++;
+			console.log(`Retrying analysis (attempt ${this.analysisRetryCount}/${this.maxRetries})`);
+			
+			// Wait 5 seconds before retry
+			const self = this;
+			setTimeout(function() {
+				if (self.currentPerson && self.currentPerson !== "Unknown") {
+					self.analyzeSkin();
+				}
+			}, 5000);
+			return;
+		}
+		
+		// Reset retry count
+		this.analysisRetryCount = 0;
+		
 		let errorMessage = "Анализ хийхэд алдаа гарлаа";
 		let adviceMessage = "Дахин оролдоно уу";
 		
@@ -131,6 +152,9 @@ Module.register("skinanalysis", {
 		} else if (error.includes("API key not configured")) {
 			errorMessage = "API түлхүүр тохируулаагүй";
 			adviceMessage = "Config файлыг засна уу";
+		} else if (error.includes("Invalid response format")) {
+			errorMessage = "AI хариулт буруу байна";
+			adviceMessage = "Дахин оролдоно уу";
 		}
 		
 		this.currentAnalysis = {

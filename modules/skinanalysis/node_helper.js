@@ -135,10 +135,10 @@ module.exports = NodeHelper.create({
 					{
 						role: "user",
 						content: [
-                            {
-                                type: "text",
-                                text: "БҮХ хариуг зөвхөн МОНГОЛ хэлээр бич. Англи хэл, өөр хэл, эмоджи, эсвэл нэмэлт тайлбар ашиглахгүй. Дараах зураг дээрх хүний арьсны байдлыг шинжил. ЯГ 3 өгүүлбэрээр 'Арьсны байдал:' хэсгийг бич. Дараа нь ЯГ 3 өгүүлбэрээр 'Зөвлөмж:' хэсгийг бич. Бүтэц яг дараах хэлбэртэй байх ёстой:\nАрьсны байдал: {3 өгүүлбэр}.\nЗөвлөмж: {3 өгүүлбэр}.\nӨгүүлбэрүүдийг тодорхой, найрлагатай, эмнэлгийн онош тогтоохгүйгээр зөвхөн арьсны ерөнхий шинж тэмдэг, ажиглалтаар бич."
-                            },
+							{
+								type: "text",
+								text: "Энэ зураг дээрх хүний арьсны байдлыг шинжилж, МОНГОЛ хэлээр хариул. Зөвхөн арьсны шинж тэмдэг, өнгө, тэгш байдлыг ажиглаж, эмнэлгийн онош тогтоохгүйгээр ерөнхий ажиглалт хий. Дараах хэлбэрээр хариул:\n\nАрьсны байдал: [3 өгүүлбэр арьсны шинж тэмдэгийн талаар]\nЗөвлөмж: [3 өгүүлбэр арьсны арчилгааны зөвлөмж]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй."
+							},
 							{
 								type: "image_url",
 								image_url: {
@@ -179,6 +179,15 @@ module.exports = NodeHelper.create({
 				if (data.choices && data.choices[0] && data.choices[0].message) {
 					const content = data.choices[0].message.content;
 					
+					Log.log(`Skin Analysis: Raw response: ${content}`);
+					
+					// Check if response contains the expected format
+					if (!content.includes("Арьсны байдал") || !content.includes("Зөвлөмж")) {
+						Log.error(`Skin Analysis: Invalid response format - missing required sections`);
+						Log.error(`Skin Analysis: Response was: ${content}`);
+						throw new Error("Invalid response format - AI did not follow instructions");
+					}
+					
 					// Parse the response to separate analysis and advice
 					const analysisMatch = content.match(/Арьсны байдал:([\s\S]*?)(?=Зөвлөмж:|$)/);
 					const adviceMatch = content.match(/Зөвлөмж:([\s\S]*?)$/);
@@ -186,7 +195,15 @@ module.exports = NodeHelper.create({
 					const analysis = analysisMatch ? analysisMatch[1].trim() : content;
 					const advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
 					
+					// Validate that we got actual content
+					if (analysis.length < 10 || advice.length < 10) {
+						Log.error(`Skin Analysis: Response too short - analysis: ${analysis.length}, advice: ${advice.length}`);
+						throw new Error("Response too short - AI may not have analyzed properly");
+					}
+					
 					Log.log(`Skin Analysis: Analysis completed for ${config.person}`);
+					Log.log(`Skin Analysis: Analysis: ${analysis.substring(0, 50)}...`);
+					Log.log(`Skin Analysis: Advice: ${advice.substring(0, 50)}...`);
 					
 					self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 						person: config.person,
