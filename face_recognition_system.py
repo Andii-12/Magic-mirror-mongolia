@@ -114,18 +114,18 @@ class FaceRecognitionSystem:
             
             print(f"[INFO] Original frame stats - B: {frame_bgr[:,:,0].mean():.1f}, G: {frame_bgr[:,:,1].mean():.1f}, R: {frame_bgr[:,:,2].mean():.1f}")
             
-            # CRITICAL FIX: Apply aggressive color channel correction for purple skin inversion
+            # CRITICAL FIX: Apply color correction for YELLOW-GREEN skin cast
             # Split into BGR channels
             b, g, r = cv2.split(frame_bgr)
             
-            # AGGRESSIVE blue reduction - purple skin is caused by excessive blue
-            b_corrected = cv2.multiply(b, 0.6)  # Reduce blue by 40% (was 15%)
+            # AGGRESSIVE green reduction - yellow-green skin is caused by excessive green
+            g_corrected = cv2.multiply(g, 0.65)  # Reduce green by 35% (fixes yellow-green cast)
             
-            # AGGRESSIVE red increase - counter the purple tint
-            r_corrected = cv2.multiply(r, 1.25)  # Increase red by 25% (was 5%)
+            # AGGRESSIVE red increase - counter the yellow tint and restore natural skin
+            r_corrected = cv2.multiply(r, 1.3)  # Increase red by 30% (was 25%)
             
-            # Moderate green increase for natural balance
-            g_corrected = cv2.multiply(g, 1.08)  # Increase green by 8%
+            # Moderate blue increase for natural balance
+            b_corrected = cv2.multiply(b, 1.05)  # Increase blue by 5% (was reduced for purple fix)
             
             # Merge corrected channels
             frame_channel_corrected = cv2.merge([b_corrected, g_corrected, r_corrected])
@@ -138,12 +138,12 @@ class FaceRecognitionSystem:
             clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))
             l = clahe.apply(l)
             
-            # AGGRESSIVE LAB channel adjustment for skin tones
-            # A channel (green-red axis) - strongly shift towards red
-            a = cv2.add(a, 12)  # Strong shift towards red (was 5)
+            # AGGRESSIVE LAB channel adjustment for YELLOW-GREEN skin tones
+            # A channel (green-red axis) - strongly shift towards red (counter yellow-green)
+            a = cv2.add(a, 15)  # Strong shift towards red (was 12)
             
-            # B channel (blue-yellow axis) - strongly reduce blue tint
-            b_lab = cv2.add(b_lab, 15)  # Strong shift towards yellow (was 8)
+            # B channel (blue-yellow axis) - reduce yellow tint
+            b_lab = cv2.subtract(b_lab, 10)  # Shift away from yellow towards blue (was +15)
             
             # Merge LAB channels
             lab_corrected = cv2.merge([l, a, b_lab])
@@ -153,11 +153,11 @@ class FaceRecognitionSystem:
             hsv = cv2.cvtColor(frame_lab_corrected, cv2.COLOR_BGR2HSV)
             h, s, v = cv2.split(hsv)
             
-            # Adjust hue to shift away from purple towards natural skin tones
-            h = cv2.add(h, 8)  # Shift hue towards warmer tones
+            # Adjust hue to shift away from yellow-green towards natural skin tones
+            h = cv2.subtract(h, 12)  # Shift hue away from yellow-green towards natural tones (was +8)
             
-            # Increase saturation slightly for more vibrant colors
-            s = cv2.multiply(s, 1.1)
+            # Reduce saturation to counter the yellow-green over-saturation
+            s = cv2.multiply(s, 0.85)  # Reduce saturation (was 1.1)
             
             # Slight brightness adjustment
             v = cv2.multiply(v, 1.05)
@@ -171,17 +171,18 @@ class FaceRecognitionSystem:
             frame_final = np.uint8(frame_final)
             
             print(f"[INFO] Corrected frame stats - B: {frame_final[:,:,0].mean():.1f}, G: {frame_final[:,:,1].mean():.1f}, R: {frame_final[:,:,2].mean():.1f}")
-            print(f"[INFO] Applied AGGRESSIVE skin tone correction: -40% blue, +25% red, +8% green, gamma={gamma}")
+            print(f"[INFO] Applied YELLOW-GREEN skin correction: -35% green, +30% red, +5% blue, gamma={gamma}")
             
             return frame_final
             
         except Exception as e:
             print(f"[WARNING] Color correction failed: {e}")
-            # Fallback with basic correction
+            # Fallback with basic yellow-green correction
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
             b, g, r = cv2.split(frame_bgr)
-            b = cv2.multiply(b, 0.7)  # Reduce blue
-            r = cv2.multiply(r, 1.2)  # Increase red
+            g = cv2.multiply(g, 0.7)  # Reduce green (yellow-green fix)
+            r = cv2.multiply(r, 1.3)  # Increase red
+            b = cv2.multiply(b, 1.1)  # Increase blue slightly
             return cv2.merge([b, g, r])
 
     def get_distance(self):
@@ -463,7 +464,7 @@ class FaceRecognitionSystem:
             try:
                 import subprocess
                 
-                # Use libcamera-still to capture 1080x1080 photo with AGGRESSIVE anti-purple correction
+                # Use libcamera-still to capture 1080x1080 photo with YELLOW-GREEN correction
                 cmd = [
                     "libcamera-still",
                     "-o", photo_path,
@@ -471,14 +472,14 @@ class FaceRecognitionSystem:
                     "--height", "1080",
                     "-t", "1000",  # 1 second timeout
                     "-n",  # No preview
-                    "--awb", "daylight",  # Daylight white balance for better skin tones
+                    "--awb", "tungsten",  # Tungsten white balance (warmer, counteracts yellow-green)
                     "--metering", "average",  # Average metering
                     "--exposure", "auto",  # Auto exposure
                     "--gain", "auto",  # Auto gain
-                    "--saturation", "1.4",  # AGGRESSIVE saturation increase (was 1.2)
-                    "--contrast", "1.2",  # AGGRESSIVE contrast increase (was 1.1)
-                    "--brightness", "0.15",  # AGGRESSIVE brightness increase (was 0.1)
-                    "--sharpness", "1.1",  # Slightly increase sharpness
+                    "--saturation", "0.8",  # REDUCE saturation to counter yellow-green over-saturation
+                    "--contrast", "1.1",  # Moderate contrast increase
+                    "--brightness", "0.05",  # Slight brightness increase
+                    "--sharpness", "1.0",  # Standard sharpness
                     "--denoise", "cdn_off"  # Disable denoise to preserve color accuracy
                 ]
                 
@@ -493,7 +494,7 @@ class FaceRecognitionSystem:
                     print(f"   Person: {person_name}")
                     print(f"   Method: libcamera-still")
                     print(f"   Resolution: 1080x1080")
-                    print(f"   Color: AGGRESSIVE anti-purple correction (saturation 1.4, contrast 1.2)")
+                    print(f"   Color: YELLOW-GREEN correction (tungsten WB, saturation 0.8)")
                     print(f"{'='*60}\n")
                     self.photo_saved_this_session = True
                     return True
