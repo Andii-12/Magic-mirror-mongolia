@@ -77,10 +77,17 @@ Module.register("skinanalysis", {
 		this.currentPerson = data.person;
 		this.isActive = data.active;
 
-		// If person changed and is recognized, trigger analysis
+		// If person changed and is recognized, wait for photo to be saved
 		if (this.currentPerson && this.currentPerson !== previousPerson && this.currentPerson !== "Unknown") {
-			console.log("New person recognized, scheduling skin analysis:", this.currentPerson);
-			this.scheduleAnalysis();
+			console.log("New person recognized, waiting for photo to be saved:", this.currentPerson);
+			// Wait 10 seconds for photo to be saved before analysis
+			const self = this;
+			setTimeout(function() {
+				if (self.currentPerson === data.person) {
+					console.log("Starting skin analysis after delay:", self.currentPerson);
+					self.scheduleAnalysis();
+				}
+			}, 10000); // 10 second delay
 		}
 
 		// Clear analysis if no person

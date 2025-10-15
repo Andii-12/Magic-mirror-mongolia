@@ -42,11 +42,22 @@ module.exports = NodeHelper.create({
 		
 		Log.log(`Skin Analysis: Starting analysis for ${config.person}`);
 		
+		// Check if API key is configured
+		if (!config.apiKey || config.apiKey === "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") {
+			Log.error(`Skin Analysis: OpenAI API key not configured`);
+			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "API key not configured");
+			return;
+		}
+		
 		// Find the most recent skin photo for this person
 		const personDir = path.join(process.cwd(), config.skinPhotosDir, config.person);
 		
+		Log.log(`Skin Analysis: Looking for photos in: ${personDir}`);
+		
 		if (!fs.existsSync(personDir)) {
 			Log.error(`Skin Analysis: Person directory not found: ${personDir}`);
+			Log.error(`Skin Analysis: Current working directory: ${process.cwd()}`);
+			Log.error(`Skin Analysis: Skin photos directory: ${config.skinPhotosDir}`);
 			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Person directory not found");
 			return;
 		}
@@ -63,6 +74,7 @@ module.exports = NodeHelper.create({
 
 		if (files.length === 0) {
 			Log.error(`Skin Analysis: No skin photos found for ${config.person}`);
+			Log.error(`Skin Analysis: Directory contents: ${fs.readdirSync(personDir).join(', ')}`);
 			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "No skin photos found");
 			return;
 		}
