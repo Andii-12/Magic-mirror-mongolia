@@ -80,14 +80,14 @@ Module.register("skinanalysis", {
 		// If person changed and is recognized, wait for photo to be saved
 		if (this.currentPerson && this.currentPerson !== previousPerson && this.currentPerson !== "Unknown") {
 			console.log("New person recognized, waiting for photo to be saved:", this.currentPerson);
-			// Wait 10 seconds for photo to be saved before analysis
+			// Wait 5 seconds for photo to be saved before scheduling analysis
 			const self = this;
 			setTimeout(function() {
 				if (self.currentPerson === data.person) {
-					console.log("Starting skin analysis after delay:", self.currentPerson);
+					console.log("Scheduling skin analysis after initial delay:", self.currentPerson);
 					self.scheduleAnalysis();
 				}
-			}, 10000); // 10 second delay
+			}, 5000); // 5 second initial delay, then 15 second analysis delay
 		}
 
 		// Clear analysis if no person
@@ -127,12 +127,13 @@ Module.register("skinanalysis", {
 		}
 
 		const self = this;
-		// Wait 5 seconds after recognition to allow photo to be saved
+		// Wait 15 seconds after recognition to allow photo to be saved
 		this.analysisTimer = setTimeout(function() {
 			if (self.currentPerson && self.currentPerson !== "Unknown") {
+				console.log("Scheduled analysis starting for:", self.currentPerson);
 				self.analyzeSkin();
 			}
-		}, 5000);
+		}, 15000); // Increased to 15 seconds
 	},
 
 	// Analyze skin using OpenAI Vision API

@@ -43,21 +43,40 @@ module.exports = NodeHelper.create({
 		Log.log(`Skin Analysis: Starting analysis for ${config.person}`);
 		
 		// Check if API key is configured
-		if (!config.apiKey || config.apiKey === "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") {
+		if (!config.apiKey || config.apiKey === "your-openai-api-key-here") {
 			Log.error(`Skin Analysis: OpenAI API key not configured`);
 			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "API key not configured");
 			return;
 		}
 		
 		// Find the most recent skin photo for this person
-		const personDir = path.join(process.cwd(), config.skinPhotosDir, config.person);
+		const skinBaseDir = path.join(process.cwd(), config.skinPhotosDir);
+		const personDir = path.join(skinBaseDir, config.person);
 		
 		Log.log(`Skin Analysis: Looking for photos in: ${personDir}`);
+		Log.log(`Skin Analysis: Current working directory: ${process.cwd()}`);
+		Log.log(`Skin Analysis: Skin base directory: ${skinBaseDir}`);
+		
+		// List all directories in Skin folder for debugging
+		try {
+			const allDirs = fs.readdirSync(skinBaseDir, { withFileTypes: true })
+				.filter(dirent => dirent.isDirectory())
+				.map(dirent => dirent.name);
+			Log.log(`Skin Analysis: Available person directories: ${allDirs.join(', ')}`);
+		} catch (e) {
+			Log.log(`Skin Analysis: Could not list base directory: ${e.message}`);
+		}
+		
+		// Check if base Skin directory exists
+		if (!fs.existsSync(skinBaseDir)) {
+			Log.error(`Skin Analysis: Base skin directory not found: ${skinBaseDir}`);
+			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Skin directory not found");
+			return;
+		}
 		
 		if (!fs.existsSync(personDir)) {
 			Log.error(`Skin Analysis: Person directory not found: ${personDir}`);
-			Log.error(`Skin Analysis: Current working directory: ${process.cwd()}`);
-			Log.error(`Skin Analysis: Skin photos directory: ${config.skinPhotosDir}`);
+			Log.error(`Skin Analysis: Available persons: ${fs.readdirSync(skinBaseDir).join(', ')}`);
 			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Person directory not found");
 			return;
 		}
@@ -152,7 +171,8 @@ module.exports = NodeHelper.create({
 			})
 			.catch(error => {
 				Log.error(`Skin Analysis: API request failed: ${error.message}`);
-				self.sendSocketNotification("SKIN_ANALYSIS_ERROR", error.message);
+				Log.error(`Skin Analysis: Error details:`, error);
+				self.sendSocketNotification("SKIN_ANALYSIS_ERROR", `API Error: ${error.message}`);
 			});
 
 		} catch (error) {
