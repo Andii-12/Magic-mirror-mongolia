@@ -225,7 +225,12 @@ let config = {
 			position: "bottom_left",
 			header: "Арьсны шинжилгээ", // "Skin Analysis" in Mongolian
 			config: {
-				apiKey: "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", // Replace with your OpenAI API key
+				// 🔑 EASY API KEY SETUP:
+				// 1. Go to https://platform.openai.com/api-keys
+				// 2. Create a new API key
+				// 3. Copy the key (starts with sk-)
+				// 4. Paste it below (replace the long key)
+				apiKey: "api input", // ⬅️ REPLACE THIS WITH YOUR API KEY
 				updateInterval: 30 * 60 * 1000, // 30 minutes
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json",

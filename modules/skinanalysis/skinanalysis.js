@@ -157,8 +157,15 @@ Module.register("skinanalysis", {
 
 	// Analyze skin using OpenAI Vision API
 	analyzeSkin: function() {
-		if (!this.config.apiKey) {
+		// Check API key configuration
+		if (!this.config.apiKey || this.config.apiKey.trim() === "" || this.config.apiKey === "your-openai-api-key-here") {
 			console.error("OpenAI API key not configured");
+			this.currentAnalysis = {
+				person: this.currentPerson,
+				analysis: "API түлхүүр тохируулаагүй",
+				advice: "Config файлд API түлхүүр оруулна уу"
+			};
+			this.updateDom(this.config.animationSpeed);
 			return;
 		}
 
@@ -169,10 +176,11 @@ Module.register("skinanalysis", {
 
 		this.isAnalyzing = true;
 		console.log("Starting skin analysis for:", this.currentPerson);
+		console.log("Using API key:", this.config.apiKey.substring(0, 10) + "...");
 
 		this.sendSocketNotification("ANALYZE_SKIN", {
 			person: this.currentPerson,
-			apiKey: this.config.apiKey,
+			apiKey: this.config.apiKey.trim(),
 			apiUrl: this.config.apiUrl,
 			model: this.config.model,
 			maxTokens: this.config.maxTokens,

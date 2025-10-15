@@ -49,9 +49,20 @@ module.exports = NodeHelper.create({
 			return;
 		}
 		
-		// Validate API key format
-		if (!config.apiKey.startsWith('sk-')) {
-			Log.error(`Skin Analysis: Invalid API key format. Should start with 'sk-'`);
+		// Validate API key format - more flexible
+		if (!config.apiKey || config.apiKey.trim() === "") {
+			Log.error(`Skin Analysis: API key is empty`);
+			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "API key is empty");
+			return;
+		}
+		
+		// Clean the API key (remove spaces, newlines)
+		const cleanApiKey = config.apiKey.trim();
+		
+		// Check if it looks like a valid OpenAI API key
+		if (!cleanApiKey.startsWith('sk-') && !cleanApiKey.startsWith('sk-proj-')) {
+			Log.error(`Skin Analysis: Invalid API key format. Should start with 'sk-' or 'sk-proj-'`);
+			Log.error(`Skin Analysis: Your key starts with: ${cleanApiKey.substring(0, 10)}...`);
 			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Invalid API key format");
 			return;
 		}
@@ -145,7 +156,7 @@ module.exports = NodeHelper.create({
 			fetch(config.apiUrl, {
 				method: 'POST',
 				headers: {
-					'Authorization': `Bearer ${config.apiKey}`,
+					'Authorization': `Bearer ${cleanApiKey}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(requestBody)
