@@ -179,24 +179,24 @@ echo "   ✅ Camera calibration script created"
 # 5. Test the fixes
 echo "5️⃣ Testing camera fixes..."
 
-echo "   📸 Taking test photo with optimized settings..."
-libcamera-still -o magicmirror_test.jpg \
+echo "   📸 Taking test photo with optimized settings (1080x1080)..."
+libcamera-still -o magicmirror_test_1080.jpg \
     -t 2000 \
     -n \
-    --width 1920 \
+    --width 1080 \
     --height 1080 \
-    --awb auto \
+    --awb daylight \
     --metering average \
     --exposure auto \
     --gain auto \
-    --saturation 1.0 \
-    --contrast 1.0 \
-    --brightness 0.0 \
+    --saturation 1.2 \
+    --contrast 1.1 \
+    --brightness 0.1 \
     --sharpness 1.0
 
-if [ -f "magicmirror_test.jpg" ]; then
-    echo "   ✅ Test photo saved: magicmirror_test.jpg"
-    echo "   📋 Check this image for proper color reproduction"
+if [ -f "magicmirror_test_1080.jpg" ]; then
+    echo "   ✅ Test photo saved: magicmirror_test_1080.jpg"
+    echo "   📋 Check this 1080x1080 image for proper color reproduction"
 else
     echo "   ❌ Failed to create test photo"
 fi

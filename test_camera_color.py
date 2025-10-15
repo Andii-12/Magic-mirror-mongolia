@@ -92,24 +92,20 @@ def test_libcamera_still():
     
     settings = [
         {
-            "name": "Auto White Balance",
-            "cmd": ["libcamera-still", "-o", "test_awb_auto.jpg", "-t", "1000", "-n", "--awb", "auto"]
+            "name": "Auto White Balance 1080x1080",
+            "cmd": ["libcamera-still", "-o", "test_awb_auto_1080.jpg", "-t", "1000", "-n", "--awb", "auto", "--width", "1080", "--height", "1080"]
         },
         {
-            "name": "Daylight White Balance", 
-            "cmd": ["libcamera-still", "-o", "test_awb_daylight.jpg", "-t", "1000", "-n", "--awb", "daylight"]
+            "name": "Daylight White Balance 1080x1080", 
+            "cmd": ["libcamera-still", "-o", "test_awb_daylight_1080.jpg", "-t", "1000", "-n", "--awb", "daylight", "--width", "1080", "--height", "1080", "--saturation", "1.2"]
         },
         {
-            "name": "Cloudy White Balance",
-            "cmd": ["libcamera-still", "-o", "test_awb_cloudy.jpg", "-t", "1000", "-n", "--awb", "cloudy"]
+            "name": "Cloudy White Balance 1080x1080",
+            "cmd": ["libcamera-still", "-o", "test_awb_cloudy_1080.jpg", "-t", "1000", "-n", "--awb", "cloudy", "--width", "1080", "--height", "1080", "--saturation", "1.2"]
         },
         {
-            "name": "Tungsten White Balance",
-            "cmd": ["libcamera-still", "-o", "test_awb_tungsten.jpg", "-t", "1000", "-n", "--awb", "tungsten"]
-        },
-        {
-            "name": "Fluorescent White Balance",
-            "cmd": ["libcamera-still", "-o", "test_awb_fluorescent.jpg", "-t", "1000", "-n", "--awb", "fluorescent"]
+            "name": "Enhanced Skin Tone 1080x1080",
+            "cmd": ["libcamera-still", "-o", "test_skin_tone_1080.jpg", "-t", "1000", "-n", "--awb", "daylight", "--width", "1080", "--height", "1080", "--saturation", "1.2", "--contrast", "1.1", "--brightness", "0.1"]
         }
     ]
     

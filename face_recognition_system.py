@@ -106,6 +106,59 @@ class FaceRecognitionSystem:
         print("Face Recognition System initialized")
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
 
+    def apply_skin_tone_correction(self, frame_rgb):
+        """Apply aggressive color correction specifically for skin tones"""
+        try:
+            # Convert RGB to BGR for OpenCV processing
+            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            
+            # Convert to LAB color space for better color adjustment
+            lab = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            
+            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to L channel
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+            l = clahe.apply(l)
+            
+            # Adjust A and B channels for better skin tone reproduction
+            # A channel (green-red axis) - reduce green tint
+            a = cv2.add(a, 5)  # Shift towards red
+            
+            # B channel (blue-yellow axis) - reduce blue tint for skin tones
+            b = cv2.add(b, 8)  # Shift towards yellow
+            
+            # Merge channels back
+            lab_corrected = cv2.merge([l, a, b])
+            
+            # Convert back to BGR
+            frame_corrected = cv2.cvtColor(lab_corrected, cv2.COLOR_LAB2BGR)
+            
+            # Apply additional color correction in BGR space
+            # Split into BGR channels
+            b, g, r = cv2.split(frame_corrected)
+            
+            # Reduce blue channel (common cause of purple skin tones)
+            b = cv2.multiply(b, 0.85)  # Reduce blue by 15%
+            
+            # Slightly increase red channel for warmer skin tones
+            r = cv2.multiply(r, 1.05)  # Increase red by 5%
+            
+            # Merge channels back
+            frame_final = cv2.merge([b, g, r])
+            
+            # Apply gamma correction for better contrast
+            gamma = 1.1
+            frame_final = np.power(frame_final / 255.0, gamma) * 255.0
+            frame_final = np.uint8(frame_final)
+            
+            print(f"[INFO] Applied skin tone correction: reduced blue, increased red, gamma={gamma}")
+            return frame_final
+            
+        except Exception as e:
+            print(f"[WARNING] Color correction failed: {e}")
+            # Fallback to simple RGB to BGR conversion
+            return cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+
     def get_distance(self):
         """Get distance from ultrasonic sensor in cm with improved accuracy and error handling"""
         if not self.gpio_available or TEST_MODE:
@@ -311,10 +364,9 @@ class FaceRecognitionSystem:
                     except:
                         pass
                     
-                    # Create high-resolution still configuration with proper color correction
-                    # Pi Camera Module v2 can do 3280x2464, but we'll use 1920x1080 for speed
+                    # Create 1080x1080 still configuration with proper color correction
                     still_config = self.camera.create_still_configuration(
-                        main={"size": (1920, 1080), "format": "RGB888"},
+                        main={"size": (1080, 1080), "format": "RGB888"},
                         buffer_count=1,
                         transform=libcamera.Transform(hflip=0, vflip=0)  # Correct orientation
                     )
@@ -324,17 +376,17 @@ class FaceRecognitionSystem:
                     self.camera.start()
                     time.sleep(0.5)  # Let camera adjust and auto-balance
                     
-                    print(f"[INFO] Capturing high-res frame in RGB format...")
+                    print(f"[INFO] Capturing 1080x1080 frame in RGB format...")
                     frame_rgb = self.camera.capture_array("main")
                     print(f"[INFO] Captured frame shape: {frame_rgb.shape}")
                     print(f"[INFO] Frame format: RGB888")
                     
-                    # Convert RGB to BGR for OpenCV (OpenCV uses BGR format)
-                    print(f"[INFO] Converting RGB to BGR for OpenCV...")
-                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                    # Apply aggressive color correction for skin tones
+                    print(f"[INFO] Applying color correction for skin tones...")
+                    frame_bgr = self.apply_skin_tone_correction(frame_rgb)
                     
                     # Save the image
-                    print(f"[INFO] Saving high-quality image...")
+                    print(f"[INFO] Saving high-quality 1080x1080 image...")
                     success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
                     
                     # Restart preview configuration for face recognition
@@ -386,18 +438,22 @@ class FaceRecognitionSystem:
             try:
                 import subprocess
                 
-                # Use libcamera-still to capture high-res photo with color correction
+                # Use libcamera-still to capture 1080x1080 photo with aggressive color correction
                 cmd = [
                     "libcamera-still",
                     "-o", photo_path,
-                    "--width", "1920",
+                    "--width", "1080",
                     "--height", "1080",
                     "-t", "1000",  # 1 second timeout
                     "-n",  # No preview
-                    "--awb", "auto",  # Auto white balance
+                    "--awb", "daylight",  # Daylight white balance for better skin tones
                     "--metering", "average",  # Average metering
                     "--exposure", "auto",  # Auto exposure
-                    "--gain", "auto"  # Auto gain
+                    "--gain", "auto",  # Auto gain
+                    "--saturation", "1.2",  # Slightly increase saturation
+                    "--contrast", "1.1",  # Slightly increase contrast
+                    "--brightness", "0.1",  # Slightly increase brightness
+                    "--sharpness", "1.0"  # Standard sharpness
                 ]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -410,7 +466,8 @@ class FaceRecognitionSystem:
                     print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                     print(f"   Person: {person_name}")
                     print(f"   Method: libcamera-still")
-                    print(f"   Resolution: 1920x1080")
+                    print(f"   Resolution: 1080x1080")
+                    print(f"   Color: Daylight white balance with enhanced saturation")
                     print(f"{'='*60}\n")
                     self.photo_saved_this_session = True
                     return True
@@ -427,9 +484,12 @@ class FaceRecognitionSystem:
                 
                 cmd = [
                     "fswebcam",
-                    "-r", "1920x1080",
+                    "-r", "1080x1080",
                     "--jpeg", "95",
                     "--no-banner",
+                    "--set", "brightness=50%",
+                    "--set", "contrast=50%",
+                    "--set", "saturation=50%",
                     photo_path
                 ]
                 
@@ -443,7 +503,8 @@ class FaceRecognitionSystem:
                     print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                     print(f"   Person: {person_name}")
                     print(f"   Method: fswebcam")
-                    print(f"   Resolution: 1920x1080")
+                    print(f"   Resolution: 1080x1080")
+                    print(f"   Color: Enhanced brightness, contrast, and saturation")
                     print(f"{'='*60}\n")
                     self.photo_saved_this_session = True
                     return True
@@ -458,10 +519,10 @@ class FaceRecognitionSystem:
             try:
                 if self.camera is not None:
                     print(f"[INFO] Reconfiguring camera for high-res capture...")
-                    config = self.camera.create_still_configuration(main={"size": (1920, 1080)})
+                    config = self.camera.create_still_configuration(main={"size": (1080, 1080)})
                     self.camera.configure(config)
                     time.sleep(0.2)
-                    print(f"[INFO] Camera configured to 1920x1080")
+                    print(f"[INFO] Camera configured to 1080x1080")
                     
                     # Capture high-res frame
                     print(f"[INFO] Capturing frame...")
@@ -500,7 +561,8 @@ class FaceRecognitionSystem:
                     print(f"   Person: {person_name}")
                     print(f"   Method: Picamera2")
                     print(f"   File: {photo_path}")
-                    print(f"   Resolution: 1920x1080, Quality: 95%")
+                    print(f"   Resolution: 1080x1080, Quality: 95%")
+                    print(f"   Color: Applied skin tone correction")
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
