@@ -49,6 +49,16 @@ module.exports = NodeHelper.create({
 			return;
 		}
 		
+		// Validate API key format
+		if (!config.apiKey.startsWith('sk-')) {
+			Log.error(`Skin Analysis: Invalid API key format. Should start with 'sk-'`);
+			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Invalid API key format");
+			return;
+		}
+		
+		// Log API key for debugging (first 10 chars only for security)
+		Log.log(`Skin Analysis: Using API key: ${config.apiKey.substring(0, 10)}...`);
+		
 		// Find the most recent skin photo for this person
 		const skinBaseDir = path.join(process.cwd(), config.skinPhotosDir);
 		const personDir = path.join(skinBaseDir, config.person);
@@ -142,7 +152,15 @@ module.exports = NodeHelper.create({
 			})
 			.then(response => {
 				if (!response.ok) {
-					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+					if (response.status === 401) {
+						throw new Error(`HTTP 401: Unauthorized - Invalid or expired API key`);
+					} else if (response.status === 429) {
+						throw new Error(`HTTP 429: Rate limit exceeded - Try again later`);
+					} else if (response.status === 400) {
+						throw new Error(`HTTP 400: Bad request - Check API parameters`);
+					} else {
+						throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+					}
 				}
 				return response.json();
 			})

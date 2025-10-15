@@ -112,10 +112,29 @@ Module.register("skinanalysis", {
 	processAnalysisError: function(error) {
 		console.error("Skin analysis error:", error);
 		this.isAnalyzing = false;
+		
+		let errorMessage = "Анализ хийхэд алдаа гарлаа";
+		let adviceMessage = "Дахин оролдоно уу";
+		
+		// Provide specific error messages
+		if (error.includes("401") || error.includes("Unauthorized")) {
+			errorMessage = "API түлхүүр буруу байна";
+			adviceMessage = "Config файлыг шалгана уу";
+		} else if (error.includes("429") || error.includes("Rate limit")) {
+			errorMessage = "Хэт олон хүсэлт";
+			adviceMessage = "Хэсэг хэсгээр оролдоно уу";
+		} else if (error.includes("Person directory not found")) {
+			errorMessage = "Зураг олдсонгүй";
+			adviceMessage = "Нүүр таних хэрэгтэй";
+		} else if (error.includes("API key not configured")) {
+			errorMessage = "API түлхүүр тохируулаагүй";
+			adviceMessage = "Config файлыг засна уу";
+		}
+		
 		this.currentAnalysis = {
 			person: this.currentPerson,
-			analysis: "Анализ хийхэд алдаа гарлаа",
-			advice: "Дахин оролдоно уу"
+			analysis: errorMessage,
+			advice: adviceMessage
 		};
 		this.updateDom(this.config.animationSpeed);
 	},
