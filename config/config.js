@@ -231,14 +231,15 @@ let config = {
 				// 3. Copy the key (starts with sk-)
 				// 4. Paste it below (replace the long key)
 				apiKey: "api input", // ⬅️ REPLACE THIS WITH YOUR API KEY
-				updateInterval: 30 * 60 * 1000, // 30 minutes
+				updateInterval: 60 * 60 * 1000, // 60 minutes (reduced frequency)
 				animationSpeed: 2000,
 				statusFile: "/tmp/magicmirror_face_status.json",
 				skinPhotosDir: "Skin",
 				showAnalysis: true,
 				showAdvice: true,
-				analysisStyle: "large bright",
-				adviceStyle: "medium light"
+				analysisStyle: "small bright", // Smaller text
+				adviceStyle: "small light", // Smaller text
+				rateLimitDelay: 30000 // 30 seconds between requests
 			}
 		}
 	]

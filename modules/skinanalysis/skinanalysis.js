@@ -3,18 +3,19 @@
 Module.register("skinanalysis", {
 	// Default module config.
 	defaults: {
-		updateInterval: 30 * 60 * 1000, // Check for updates every 30 minutes
+		updateInterval: 60 * 60 * 1000, // Check for updates every 60 minutes (reduced frequency)
 		animationSpeed: 2000,
 		apiKey: "", // OpenAI API key - set in config
 		apiUrl: "https://api.openai.com/v1/chat/completions",
 		model: "gpt-4o", // Vision model
-		maxTokens: 300,
+		maxTokens: 200, // Reduced token limit
 		statusFile: "/tmp/magicmirror_face_status.json",
 		skinPhotosDir: "Skin",
 		showAnalysis: true,
 		showAdvice: true,
-		analysisStyle: "large bright", // CSS classes
-		adviceStyle: "medium light", // CSS classes
+		analysisStyle: "small bright", // Smaller text
+		adviceStyle: "small light", // Smaller text
+		rateLimitDelay: 30000, // 30 seconds between requests
 		// Personalized greetings for different people
 		greetings: {
 			"default": "Тавтай морил {name}!",
@@ -40,6 +41,7 @@ Module.register("skinanalysis", {
 		this.isAnalyzing = false;
 		this.analysisTimer = null;
 		this.statusCheckTimer = null;
+		this.lastAnalysisRequest = 0; // Track last analysis request time
 
 		this.startStatusChecking();
 		this.scheduleAnalysis();
@@ -158,7 +160,7 @@ Module.register("skinanalysis", {
 	// Analyze skin using OpenAI Vision API
 	analyzeSkin: function() {
 		// Check API key configuration
-		if (!this.config.apiKey || this.config.apiKey.trim() === "" || this.config.apiKey === "your-openai-api-key-here") {
+		if (!this.config.apiKey || this.config.apiKey.trim() === "" || this.config.apiKey === "your-openai-api-key-here" || this.config.apiKey === "api input") {
 			console.error("OpenAI API key not configured");
 			this.currentAnalysis = {
 				person: this.currentPerson,
@@ -174,7 +176,25 @@ Module.register("skinanalysis", {
 			return;
 		}
 
+		// Rate limiting - check if enough time has passed since last request
+		const now = Date.now();
+		const timeSinceLastRequest = now - this.lastAnalysisRequest;
+		const rateLimitDelay = this.config.rateLimitDelay || 30000; // 30 seconds default
+
+		if (timeSinceLastRequest < rateLimitDelay) {
+			const remainingTime = Math.ceil((rateLimitDelay - timeSinceLastRequest) / 1000);
+			console.log(`Rate limit: Please wait ${remainingTime} seconds before next analysis`);
+			this.currentAnalysis = {
+				person: this.currentPerson,
+				analysis: "Хэт олон хүсэлт",
+				advice: `${remainingTime} секунд хүлээнэ үү`
+			};
+			this.updateDom(this.config.animationSpeed);
+			return;
+		}
+
 		this.isAnalyzing = true;
+		this.lastAnalysisRequest = now;
 		console.log("Starting skin analysis for:", this.currentPerson);
 		console.log("Using API key:", this.config.apiKey.substring(0, 10) + "...");
 
