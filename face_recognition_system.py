@@ -107,57 +107,82 @@ class FaceRecognitionSystem:
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
 
     def apply_skin_tone_correction(self, frame_rgb):
-        """Apply aggressive color correction specifically for skin tones"""
+        """Apply aggressive color correction specifically for skin tones - fixes purple/lavender color inversion"""
         try:
             # Convert RGB to BGR for OpenCV processing
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
             
-            # Convert to LAB color space for better color adjustment
-            lab = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2LAB)
-            l, a, b = cv2.split(lab)
+            print(f"[INFO] Original frame stats - B: {frame_bgr[:,:,0].mean():.1f}, G: {frame_bgr[:,:,1].mean():.1f}, R: {frame_bgr[:,:,2].mean():.1f}")
             
-            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to L channel
-            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+            # CRITICAL FIX: Apply aggressive color channel correction for purple skin inversion
+            # Split into BGR channels
+            b, g, r = cv2.split(frame_bgr)
+            
+            # AGGRESSIVE blue reduction - purple skin is caused by excessive blue
+            b_corrected = cv2.multiply(b, 0.6)  # Reduce blue by 40% (was 15%)
+            
+            # AGGRESSIVE red increase - counter the purple tint
+            r_corrected = cv2.multiply(r, 1.25)  # Increase red by 25% (was 5%)
+            
+            # Moderate green increase for natural balance
+            g_corrected = cv2.multiply(g, 1.08)  # Increase green by 8%
+            
+            # Merge corrected channels
+            frame_channel_corrected = cv2.merge([b_corrected, g_corrected, r_corrected])
+            
+            # Convert to LAB color space for additional correction
+            lab = cv2.cvtColor(frame_channel_corrected, cv2.COLOR_BGR2LAB)
+            l, a, b_lab = cv2.split(lab)
+            
+            # Apply CLAHE for better contrast
+            clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))
             l = clahe.apply(l)
             
-            # Adjust A and B channels for better skin tone reproduction
-            # A channel (green-red axis) - reduce green tint
-            a = cv2.add(a, 5)  # Shift towards red
+            # AGGRESSIVE LAB channel adjustment for skin tones
+            # A channel (green-red axis) - strongly shift towards red
+            a = cv2.add(a, 12)  # Strong shift towards red (was 5)
             
-            # B channel (blue-yellow axis) - reduce blue tint for skin tones
-            b = cv2.add(b, 8)  # Shift towards yellow
+            # B channel (blue-yellow axis) - strongly reduce blue tint
+            b_lab = cv2.add(b_lab, 15)  # Strong shift towards yellow (was 8)
             
-            # Merge channels back
-            lab_corrected = cv2.merge([l, a, b])
+            # Merge LAB channels
+            lab_corrected = cv2.merge([l, a, b_lab])
+            frame_lab_corrected = cv2.cvtColor(lab_corrected, cv2.COLOR_LAB2BGR)
             
-            # Convert back to BGR
-            frame_corrected = cv2.cvtColor(lab_corrected, cv2.COLOR_LAB2BGR)
+            # Final HSV correction for hue adjustment
+            hsv = cv2.cvtColor(frame_lab_corrected, cv2.COLOR_BGR2HSV)
+            h, s, v = cv2.split(hsv)
             
-            # Apply additional color correction in BGR space
-            # Split into BGR channels
-            b, g, r = cv2.split(frame_corrected)
+            # Adjust hue to shift away from purple towards natural skin tones
+            h = cv2.add(h, 8)  # Shift hue towards warmer tones
             
-            # Reduce blue channel (common cause of purple skin tones)
-            b = cv2.multiply(b, 0.85)  # Reduce blue by 15%
+            # Increase saturation slightly for more vibrant colors
+            s = cv2.multiply(s, 1.1)
             
-            # Slightly increase red channel for warmer skin tones
-            r = cv2.multiply(r, 1.05)  # Increase red by 5%
+            # Slight brightness adjustment
+            v = cv2.multiply(v, 1.05)
             
-            # Merge channels back
-            frame_final = cv2.merge([b, g, r])
+            hsv_corrected = cv2.merge([h, s, v])
+            frame_hsv_corrected = cv2.cvtColor(hsv_corrected, cv2.COLOR_HSV2BGR)
             
             # Apply gamma correction for better contrast
-            gamma = 1.1
-            frame_final = np.power(frame_final / 255.0, gamma) * 255.0
+            gamma = 1.2  # Increased gamma for better contrast (was 1.1)
+            frame_final = np.power(frame_hsv_corrected / 255.0, gamma) * 255.0
             frame_final = np.uint8(frame_final)
             
-            print(f"[INFO] Applied skin tone correction: reduced blue, increased red, gamma={gamma}")
+            print(f"[INFO] Corrected frame stats - B: {frame_final[:,:,0].mean():.1f}, G: {frame_final[:,:,1].mean():.1f}, R: {frame_final[:,:,2].mean():.1f}")
+            print(f"[INFO] Applied AGGRESSIVE skin tone correction: -40% blue, +25% red, +8% green, gamma={gamma}")
+            
             return frame_final
             
         except Exception as e:
             print(f"[WARNING] Color correction failed: {e}")
-            # Fallback to simple RGB to BGR conversion
-            return cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            # Fallback with basic correction
+            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            b, g, r = cv2.split(frame_bgr)
+            b = cv2.multiply(b, 0.7)  # Reduce blue
+            r = cv2.multiply(r, 1.2)  # Increase red
+            return cv2.merge([b, g, r])
 
     def get_distance(self):
         """Get distance from ultrasonic sensor in cm with improved accuracy and error handling"""
@@ -438,7 +463,7 @@ class FaceRecognitionSystem:
             try:
                 import subprocess
                 
-                # Use libcamera-still to capture 1080x1080 photo with aggressive color correction
+                # Use libcamera-still to capture 1080x1080 photo with AGGRESSIVE anti-purple correction
                 cmd = [
                     "libcamera-still",
                     "-o", photo_path,
@@ -450,10 +475,11 @@ class FaceRecognitionSystem:
                     "--metering", "average",  # Average metering
                     "--exposure", "auto",  # Auto exposure
                     "--gain", "auto",  # Auto gain
-                    "--saturation", "1.2",  # Slightly increase saturation
-                    "--contrast", "1.1",  # Slightly increase contrast
-                    "--brightness", "0.1",  # Slightly increase brightness
-                    "--sharpness", "1.0"  # Standard sharpness
+                    "--saturation", "1.4",  # AGGRESSIVE saturation increase (was 1.2)
+                    "--contrast", "1.2",  # AGGRESSIVE contrast increase (was 1.1)
+                    "--brightness", "0.15",  # AGGRESSIVE brightness increase (was 0.1)
+                    "--sharpness", "1.1",  # Slightly increase sharpness
+                    "--denoise", "cdn_off"  # Disable denoise to preserve color accuracy
                 ]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -467,7 +493,7 @@ class FaceRecognitionSystem:
                     print(f"   Person: {person_name}")
                     print(f"   Method: libcamera-still")
                     print(f"   Resolution: 1080x1080")
-                    print(f"   Color: Daylight white balance with enhanced saturation")
+                    print(f"   Color: AGGRESSIVE anti-purple correction (saturation 1.4, contrast 1.2)")
                     print(f"{'='*60}\n")
                     self.photo_saved_this_session = True
                     return True
