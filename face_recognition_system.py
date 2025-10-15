@@ -43,6 +43,9 @@ TEST_MODE = os.environ.get('FACE_RECOGNITION_TEST', 'false').lower() == 'true'
 if TEST_MODE:
     print("🧪 Running in TEST MODE - ultrasonic sensor will be simulated")
 
+# Color correction mode (natural | aggressive)
+SKIN_COLOR_MODE = os.environ.get('SKIN_COLOR_MODE', 'natural').lower()
+
 class FaceRecognitionSystem:
     def __init__(self):
         self.current_person = None
@@ -107,83 +110,73 @@ class FaceRecognitionSystem:
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
 
     def apply_skin_tone_correction(self, frame_rgb):
-        """Apply aggressive color correction specifically for skin tones - fixes purple/lavender color inversion"""
+        """Apply color correction.
+        Modes:
+        - natural (default): gray-world white balance + mild contrast; no hue/saturation shifts
+        - aggressive: legacy strong adjustments for yellow-green cast
+        """
         try:
             # Convert RGB to BGR for OpenCV processing
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-            
-            print(f"[INFO] Original frame stats - B: {frame_bgr[:,:,0].mean():.1f}, G: {frame_bgr[:,:,1].mean():.1f}, R: {frame_bgr[:,:,2].mean():.1f}")
-            
-            # CRITICAL FIX: Apply color correction for YELLOW-GREEN skin cast
-            # Split into BGR channels
+
+            if SKIN_COLOR_MODE == 'natural':
+                # Gray-world white balance: equalize average of channels
+                b, g, r = cv2.split(frame_bgr)
+                mean_b = float(b.mean()) + 1e-6
+                mean_g = float(g.mean()) + 1e-6
+                mean_r = float(r.mean()) + 1e-6
+                mean_gray = (mean_b + mean_g + mean_r) / 3.0
+
+                kb = mean_gray / mean_b
+                kg = mean_gray / mean_g
+                kr = mean_gray / mean_r
+
+                b_corr = cv2.multiply(b, kb)
+                g_corr = cv2.multiply(g, kg)
+                r_corr = cv2.multiply(r, kr)
+                wb = cv2.merge([b_corr, g_corr, r_corr])
+                wb = np.clip(wb, 0, 255).astype(np.uint8)
+
+                # Mild local contrast enhancement in LAB
+                lab = cv2.cvtColor(wb, cv2.COLOR_BGR2LAB)
+                l, a, b_lab = cv2.split(lab)
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                l = clahe.apply(l)
+                lab_corrected = cv2.merge([l, a, b_lab])
+                natural = cv2.cvtColor(lab_corrected, cv2.COLOR_LAB2BGR)
+
+                print(f"[INFO] Natural color mode applied (gray-world WB + mild CLAHE)")
+                return natural
+
+            # Aggressive legacy pipeline (previous behavior)
+            print(f"[INFO] Aggressive color mode applied")
             b, g, r = cv2.split(frame_bgr)
-            
-            # AGGRESSIVE green reduction - yellow-green skin is caused by excessive green
-            g_corrected = cv2.multiply(g, 0.65)  # Reduce green by 35% (fixes yellow-green cast)
-            
-            # AGGRESSIVE red increase - counter the yellow tint and restore natural skin
-            r_corrected = cv2.multiply(r, 1.3)  # Increase red by 30% (was 25%)
-            
-            # Moderate blue increase for natural balance
-            b_corrected = cv2.multiply(b, 1.05)  # Increase blue by 5% (was reduced for purple fix)
-            
-            # Merge corrected channels
+            g_corrected = cv2.multiply(g, 0.75)
+            r_corrected = cv2.multiply(r, 1.15)
+            b_corrected = cv2.multiply(b, 1.05)
             frame_channel_corrected = cv2.merge([b_corrected, g_corrected, r_corrected])
-            
-            # Convert to LAB color space for additional correction
+
             lab = cv2.cvtColor(frame_channel_corrected, cv2.COLOR_BGR2LAB)
             l, a, b_lab = cv2.split(lab)
-            
-            # Apply CLAHE for better contrast
-            clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
             l = clahe.apply(l)
-            
-            # AGGRESSIVE LAB channel adjustment for YELLOW-GREEN skin tones
-            # A channel (green-red axis) - strongly shift towards red (counter yellow-green)
-            a = cv2.add(a, 15)  # Strong shift towards red (was 12)
-            
-            # B channel (blue-yellow axis) - reduce yellow tint
-            b_lab = cv2.subtract(b_lab, 10)  # Shift away from yellow towards blue (was +15)
-            
-            # Merge LAB channels
+            a = cv2.add(a, 6)
+            b_lab = cv2.subtract(b_lab, 4)
             lab_corrected = cv2.merge([l, a, b_lab])
             frame_lab_corrected = cv2.cvtColor(lab_corrected, cv2.COLOR_LAB2BGR)
-            
-            # Final HSV correction for hue adjustment
+
+            # Subtle HSV tweaks
             hsv = cv2.cvtColor(frame_lab_corrected, cv2.COLOR_BGR2HSV)
             h, s, v = cv2.split(hsv)
-            
-            # Adjust hue to shift away from yellow-green towards natural skin tones
-            h = cv2.subtract(h, 12)  # Shift hue away from yellow-green towards natural tones (was +8)
-            
-            # Reduce saturation to counter the yellow-green over-saturation
-            s = cv2.multiply(s, 0.85)  # Reduce saturation (was 1.1)
-            
-            # Slight brightness adjustment
-            v = cv2.multiply(v, 1.05)
-            
+            s = cv2.multiply(s, 0.95)
+            v = cv2.multiply(v, 1.03)
             hsv_corrected = cv2.merge([h, s, v])
-            frame_hsv_corrected = cv2.cvtColor(hsv_corrected, cv2.COLOR_HSV2BGR)
-            
-            # Apply gamma correction for better contrast
-            gamma = 1.2  # Increased gamma for better contrast (was 1.1)
-            frame_final = np.power(frame_hsv_corrected / 255.0, gamma) * 255.0
-            frame_final = np.uint8(frame_final)
-            
-            print(f"[INFO] Corrected frame stats - B: {frame_final[:,:,0].mean():.1f}, G: {frame_final[:,:,1].mean():.1f}, R: {frame_final[:,:,2].mean():.1f}")
-            print(f"[INFO] Applied YELLOW-GREEN skin correction: -35% green, +30% red, +5% blue, gamma={gamma}")
-            
-            return frame_final
-            
+            out = cv2.cvtColor(hsv_corrected, cv2.COLOR_HSV2BGR)
+            return out
+
         except Exception as e:
             print(f"[WARNING] Color correction failed: {e}")
-            # Fallback with basic yellow-green correction
-            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-            b, g, r = cv2.split(frame_bgr)
-            g = cv2.multiply(g, 0.7)  # Reduce green (yellow-green fix)
-            r = cv2.multiply(r, 1.3)  # Increase red
-            b = cv2.multiply(b, 1.1)  # Increase blue slightly
-            return cv2.merge([b, g, r])
+            return cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
     def get_distance(self):
         """Get distance from ultrasonic sensor in cm with improved accuracy and error handling"""
@@ -464,7 +457,7 @@ class FaceRecognitionSystem:
             try:
                 import subprocess
                 
-                # Use libcamera-still to capture 1080x1080 photo with YELLOW-GREEN correction
+                # Use libcamera-still to capture 1080x1080 photo with neutral settings
                 cmd = [
                     "libcamera-still",
                     "-o", photo_path,
@@ -472,15 +465,11 @@ class FaceRecognitionSystem:
                     "--height", "1080",
                     "-t", "1000",  # 1 second timeout
                     "-n",  # No preview
-                    "--awb", "tungsten",  # Tungsten white balance (warmer, counteracts yellow-green)
-                    "--metering", "average",  # Average metering
-                    "--exposure", "auto",  # Auto exposure
-                    "--gain", "auto",  # Auto gain
-                    "--saturation", "0.8",  # REDUCE saturation to counter yellow-green over-saturation
-                    "--contrast", "1.1",  # Moderate contrast increase
-                    "--brightness", "0.05",  # Slight brightness increase
-                    "--sharpness", "1.0",  # Standard sharpness
-                    "--denoise", "cdn_off"  # Disable denoise to preserve color accuracy
+                    "--awb", "auto",
+                    "--metering", "average",
+                    "--exposure", "auto",
+                    "--gain", "auto",
+                    "--denoise", "auto"
                 ]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -494,7 +483,7 @@ class FaceRecognitionSystem:
                     print(f"   Person: {person_name}")
                     print(f"   Method: libcamera-still")
                     print(f"   Resolution: 1080x1080")
-                    print(f"   Color: YELLOW-GREEN correction (tungsten WB, saturation 0.8)")
+                    print(f"   Color: Neutral (auto white balance)")
                     print(f"{'='*60}\n")
                     self.photo_saved_this_session = True
                     return True
