@@ -219,34 +219,21 @@ let config = {
 				}
 			}
 		},
-		// Enable current weather (left side)
+		// Skin Analysis Module (replaces weather)
 		{
-			module: "weather",
+			module: "skinanalysis",
 			position: "bottom_left",
+			header: "Арьсны шинжилгээ", // "Skin Analysis" in Mongolian
 			config: {
-				weatherProvider: "openmeteo", // Free weather provider
-				type: "current",
-				// Ulaanbaatar coordinates (adjust for your location)
-				lat: 47.8864,
-				lon: 106.9057,
-				updateInterval: 10 * 60 * 1000, // 10 minutes
-				animationSpeed: 1000,
-				showFeelsLike: true,
-				showHumidity: "wind"
-			}
-		},
-		// Enable forecast weather (left side)
-		{
-			module: "weather",
-			position: "bottom_left",
-			header: "Цаг агаарын урьдчилсан мэдээ", // "Weather Forecast" in Mongolian
-			config: {
-				weatherProvider: "openmeteo",
-				type: "forecast",
-				lat: 47.8864,
-				lon: 106.9057,
-				maxNumberOfDays: 3, // Limit for Pi 4 performance
-				updateInterval: 10 * 60 * 1000
+				apiKey: "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", // Replace with your OpenAI API key
+				updateInterval: 30 * 60 * 1000, // 30 minutes
+				animationSpeed: 2000,
+				statusFile: "/tmp/magicmirror_face_status.json",
+				skinPhotosDir: "Skin",
+				showAnalysis: true,
+				showAdvice: true,
+				analysisStyle: "large bright",
+				adviceStyle: "medium light"
 			}
 		}
 	]

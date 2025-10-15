@@ -1,0 +1,61 @@
+.skinanalysis {
+	text-align: center;
+	padding: 20px;
+}
+
+.skinanalysis-status {
+	margin: 10px 0;
+	font-size: 1.2em;
+}
+
+.skinanalysis-analysis {
+	margin: 15px 0;
+	padding: 15px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 10px;
+	border-left: 4px solid #4CAF50;
+	font-size: 1.1em;
+	line-height: 1.4;
+}
+
+.skinanalysis-advice {
+	margin: 15px 0;
+	padding: 15px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 10px;
+	border-left: 4px solid #FF9800;
+	font-size: 1.0em;
+	line-height: 1.4;
+}
+
+.skinanalysis-time {
+	margin-top: 10px;
+	font-size: 0.9em;
+	opacity: 0.7;
+}
+
+/* Style classes */
+.large {
+	font-size: 1.3em;
+}
+
+.medium {
+	font-size: 1.1em;
+}
+
+.small {
+	font-size: 0.9em;
+}
+
+.bright {
+	color: #ffffff;
+	font-weight: bold;
+}
+
+.light {
+	color: #e0e0e0;
+}
+
+.dimmed {
+	color: #a0a0a0;
+}

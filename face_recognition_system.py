@@ -638,6 +638,24 @@ class FaceRecognitionSystem:
             print(f"{'='*60}\n")
             return False
 
+    def trigger_skin_analysis(self, person_name):
+        """Trigger skin analysis by writing a signal file"""
+        try:
+            analysis_trigger_file = f"/tmp/skin_analysis_trigger_{person_name}.json"
+            trigger_data = {
+                "person": person_name,
+                "timestamp": datetime.now().isoformat(),
+                "triggered": True
+            }
+            
+            with open(analysis_trigger_file, 'w') as f:
+                json.dump(trigger_data, f, indent=2)
+            
+            print(f"[INFO] Skin analysis triggered for {person_name}")
+            
+        except Exception as e:
+            print(f"[WARNING] Failed to trigger skin analysis: {e}")
+
     def recognize_face_with_camera(self):
         """Ultra-fast face recognition with camera reuse"""
         try:
@@ -700,7 +718,11 @@ class FaceRecognitionSystem:
                             print(f"✅ Face recognition successful: {name}")
                             
                             # Save high-resolution skin photo after successful recognition
-                            self.save_skin_photo(name)
+                            photo_saved = self.save_skin_photo(name)
+                            
+                            # Trigger skin analysis if photo was saved
+                            if photo_saved:
+                                self.trigger_skin_analysis(name)
                             
                             return name
                         else:
