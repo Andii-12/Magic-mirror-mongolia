@@ -58,6 +58,7 @@ class FaceRecognitionSystem:
         self.camera = None  # Reuse camera instance
         self.recognition_locked = False  # Prevent re-recognition until user leaves
         self.photo_saved_this_session = False  # Track if photo was saved for current recognition
+        self.last_photo_time = 0  # Track when last photo was saved
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -276,10 +277,18 @@ class FaceRecognitionSystem:
             print(f"[DEBUG] photo_saved_this_session: {self.photo_saved_this_session}")
             print(f"{'='*60}")
             
-            # Skip if photo already saved for this session
-            if self.photo_saved_this_session:
+            # Skip if photo already saved for this session, unless enough time has passed
+            current_time = time.time()
+            time_since_last_photo = current_time - self.last_photo_time
+            PHOTO_INTERVAL = 3600  # Allow new photo every hour (3600 seconds)
+            
+            if self.photo_saved_this_session and time_since_last_photo < PHOTO_INTERVAL:
                 print(f"[INFO] Photo already saved for this recognition session")
+                print(f"[INFO] Time since last photo: {time_since_last_photo:.0f}s (interval: {PHOTO_INTERVAL}s)")
                 return False
+            elif self.photo_saved_this_session and time_since_last_photo >= PHOTO_INTERVAL:
+                print(f"[INFO] Enough time has passed since last photo, allowing new photo")
+                self.photo_saved_this_session = False
             
             # Check platform
             current_platform = platform.system()
@@ -352,6 +361,7 @@ class FaceRecognitionSystem:
                         print(f"✅ Test file created: {photo_path}")
                         print(f"   File size: {file_size} bytes")
                         self.photo_saved_this_session = True
+                        self.last_photo_time = time.time()
                         return True
                     else:
                         print(f"[ERROR] Test file not created")
@@ -421,6 +431,7 @@ class FaceRecognitionSystem:
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
+                    self.last_photo_time = time.time()
                     
                     # Trigger skin analysis with the captured photo
                     self.trigger_skin_analysis(person_name, photo_path)
@@ -481,6 +492,7 @@ class FaceRecognitionSystem:
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
+                    self.last_photo_time = time.time()
                     
                     # Trigger skin analysis with the captured photo
                     self.trigger_skin_analysis(person_name, photo_path)
@@ -536,6 +548,11 @@ class FaceRecognitionSystem:
             if platform.system() == "Windows":
                 print("[INFO] Windows detected - simulating face recognition")
                 time.sleep(0.5)  # Reduced simulation delay
+                
+                # Reset photo flag for Windows simulation
+                if self.current_person != "Andii":
+                    self.photo_saved_this_session = False
+                    print(f"[INFO] Windows simulation mode, resetting photo flag")
                 
                 # Save photo even in Windows simulation mode
                 photo_saved = self.save_skin_photo("Andii")
@@ -597,6 +614,11 @@ class FaceRecognitionSystem:
                         if name != "Unknown" and confidence < 80:  # Much lower threshold
                             print(f"✅ Face recognition successful: {name}")
                             
+                            # Reset photo flag for this person if it's a new recognition
+                            if self.current_person != name:
+                                self.photo_saved_this_session = False
+                                print(f"[INFO] New person detected in recognition, resetting photo flag")
+                            
                             # Save high-resolution skin photo after successful recognition
                             photo_saved = self.save_skin_photo(name)
                             
@@ -613,6 +635,11 @@ class FaceRecognitionSystem:
                     else:
                         # Simulate recognition for testing
                         print("[INFO] Face recognition simulated - returning 'Andii'")
+                        
+                        # Reset photo flag for simulation
+                        if self.current_person != "Andii":
+                            self.photo_saved_this_session = False
+                            print(f"[INFO] Simulation mode, resetting photo flag")
                         
                         # Save photo even in simulation mode
                         photo_saved = self.save_skin_photo("Andii")
@@ -771,10 +798,6 @@ class FaceRecognitionSystem:
                             person = self.recognize_face_with_camera()
                             if person and person != "Unknown":
                                 print(f"✅ Face recognized: {person}")
-                                # Reset photo flag when new person is detected
-                                if self.current_person != person:
-                                    self.photo_saved_this_session = False
-                                    print(f"[INFO] New person detected, resetting photo flag")
                                 self.current_person = person
                                 self.shutdown_timer = None
                                 # Lock recognition until user leaves and logs out
@@ -782,10 +805,6 @@ class FaceRecognitionSystem:
                                 self.update_status_file()
                             else:
                                 print("❌ Face not recognized or cancelled - will retry in 2 seconds")
-                                # Reset photo flag when person becomes unknown
-                                if self.current_person != "Unknown":
-                                    self.photo_saved_this_session = False
-                                    print(f"[INFO] Person became unknown, resetting photo flag")
                                 # Reset recognition attempt to retry
                                 self.face_recognition_attempted = False
                                 self.last_detection_time = time.time() - 0.5  # Allow retry in 0.5 seconds
