@@ -386,40 +386,20 @@ class FaceRecognitionSystem:
             
             try:
                 import subprocess
-                
+                    
                 # Check if rpicam-still is available
-                try:
+                    try:
                     result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
                     if result_check.returncode != 0:
                         print(f"[WARNING] rpicam-still not found, trying libcamera-still")
                         raise Exception("rpicam-still not available")
-                except:
+                    except:
                     print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
                     raise Exception("rpicam-still not available")
                 
-                # TEMPORARILY RELEASE CAMERA from face recognition system
-                print(f"[INFO] Temporarily releasing camera for rpicam-still...")
+                # Try rpicam-still without releasing camera first
+                print(f"[INFO] Trying rpicam-still while camera is in use...")
                 camera_was_running = False
-                if self.camera is not None:
-                    try:
-                        self.camera.stop()
-                        self.camera = None  # Release the camera completely
-                        camera_was_running = True
-                        print(f"[INFO] Camera released successfully")
-                        time.sleep(2)  # Give camera more time to be fully released
-                        
-                        # Kill any processes that might be using the camera
-                        try:
-                            import subprocess
-                            # Kill any processes using /dev/video0
-                            subprocess.run(["sudo", "fuser", "-k", "/dev/video0"], capture_output=True)
-                            print(f"[INFO] Killed processes using camera")
-                            time.sleep(1)  # Wait for processes to be killed
-                        except Exception as e:
-                            print(f"[WARNING] Could not kill camera processes: {e}")
-                            
-                    except Exception as e:
-                        print(f"[WARNING] Failed to release camera: {e}")
                 
                 # Use rpicam-still for perfect photo capture - minimal working command
                 cmd = [
@@ -439,14 +419,8 @@ class FaceRecognitionSystem:
                 print(f"[DEBUG] rpicam stderr: {result.stderr}")
                 print(f"[DEBUG] Photo file exists after capture: {os.path.exists(photo_path)}")
                 
-                # REACQUIRE CAMERA for face recognition
-                if camera_was_running:
-                    print(f"[INFO] Reacquiring camera for face recognition...")
-                    try:
-                        self.initialize_camera()
-                        print(f"[INFO] Camera reacquired successfully")
-                    except Exception as e:
-                        print(f"[WARNING] Failed to reacquire camera: {e}")
+                # Camera is still running for face recognition
+                print(f"[INFO] Camera remains active for face recognition")
                 
                 if result.returncode == 0 and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
@@ -473,23 +447,14 @@ class FaceRecognitionSystem:
                     
             except Exception as e:
                 print(f"[WARNING] rpicam-still method failed: {e}")
-                # Try to reacquire camera even if photo failed
-                if camera_was_running:
-                    try:
-                        self.initialize_camera()
-                        print(f"[INFO] Camera reacquired after error")
-                    except:
-                        pass
             
             # Fallback: Use existing camera instance for photo capture
             print(f"[INFO] Fallback: Using existing camera instance for photo capture...")
             try:
-                # Reinitialize camera if needed
+                # Check if camera is available
                 if self.camera is None:
-                    print(f"[INFO] Reinitializing camera for fallback capture...")
-                    self.initialize_camera()
-                    if self.camera is None:
-                        raise Exception("Cannot initialize camera for fallback")
+                    print(f"[INFO] No camera available for fallback capture...")
+                    raise Exception("No camera available for fallback")
                 
                 print(f"[INFO] Using Picamera2 for fallback photo capture...")
                 
@@ -518,11 +483,11 @@ class FaceRecognitionSystem:
                 # Convert RGB to BGR for OpenCV
                 import cv2
                 frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                
-                # Save the image
+                    
+                    # Save the image
                 print(f"[INFO] Saving high-quality 1080x1080 image...")
-                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                
+                    success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    
                 # Restart preview configuration for face recognition
                 try:
                     self.camera.stop()
@@ -534,10 +499,10 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] Failed to reset camera: {e}")
                 
                 if success and os.path.exists(photo_path):
-                    file_size = os.path.getsize(photo_path)
+                        file_size = os.path.getsize(photo_path)
                     print(f"✅ Photo captured with Picamera2 fallback!")
-                    print(f"   Path: {photo_path}")
-                    print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                        print(f"   Path: {photo_path}")
+                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
                     print(f"   Resolution: 1080x1080")
                     print(f"   Quality: 95% JPEG")
                     print(f"   Method: Picamera2 (fallback)")
@@ -551,7 +516,7 @@ class FaceRecognitionSystem:
                     # Trigger skin analysis with the captured photo
                     self.trigger_skin_analysis(person_name, photo_path)
                     
-                    return True
+                            return True
                 else:
                     print(f"[WARNING] Picamera2 fallback failed")
                     raise Exception("Picamera2 fallback photo capture failed")
