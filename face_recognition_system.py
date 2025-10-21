@@ -380,20 +380,22 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
                     raise Exception("rpicam-still not available")
                 
-                # Use rpicam-still for perfect photo capture
+                # Check if camera is already in use
+                try:
+                    result_check = subprocess.run(["lsof", "/dev/video0"], capture_output=True, text=True)
+                    if result_check.returncode == 0 and result_check.stdout.strip():
+                        print(f"[WARNING] Camera appears to be in use: {result_check.stdout.strip()}")
+                        print(f"[INFO] This might cause issues, but continuing anyway...")
+                except:
+                    print(f"[INFO] Could not check camera usage (lsof not available)")
+                
+                # Use rpicam-still for perfect photo capture - minimal working command
                 cmd = [
                     "rpicam-still",
                     "-o", photo_path,
                     "--width", "1080",
                     "--height", "1080",
                     "-t", "1000",  # 1 second timeout
-                    "--awb", "auto",  # Auto white balance
-                    "--metering", "average",  # Average metering
-                    "--exposure", "auto",  # Auto exposure
-                    "--gain", "auto",  # Auto gain
-                    "--denoise", "auto",  # Auto denoise
-                    "--quality", "95",  # High quality JPEG
-                    "--encoding", "jpg",  # JPEG format
                     "--immediate"  # Capture immediately
                 ]
                 

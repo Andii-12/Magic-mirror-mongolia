@@ -85,20 +85,13 @@ def test_skin_photo_capture():
         if result_check.returncode == 0:
             print(f"✅ rpicam-still found: {result_check.stdout.strip()}")
             
-            # Try to capture a photo
+            # Try to capture a photo - minimal working command
             cmd = [
                 "rpicam-still",
                 "-o", photo_path,
                 "--width", "1080",
                 "--height", "1080",
                 "-t", "1000",
-                "--awb", "auto",
-                "--metering", "average",
-                "--exposure", "auto",
-                "--gain", "auto",
-                "--denoise", "auto",
-                "--quality", "95",
-                "--encoding", "jpg",
                 "--immediate"
             ]
             
