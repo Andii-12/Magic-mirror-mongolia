@@ -651,87 +651,41 @@ class FaceRecognitionSystem:
             except Exception as e:
                 print(f"[WARNING] ImageMagick method failed: {e}")
             
-            # Fallback: Use existing camera instance for photo capture
-            print(f"[INFO] Fallback: Using existing camera instance for photo capture...")
+            # Final fallback: Try rpicam-still with basic settings
+            print(f"[INFO] Final fallback: Trying rpicam-still with basic settings...")
             try:
-                # Check if camera is available
-                if self.camera is None:
-                    print(f"[INFO] No camera available for fallback capture...")
-                    raise Exception("No camera available for fallback")
+                basic_cmd = [
+                    "rpicam-still",
+                    "-o", photo_path,
+                    "--width", "1080",
+                    "--height", "1080",
+                    "-t", "3000",  # 3 second timeout
+                    "--immediate"
+                ]
                 
-                print(f"[INFO] Using Picamera2 for fallback photo capture...")
+                print(f"[INFO] Running basic rpicam command: {' '.join(basic_cmd)}")
+                result = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=15)
                 
-                # Stop current camera configuration
-                try:
-                    self.camera.stop()
-                    print(f"[INFO] Stopped current camera configuration")
-                except:
-                    pass
-                
-                # Create high-resolution still configuration
-                still_config = self.camera.create_still_configuration(
-                    main={"size": (1080, 1080), "format": "RGB888"},
-                    buffer_count=1
-                )
-                
-                print(f"[INFO] Configuring camera for 1080x1080 still capture...")
-                self.camera.configure(still_config)
-                self.camera.start()
-                time.sleep(0.5)  # Let camera adjust
-                
-                print(f"[INFO] Capturing 1080x1080 frame...")
-                frame_rgb = self.camera.capture_array("main")
-                print(f"[INFO] Captured frame shape: {frame_rgb.shape}")
-                
-                # Convert RGB to BGR for OpenCV
-                import cv2
-                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                
-                # Save the image
-                print(f"[INFO] Saving high-quality 1080x1080 image...")
-                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                    
-                # Restart preview configuration for face recognition
-                try:
-                    self.camera.stop()
-                    preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                    self.camera.configure(preview_config)
-                    self.camera.start()
-                    print(f"[INFO] Camera reset to preview mode")
-                except Exception as e:
-                    print(f"[WARNING] Failed to reset camera: {e}")
-                
-                if success and os.path.exists(photo_path):
+                if result.returncode == 0 and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
-                    print(f"✅ Photo captured with Picamera2 fallback!")
+                    print(f"✅ Photo captured with basic rpicam-still!")
                     print(f"   Path: {photo_path}")
                     print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                    print(f"   Resolution: 1080x1080")
-                    print(f"   Quality: 95% JPEG")
-                    print(f"   Method: Picamera2 (fallback)")
-                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
-                    print(f"   Person: {person_name}")
-                    print(f"{'='*60}\n")
+                    print(f"   Method: Basic rpicam-still")
                     
                     self.photo_saved_this_session = True
                     self.last_photo_time = time.time()
-                    
-                    # Trigger skin analysis with the captured photo
                     self.trigger_skin_analysis(person_name, photo_path)
-                    
                     return True
                 else:
-                    print(f"[WARNING] Picamera2 fallback failed")
-                    raise Exception("Picamera2 fallback photo capture failed")
+                    print(f"[WARNING] Basic rpicam-still failed: {result.stderr}")
                     
             except Exception as e:
-                print(f"[WARNING] Picamera2 fallback failed: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"[WARNING] Basic rpicam-still method failed: {e}")
             
             # All methods failed
-            print(f"\n[ERROR] All camera capture methods failed!")
-            print(f"Tried: rpicam-still, Picamera2 fallback")
+            print(f"\n[ERROR] All rpicam-still methods failed!")
+            print(f"Tried: rpicam-still with color correction, ImageMagick correction, basic rpicam-still")
             print(f"Camera hardware may not be properly connected or enabled")
             return False
         
