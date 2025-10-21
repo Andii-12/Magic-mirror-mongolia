@@ -401,14 +401,21 @@ class FaceRecognitionSystem:
                 print(f"[INFO] Trying rpicam-still while camera is in use...")
                 camera_was_running = False
                 
-                # Use rpicam-still for perfect photo capture - minimal working command
+                # Use rpicam-still for perfect photo capture with color correction
                 cmd = [
                     "rpicam-still",
                     "-o", photo_path,
                     "--width", "1080",
                     "--height", "1080",
                     "-t", "1000",  # 1 second timeout
-                    "--immediate"  # Capture immediately
+                    "--immediate",  # Capture immediately
+                    "--awb", "auto",  # Auto white balance
+                    "--denoise", "off",  # Disable denoising for better color
+                    "--gain", "1.0",  # Fixed gain to prevent color shifts
+                    "--exposure", "normal",  # Normal exposure mode
+                    "--brightness", "0.0",  # No brightness adjustment
+                    "--contrast", "1.0",  # Normal contrast
+                    "--saturation", "1.0"  # Normal saturation
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
@@ -443,7 +450,43 @@ class FaceRecognitionSystem:
                     return True
                 else:
                     print(f"[WARNING] rpicam-still failed: {result.stderr}")
-                    raise Exception(f"rpicam-still failed: {result.stderr}")
+                    print(f"[INFO] Trying alternative rpicam-still with different color settings...")
+                    
+                    # Try alternative rpicam-still command with different color correction
+                    cmd_alt = [
+                        "rpicam-still",
+                        "-o", photo_path,
+                        "--width", "1080",
+                        "--height", "1080",
+                        "-t", "2000",  # Longer timeout
+                        "--immediate",
+                        "--awb", "greyworld",  # Different white balance
+                        "--denoise", "cdn_off",  # Disable denoising
+                        "--gain", "1.0",
+                        "--exposure", "normal",
+                        "--brightness", "0.0",
+                        "--contrast", "1.0",
+                        "--saturation", "1.0",
+                        "--shutter", "10000"  # Fixed shutter speed
+                    ]
+                    
+                    print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")
+                    result_alt = subprocess.run(cmd_alt, capture_output=True, text=True, timeout=20)
+                    
+                    if result_alt.returncode == 0 and os.path.exists(photo_path):
+                        file_size = os.path.getsize(photo_path)
+                        print(f"✅ Photo captured with alternative rpicam-still!")
+                        print(f"   Path: {photo_path}")
+                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                        print(f"   Method: rpicam-still (alternative color settings)")
+                        
+                        self.photo_saved_this_session = True
+                        self.last_photo_time = time.time()
+                        self.trigger_skin_analysis(person_name, photo_path)
+                        return True
+                    else:
+                        print(f"[WARNING] Alternative rpicam-still also failed: {result_alt.stderr}")
+                        raise Exception(f"Both rpicam-still methods failed")
                     
             except Exception as e:
                 print(f"[WARNING] rpicam-still method failed: {e}")
