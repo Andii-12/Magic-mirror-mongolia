@@ -401,21 +401,25 @@ class FaceRecognitionSystem:
                 print(f"[INFO] Trying rpicam-still while camera is in use...")
                 camera_was_running = False
                 
-                # Use rpicam-still for perfect photo capture with color correction
+                # Use rpicam-still with aggressive color correction to fix blue-purple tint
                 cmd = [
                     "rpicam-still",
                     "-o", photo_path,
                     "--width", "1080",
                     "--height", "1080",
-                    "-t", "1000",  # 1 second timeout
+                    "-t", "2000",  # 2 second timeout
                     "--immediate",  # Capture immediately
-                    "--awb", "auto",  # Auto white balance
-                    "--denoise", "off",  # Disable denoising for better color
-                    "--gain", "1.0",  # Fixed gain to prevent color shifts
-                    "--exposure", "normal",  # Normal exposure mode
+                    "--awb", "daylight",  # Force daylight white balance
+                    "--denoise", "cdn_off",  # Disable all denoising
+                    "--gain", "1.0",  # Fixed gain
+                    "--exposure", "normal",  # Normal exposure
                     "--brightness", "0.0",  # No brightness adjustment
                     "--contrast", "1.0",  # Normal contrast
-                    "--saturation", "1.0"  # Normal saturation
+                    "--saturation", "1.2",  # Slightly increased saturation
+                    "--shutter", "10000",  # Fixed shutter speed (10ms)
+                    "--analoggain", "1.0",  # Fixed analog gain
+                    "--digitalgain", "1.0",  # Fixed digital gain
+                    "--colormatrix", "1"  # Use standard color matrix
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
@@ -452,22 +456,26 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] rpicam-still failed: {result.stderr}")
                     print(f"[INFO] Trying alternative rpicam-still with different color settings...")
                     
-                    # Try alternative rpicam-still command with different color correction
+                    # Try alternative rpicam-still command with extreme color correction
                     cmd_alt = [
                         "rpicam-still",
                         "-o", photo_path,
                         "--width", "1080",
                         "--height", "1080",
-                        "-t", "2000",  # Longer timeout
+                        "-t", "3000",  # Longer timeout
                         "--immediate",
-                        "--awb", "greyworld",  # Different white balance
-                        "--denoise", "cdn_off",  # Disable denoising
+                        "--awb", "incandescent",  # Warmer white balance to counter blue
+                        "--denoise", "cdn_off",  # Disable all denoising
                         "--gain", "1.0",
                         "--exposure", "normal",
-                        "--brightness", "0.0",
-                        "--contrast", "1.0",
-                        "--saturation", "1.0",
-                        "--shutter", "10000"  # Fixed shutter speed
+                        "--brightness", "0.1",  # Slight brightness increase
+                        "--contrast", "1.1",  # Slight contrast increase
+                        "--saturation", "1.3",  # Higher saturation
+                        "--shutter", "15000",  # Longer shutter speed
+                        "--analoggain", "1.0",
+                        "--digitalgain", "1.0",
+                        "--colormatrix", "0",  # Try different color matrix
+                        "--awbgains", "1.5,1.0"  # Force red/blue gain ratio
                     ]
                     
                     print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")
@@ -486,10 +494,123 @@ class FaceRecognitionSystem:
                         return True
                     else:
                         print(f"[WARNING] Alternative rpicam-still also failed: {result_alt.stderr}")
-                        raise Exception(f"Both rpicam-still methods failed")
+                        print(f"[INFO] Trying third method: rpicam-still with raw capture...")
+                        
+                        # Third method: Use raw capture and convert
+                        raw_path = photo_path.replace('.jpg', '_raw.jpg')
+                        cmd_raw = [
+                            "rpicam-still",
+                            "-o", raw_path,
+                            "--width", "1080",
+                            "--height", "1080",
+                            "-t", "2000",
+                            "--immediate",
+                            "--raw",  # Capture raw image
+                            "--awb", "auto",
+                            "--gain", "1.0"
+                        ]
+                        
+                        print(f"[INFO] Running raw capture command: {' '.join(cmd_raw)}")
+                        result_raw = subprocess.run(cmd_raw, capture_output=True, text=True, timeout=15)
+                        
+                        if result_raw.returncode == 0 and os.path.exists(raw_path):
+                            # Convert raw to jpg with color correction
+                            convert_cmd = [
+                                "rpicam-still",
+                                "-o", photo_path,
+                                "--width", "1080", 
+                                "--height", "1080",
+                                "-t", "1000",
+                                "--immediate",
+                                "--awb", "daylight",
+                                "--denoise", "cdn_off",
+                                "--gain", "1.0",
+                                "--exposure", "normal",
+                                "--brightness", "0.0",
+                                "--contrast", "1.0",
+                                "--saturation", "1.0"
+                            ]
+                            
+                            print(f"[INFO] Converting raw image with color correction...")
+                            result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
+                            
+                            if result_convert.returncode == 0 and os.path.exists(photo_path):
+                                file_size = os.path.getsize(photo_path)
+                                print(f"✅ Photo captured with raw conversion method!")
+                                print(f"   Path: {photo_path}")
+                                print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                                print(f"   Method: rpicam-still (raw conversion)")
+                                
+                                self.photo_saved_this_session = True
+                                self.last_photo_time = time.time()
+                                self.trigger_skin_analysis(person_name, photo_path)
+                                return True
+                            else:
+                                print(f"[WARNING] Raw conversion failed: {result_convert.stderr}")
+                        else:
+                            print(f"[WARNING] Raw capture failed: {result_raw.stderr}")
+                        
+                        print(f"[WARNING] All rpicam-still methods failed")
+                        raise Exception(f"All rpicam-still methods failed")
                     
             except Exception as e:
                 print(f"[WARNING] rpicam-still method failed: {e}")
+            
+            # Fallback 4: Try manual color correction with ImageMagick
+            try:
+                print(f"[INFO] Trying manual color correction with ImageMagick...")
+                
+                # First capture with basic settings
+                basic_cmd = [
+                    "rpicam-still",
+                    "-o", photo_path,
+                    "--width", "1080",
+                    "--height", "1080",
+                    "-t", "2000",
+                    "--immediate"
+                ]
+                
+                result_basic = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=10)
+                
+                if result_basic.returncode == 0 and os.path.exists(photo_path):
+                    # Apply color correction with ImageMagick
+                    temp_path = photo_path.replace('.jpg', '_temp.jpg')
+                    convert_cmd = [
+                        "convert", photo_path,
+                        "-colorspace", "RGB",
+                        "-channel", "RGB",
+                        "-normalize",
+                        "-gamma", "1.2",
+                        "-saturation", "120%",
+                        "-brightness-contrast", "5x5",
+                        temp_path
+                    ]
+                    
+                    print(f"[INFO] Applying ImageMagick color correction...")
+                    result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
+                    
+                    if result_convert.returncode == 0 and os.path.exists(temp_path):
+                        # Replace original with corrected version
+                        os.replace(temp_path, photo_path)
+                        file_size = os.path.getsize(photo_path)
+                        print(f"✅ Photo captured with ImageMagick color correction!")
+                        print(f"   Path: {photo_path}")
+                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                        print(f"   Method: rpicam-still + ImageMagick correction")
+                        
+                        self.photo_saved_this_session = True
+                        self.last_photo_time = time.time()
+                        self.trigger_skin_analysis(person_name, photo_path)
+                        return True
+                    else:
+                        print(f"[WARNING] ImageMagick correction failed: {result_convert.stderr}")
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
+                else:
+                    print(f"[WARNING] Basic rpicam-still failed: {result_basic.stderr}")
+                    
+            except Exception as e:
+                print(f"[WARNING] ImageMagick method failed: {e}")
             
             # Fallback: Use existing camera instance for photo capture
             print(f"[INFO] Fallback: Using existing camera instance for photo capture...")

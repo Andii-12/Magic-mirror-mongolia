@@ -24,22 +24,34 @@ def test_rpicam_color():
             "cmd": ["rpicam-still", "-o", f"{test_dir}/test_default.jpg", "-t", "1000"]
         },
         {
-            "name": "Auto White Balance",
-            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_awb_auto.jpg", "-t", "1000", "--awb", "auto"]
+            "name": "Daylight White Balance",
+            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_daylight.jpg", "-t", "2000", 
+                   "--awb", "daylight", "--denoise", "cdn_off", "--gain", "1.0", 
+                   "--exposure", "normal", "--brightness", "0.0", "--contrast", "1.0", 
+                   "--saturation", "1.2", "--shutter", "10000", "--analoggain", "1.0", 
+                   "--digitalgain", "1.0", "--colormatrix", "1"]
+        },
+        {
+            "name": "Incandescent White Balance",
+            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_incandescent.jpg", "-t", "2000", 
+                   "--awb", "incandescent", "--denoise", "cdn_off", "--gain", "1.0", 
+                   "--exposure", "normal", "--brightness", "0.1", "--contrast", "1.1", 
+                   "--saturation", "1.3", "--shutter", "15000", "--analoggain", "1.0", 
+                   "--digitalgain", "1.0", "--colormatrix", "0", "--awbgains", "1.5,1.0"]
+        },
+        {
+            "name": "Auto White Balance + Fixed Gains",
+            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_auto_fixed.jpg", "-t", "2000", 
+                   "--awb", "auto", "--denoise", "cdn_off", "--gain", "1.0", 
+                   "--exposure", "normal", "--brightness", "0.0", "--contrast", "1.0", 
+                   "--saturation", "1.0", "--shutter", "10000"]
         },
         {
             "name": "Greyworld White Balance",
-            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_awb_greyworld.jpg", "-t", "1000", "--awb", "greyworld"]
-        },
-        {
-            "name": "Fixed Gain + AWB",
-            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_fixed_gain.jpg", "-t", "1000", "--awb", "auto", "--gain", "1.0"]
-        },
-        {
-            "name": "Full Color Correction",
-            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_full_correction.jpg", "-t", "1000", 
-                   "--awb", "auto", "--denoise", "off", "--gain", "1.0", 
-                   "--exposure", "normal", "--brightness", "0.0", "--contrast", "1.0", "--saturation", "1.0"]
+            "cmd": ["rpicam-still", "-o", f"{test_dir}/test_greyworld.jpg", "-t", "2000", 
+                   "--awb", "greyworld", "--denoise", "cdn_off", "--gain", "1.0", 
+                   "--exposure", "normal", "--brightness", "0.0", "--contrast", "1.0", 
+                   "--saturation", "1.0"]
         }
     ]
     
