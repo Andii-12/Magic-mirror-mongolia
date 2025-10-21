@@ -51,8 +51,8 @@ if [ "$1" = "test" ]; then
     FACE_RECOGNITION_TEST=true python3 face_recognition_system.py &
     FACE_PID=$!
 else
-    echo "🎯 Starting face recognition system..."
-    python3 face_recognition_system.py &
+    echo "🎯 Starting face recognition system with blue fix color correction..."
+    SKIN_COLOR_MODE=blue_fix python3 face_recognition_system.py &
     FACE_PID=$!
 fi
 

@@ -115,12 +115,46 @@ class FaceRecognitionSystem:
         Modes:
         - natural (default): gray-world white balance + mild contrast; no hue/saturation shifts
         - aggressive: legacy strong adjustments for yellow-green cast
+        - blue_fix: specific fix for blue-purple skin tone issues
         """
         try:
             # Convert RGB to BGR for OpenCV processing
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
-            if SKIN_COLOR_MODE == 'natural':
+            if SKIN_COLOR_MODE == 'blue_fix':
+                # Specific fix for blue-purple skin tone issues
+                print(f"[INFO] Blue-purple fix mode applied")
+                
+                # Convert to LAB for better color correction
+                lab = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2LAB)
+                l, a, b = cv2.split(lab)
+                
+                # Reduce blue channel significantly
+                b = cv2.subtract(b, 15)  # Reduce blue-yellow component
+                a = cv2.add(a, 8)        # Increase green-red component
+                
+                # Merge corrected LAB channels
+                lab_corrected = cv2.merge([l, a, b])
+                frame_lab_corrected = cv2.cvtColor(lab_corrected, cv2.COLOR_LAB2BGR)
+                
+                # Additional RGB channel adjustments
+                b, g, r = cv2.split(frame_lab_corrected)
+                r = cv2.multiply(r, 1.3)  # Boost red significantly
+                g = cv2.multiply(g, 1.1)  # Slight green boost
+                b = cv2.multiply(b, 0.7)  # Reduce blue significantly
+                
+                # Merge and apply gamma correction
+                corrected = cv2.merge([b, g, r])
+                corrected = np.clip(corrected, 0, 255).astype(np.uint8)
+                
+                # Apply gamma correction for better skin tones
+                gamma = 1.2
+                corrected = np.power(corrected / 255.0, 1.0/gamma) * 255.0
+                corrected = np.clip(corrected, 0, 255).astype(np.uint8)
+                
+                return corrected
+
+            elif SKIN_COLOR_MODE == 'natural':
                 # Gray-world white balance: equalize average of channels
                 b, g, r = cv2.split(frame_bgr)
                 mean_b = float(b.mean()) + 1e-6
@@ -409,17 +443,19 @@ class FaceRecognitionSystem:
                     "--height", "1080",
                     "-t", "2000",  # 2 second timeout
                     "--immediate",  # Capture immediately
-                    "--awb", "daylight",  # Force daylight white balance
+                    "--awb", "auto",  # Auto white balance first
+                    "--awbgains", "1.8,1.0",  # Force red/blue gain ratio (red=1.8, blue=1.0)
                     "--denoise", "cdn_off",  # Disable all denoising
                     "--gain", "1.0",  # Fixed gain
                     "--exposure", "normal",  # Normal exposure
-                    "--brightness", "0.0",  # No brightness adjustment
-                    "--contrast", "1.0",  # Normal contrast
-                    "--saturation", "1.2",  # Slightly increased saturation
-                    "--shutter", "10000",  # Fixed shutter speed (10ms)
+                    "--brightness", "0.1",  # Slight brightness increase
+                    "--contrast", "1.1",  # Slight contrast increase
+                    "--saturation", "1.3",  # Higher saturation to counter blue
+                    "--shutter", "15000",  # Longer shutter speed (15ms)
                     "--analoggain", "1.0",  # Fixed analog gain
                     "--digitalgain", "1.0",  # Fixed digital gain
-                    "--colormatrix", "1"  # Use standard color matrix
+                    "--colormatrix", "0",  # Use different color matrix
+                    "--ev", "0.2"  # Slight exposure compensation
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
@@ -573,30 +609,33 @@ class FaceRecognitionSystem:
                 result_basic = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=10)
                 
                 if result_basic.returncode == 0 and os.path.exists(photo_path):
-                    # Apply color correction with ImageMagick
+                    # Apply aggressive color correction with ImageMagick
                     temp_path = photo_path.replace('.jpg', '_temp.jpg')
                     convert_cmd = [
                         "convert", photo_path,
                         "-colorspace", "RGB",
-                        "-channel", "RGB",
-                        "-normalize",
-                        "-gamma", "1.2",
-                        "-saturation", "120%",
-                        "-brightness-contrast", "5x5",
+                        "-channel", "R", "-evaluate", "multiply", "1.4",  # Boost red channel
+                        "-channel", "G", "-evaluate", "multiply", "1.1",  # Slight green boost
+                        "-channel", "B", "-evaluate", "multiply", "0.8",  # Reduce blue channel
+                        "+channel",  # Reset channel selection
+                        "-gamma", "1.3",  # Increase gamma for better skin tones
+                        "-saturation", "130%",  # Higher saturation
+                        "-brightness-contrast", "8x8",  # More brightness and contrast
+                        "-color-matrix", "1.2,0,0,0,1.1,0,0,0,0.9",  # Custom color matrix
                         temp_path
                     ]
                     
-                    print(f"[INFO] Applying ImageMagick color correction...")
+                    print(f"[INFO] Applying aggressive ImageMagick color correction...")
                     result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
                     
                     if result_convert.returncode == 0 and os.path.exists(temp_path):
                         # Replace original with corrected version
                         os.replace(temp_path, photo_path)
                         file_size = os.path.getsize(photo_path)
-                        print(f"✅ Photo captured with ImageMagick color correction!")
+                        print(f"✅ Photo captured with aggressive ImageMagick color correction!")
                         print(f"   Path: {photo_path}")
                         print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                        print(f"   Method: rpicam-still + ImageMagick correction")
+                        print(f"   Method: rpicam-still + aggressive ImageMagick correction")
                         
                         self.photo_saved_this_session = True
                         self.last_photo_time = time.time()
