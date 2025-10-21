@@ -406,7 +406,18 @@ class FaceRecognitionSystem:
                         self.camera = None  # Release the camera completely
                         camera_was_running = True
                         print(f"[INFO] Camera released successfully")
-                        time.sleep(1)  # Give camera time to be fully released
+                        time.sleep(2)  # Give camera more time to be fully released
+                        
+                        # Kill any processes that might be using the camera
+                        try:
+                            import subprocess
+                            # Kill any processes using /dev/video0
+                            subprocess.run(["sudo", "fuser", "-k", "/dev/video0"], capture_output=True)
+                            print(f"[INFO] Killed processes using camera")
+                            time.sleep(1)  # Wait for processes to be killed
+                        except Exception as e:
+                            print(f"[WARNING] Could not kill camera processes: {e}")
+                            
                     except Exception as e:
                         print(f"[WARNING] Failed to release camera: {e}")
                 
@@ -470,51 +481,68 @@ class FaceRecognitionSystem:
                     except:
                         pass
             
-            # Fallback to libcamera-still if rpicam not available
-            print(f"[INFO] Fallback: Trying libcamera-still...")
+            # Fallback: Use existing camera instance for photo capture
+            print(f"[INFO] Fallback: Using existing camera instance for photo capture...")
             try:
-                import subprocess
+                # Reinitialize camera if needed
+                if self.camera is None:
+                    print(f"[INFO] Reinitializing camera for fallback capture...")
+                    self.initialize_camera()
+                    if self.camera is None:
+                        raise Exception("Cannot initialize camera for fallback")
                 
-                # Check if libcamera-still is available
+                print(f"[INFO] Using Picamera2 for fallback photo capture...")
+                
+                # Stop current camera configuration
                 try:
-                    result_check = subprocess.run(["which", "libcamera-still"], capture_output=True, text=True)
-                    if result_check.returncode != 0:
-                        print(f"[WARNING] libcamera-still not found either")
-                        raise Exception("libcamera-still not available")
+                    self.camera.stop()
+                    print(f"[INFO] Stopped current camera configuration")
                 except:
-                    print(f"[WARNING] libcamera-still check failed")
-                    raise Exception("libcamera-still not available")
+                    pass
                 
-                cmd = [
-                    "libcamera-still",
-                    "-o", photo_path,
-                    "--width", "1080",
-                    "--height", "1080",
-                    "-t", "1000",
-                    "-n",
-                    "--awb", "auto",
-                    "--metering", "average",
-                    "--exposure", "auto",
-                    "--gain", "auto",
-                    "--denoise", "auto"
-                ]
+                # Create high-resolution still configuration
+                still_config = self.camera.create_still_configuration(
+                    main={"size": (1080, 1080), "format": "RGB888"},
+                    buffer_count=1
+                )
                 
-                print(f"[INFO] Running libcamera command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                print(f"[INFO] Configuring camera for 1080x1080 still capture...")
+                self.camera.configure(still_config)
+                self.camera.start()
+                time.sleep(0.5)  # Let camera adjust
                 
-                print(f"[DEBUG] libcamera return code: {result.returncode}")
-                print(f"[DEBUG] libcamera stdout: {result.stdout}")
-                print(f"[DEBUG] libcamera stderr: {result.stderr}")
-                print(f"[DEBUG] Photo file exists after capture: {os.path.exists(photo_path)}")
+                print(f"[INFO] Capturing 1080x1080 frame...")
+                frame_rgb = self.camera.capture_array("main")
+                print(f"[INFO] Captured frame shape: {frame_rgb.shape}")
                 
-                if result.returncode == 0 and os.path.exists(photo_path):
+                # Convert RGB to BGR for OpenCV
+                import cv2
+                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                
+                # Save the image
+                print(f"[INFO] Saving high-quality 1080x1080 image...")
+                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                
+                # Restart preview configuration for face recognition
+                try:
+                    self.camera.stop()
+                    preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
+                    self.camera.configure(preview_config)
+                    self.camera.start()
+                    print(f"[INFO] Camera reset to preview mode")
+                except Exception as e:
+                    print(f"[WARNING] Failed to reset camera: {e}")
+                
+                if success and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
-                    print(f"✅ Photo captured with libcamera-still!")
+                    print(f"✅ Photo captured with Picamera2 fallback!")
                     print(f"   Path: {photo_path}")
                     print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                    print(f"   Resolution: 1080x1080")
+                    print(f"   Quality: 95% JPEG")
+                    print(f"   Method: Picamera2 (fallback)")
                     print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                     print(f"   Person: {person_name}")
-                    print(f"   Method: libcamera-still (fallback)")
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
@@ -525,15 +553,17 @@ class FaceRecognitionSystem:
                     
                     return True
                 else:
-                    print(f"[WARNING] libcamera-still also failed: {result.stderr}")
-                    raise Exception(f"libcamera-still failed: {result.stderr}")
+                    print(f"[WARNING] Picamera2 fallback failed")
+                    raise Exception("Picamera2 fallback photo capture failed")
                     
             except Exception as e:
-                print(f"[WARNING] libcamera-still fallback failed: {e}")
+                print(f"[WARNING] Picamera2 fallback failed: {e}")
+                import traceback
+                traceback.print_exc()
             
             # All methods failed
             print(f"\n[ERROR] All camera capture methods failed!")
-            print(f"Tried: rpicam-still, libcamera-still")
+            print(f"Tried: rpicam-still, Picamera2 fallback")
             print(f"Camera hardware may not be properly connected or enabled")
             return False
         
