@@ -421,7 +421,17 @@ class FaceRecognitionSystem:
                     self.camera.stop()
                     camera_was_running = True
                     print(f"[INFO] Picamera2 stopped successfully")
-                    time.sleep(1.5)  # Give camera time to fully release
+                    time.sleep(2.0)  # Give camera more time to fully release
+                    
+                    # Additional check - kill any remaining camera processes
+                    try:
+                        subprocess.run(["pkill", "-f", "rpicam"], capture_output=True)
+                        subprocess.run(["pkill", "-f", "libcamera"], capture_output=True)
+                        time.sleep(0.5)
+                        print(f"[INFO] Killed any remaining camera processes")
+                    except:
+                        pass
+                        
                 except Exception as e:
                     print(f"[WARNING] Failed to stop Picamera2: {e}")
             
@@ -446,27 +456,16 @@ class FaceRecognitionSystem:
                 # Now camera should be free for rpicam-still
                 print(f"[INFO] Camera is now free, using rpicam-still...")
                 
-                # Use rpicam-still with aggressive color correction to fix blue-purple tint
+                # Use rpicam-still with simple, working options
                 cmd = [
                     "rpicam-still",
                     "-o", photo_path,
                     "--width", "1080",
                     "--height", "1080",
-                    "-t", "2000",  # 2 second timeout
+                    "-t", "3000",  # 3 second timeout
                     "--immediate",  # Capture immediately
-                    "--awb", "auto",  # Auto white balance first
-                    "--awbgains", "1.8,1.0",  # Force red/blue gain ratio (red=1.8, blue=1.0)
-                    "--denoise", "cdn_off",  # Disable all denoising
-                    "--gain", "1.0",  # Fixed gain
-                    "--exposure", "normal",  # Normal exposure
-                    "--brightness", "0.1",  # Slight brightness increase
-                    "--contrast", "1.1",  # Slight contrast increase
-                    "--saturation", "1.3",  # Higher saturation to counter blue
-                    "--shutter", "15000",  # Longer shutter speed (15ms)
-                    "--analoggain", "1.0",  # Fixed analog gain
-                    "--digitalgain", "1.0",  # Fixed digital gain
-                    "--colormatrix", "0",  # Use different color matrix
-                    "--ev", "0.2"  # Slight exposure compensation
+                    "--awb", "auto",  # Auto white balance
+                    "--awbgains", "1.8,1.0"  # Boost red channel
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
@@ -512,7 +511,7 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] rpicam-still failed: {result.stderr}")
                     print(f"[INFO] Trying alternative rpicam-still with different color settings...")
                     
-                    # Try alternative rpicam-still command with extreme color correction
+                    # Try alternative rpicam-still command with different settings
                     cmd_alt = [
                         "rpicam-still",
                         "-o", photo_path,
@@ -520,18 +519,8 @@ class FaceRecognitionSystem:
                         "--height", "1080",
                         "-t", "3000",  # Longer timeout
                         "--immediate",
-                        "--awb", "incandescent",  # Warmer white balance to counter blue
-                        "--denoise", "cdn_off",  # Disable all denoising
-                        "--gain", "1.0",
-                        "--exposure", "normal",
-                        "--brightness", "0.1",  # Slight brightness increase
-                        "--contrast", "1.1",  # Slight contrast increase
-                        "--saturation", "1.3",  # Higher saturation
-                        "--shutter", "15000",  # Longer shutter speed
-                        "--analoggain", "1.0",
-                        "--digitalgain", "1.0",
-                        "--colormatrix", "0",  # Try different color matrix
-                        "--awbgains", "1.5,1.0"  # Force red/blue gain ratio
+                        "--awb", "incandescent",  # Warmer white balance
+                        "--awbgains", "2.0,1.0"  # More red boost
                     ]
                     
                     print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")
@@ -562,69 +551,42 @@ class FaceRecognitionSystem:
                         print(f"[WARNING] Alternative rpicam-still also failed: {result_alt.stderr}")
                         print(f"[INFO] Trying third method: rpicam-still with raw capture...")
                         
-                        # Third method: Use raw capture and convert
-                        raw_path = photo_path.replace('.jpg', '_raw.jpg')
+                        # Third method: Use basic capture
                         cmd_raw = [
                             "rpicam-still",
-                            "-o", raw_path,
+                            "-o", photo_path,
                             "--width", "1080",
                             "--height", "1080",
                             "-t", "2000",
-                            "--immediate",
-                            "--raw",  # Capture raw image
-                            "--awb", "auto",
-                            "--gain", "1.0"
+                            "--immediate"
                         ]
                         
-                        print(f"[INFO] Running raw capture command: {' '.join(cmd_raw)}")
+                        print(f"[INFO] Running basic capture command: {' '.join(cmd_raw)}")
                         result_raw = subprocess.run(cmd_raw, capture_output=True, text=True, timeout=15)
                         
-                        if result_raw.returncode == 0 and os.path.exists(raw_path):
-                            # Convert raw to jpg with color correction
-                            convert_cmd = [
-                                "rpicam-still",
-                                "-o", photo_path,
-                                "--width", "1080", 
-                                "--height", "1080",
-                                "-t", "1000",
-                                "--immediate",
-                                "--awb", "daylight",
-                                "--denoise", "cdn_off",
-                                "--gain", "1.0",
-                                "--exposure", "normal",
-                                "--brightness", "0.0",
-                                "--contrast", "1.0",
-                                "--saturation", "1.0"
-                            ]
+                        if result_raw.returncode == 0 and os.path.exists(photo_path):
+                            file_size = os.path.getsize(photo_path)
+                            print(f"✅ Photo captured with basic method!")
+                            print(f"   Path: {photo_path}")
+                            print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                            print(f"   Method: rpicam-still (basic)")
                             
-                            print(f"[INFO] Converting raw image with color correction...")
-                            result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
+                            self.photo_saved_this_session = True
+                            self.last_photo_time = time.time()
+                            self.trigger_skin_analysis(person_name, photo_path)
                             
-                            if result_convert.returncode == 0 and os.path.exists(photo_path):
-                                file_size = os.path.getsize(photo_path)
-                                print(f"✅ Photo captured with raw conversion method!")
-                                print(f"   Path: {photo_path}")
-                                print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                                print(f"   Method: rpicam-still (raw conversion)")
-                                
-                                self.photo_saved_this_session = True
-                                self.last_photo_time = time.time()
-                                self.trigger_skin_analysis(person_name, photo_path)
-                                
-                                # Restart Picamera2 for face recognition
-                                if camera_was_running:
-                                    print(f"[INFO] Restarting Picamera2 for face recognition...")
-                                    try:
-                                        self.camera.start()
-                                        print(f"[INFO] Picamera2 restarted successfully")
-                                    except Exception as e:
-                                        print(f"[WARNING] Failed to restart Picamera2: {e}")
-                                
-                                return True
-                            else:
-                                print(f"[WARNING] Raw conversion failed: {result_convert.stderr}")
+                            # Restart Picamera2 for face recognition
+                            if camera_was_running:
+                                print(f"[INFO] Restarting Picamera2 for face recognition...")
+                                try:
+                                    self.camera.start()
+                                    print(f"[INFO] Picamera2 restarted successfully")
+                                except Exception as e:
+                                    print(f"[WARNING] Failed to restart Picamera2: {e}")
+                            
+                            return True
                         else:
-                            print(f"[WARNING] Raw capture failed: {result_raw.stderr}")
+                            print(f"[WARNING] Basic capture failed: {result_raw.stderr}")
                         
                         print(f"[WARNING] All rpicam-still methods failed")
                         raise Exception(f"All rpicam-still methods failed")
