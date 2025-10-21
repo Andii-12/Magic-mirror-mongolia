@@ -379,73 +379,74 @@ class FaceRecognitionSystem:
                     traceback.print_exc()
                     return False
             
-            # Use existing camera instance for photo capture (camera is already in use by face recognition)
-            print(f"[INFO] Using existing camera instance for photo capture...")
+            # Use rpicam-still for perfect color accuracy (NO BLUE/PURPLE ISSUES!)
+            print(f"[INFO] Using rpicam-still for perfect color photo capture...")
             print(f"[DEBUG] Target photo path: {photo_path}")
             print(f"[DEBUG] Person directory exists: {os.path.exists(person_dir)}")
             
-            # Check if we have a camera instance available
-            if self.camera is None:
-                print(f"[WARNING] No camera instance available, trying to initialize...")
-                self.initialize_camera()
-                if self.camera is None:
-                    print(f"[ERROR] Cannot initialize camera for photo capture")
-                    return False
-            
             try:
-                print(f"[INFO] Using Picamera2 instance for high-resolution photo capture...")
+                import subprocess
                 
-                # Stop current camera configuration
+                # Check if rpicam-still is available
                 try:
-                    self.camera.stop()
-                    print(f"[INFO] Stopped current camera configuration")
+                    result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
+                    if result_check.returncode != 0:
+                        print(f"[WARNING] rpicam-still not found, trying libcamera-still")
+                        raise Exception("rpicam-still not available")
                 except:
-                    pass
+                    print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
+                    raise Exception("rpicam-still not available")
                 
-                # Create high-resolution still configuration
-                still_config = self.camera.create_still_configuration(
-                    main={"size": (1080, 1080), "format": "RGB888"},
-                    buffer_count=1
-                )
+                # TEMPORARILY RELEASE CAMERA from face recognition system
+                print(f"[INFO] Temporarily releasing camera for rpicam-still...")
+                camera_was_running = False
+                if self.camera is not None:
+                    try:
+                        self.camera.stop()
+                        self.camera = None  # Release the camera completely
+                        camera_was_running = True
+                        print(f"[INFO] Camera released successfully")
+                        time.sleep(1)  # Give camera time to be fully released
+                    except Exception as e:
+                        print(f"[WARNING] Failed to release camera: {e}")
                 
-                print(f"[INFO] Configuring camera for 1080x1080 still capture...")
-                self.camera.configure(still_config)
-                self.camera.start()
-                time.sleep(0.5)  # Let camera adjust
+                # Use rpicam-still for perfect photo capture - minimal working command
+                cmd = [
+                    "rpicam-still",
+                    "-o", photo_path,
+                    "--width", "1080",
+                    "--height", "1080",
+                    "-t", "1000",  # 1 second timeout
+                    "--immediate"  # Capture immediately
+                ]
                 
-                print(f"[INFO] Capturing 1080x1080 frame...")
-                frame_rgb = self.camera.capture_array("main")
-                print(f"[INFO] Captured frame shape: {frame_rgb.shape}")
+                print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
                 
-                # Convert RGB to BGR for OpenCV
-                import cv2
-                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                print(f"[DEBUG] rpicam return code: {result.returncode}")
+                print(f"[DEBUG] rpicam stdout: {result.stdout}")
+                print(f"[DEBUG] rpicam stderr: {result.stderr}")
+                print(f"[DEBUG] Photo file exists after capture: {os.path.exists(photo_path)}")
                 
-                # Save the image
-                print(f"[INFO] Saving high-quality 1080x1080 image...")
-                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                # REACQUIRE CAMERA for face recognition
+                if camera_was_running:
+                    print(f"[INFO] Reacquiring camera for face recognition...")
+                    try:
+                        self.initialize_camera()
+                        print(f"[INFO] Camera reacquired successfully")
+                    except Exception as e:
+                        print(f"[WARNING] Failed to reacquire camera: {e}")
                 
-                # Restart preview configuration for face recognition
-                try:
-                    self.camera.stop()
-                    preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                    self.camera.configure(preview_config)
-                    self.camera.start()
-                    print(f"[INFO] Camera reset to preview mode")
-                except Exception as e:
-                    print(f"[WARNING] Failed to reset camera: {e}")
-                
-                if success and os.path.exists(photo_path):
+                if result.returncode == 0 and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
-                    print(f"✅ Photo captured with Picamera2!")
+                    print(f"✅ Photo captured with rpicam-still!")
                     print(f"   Path: {photo_path}")
                     print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
                     print(f"   Resolution: 1080x1080")
-                    print(f"   Quality: 95% JPEG")
-                    print(f"   Color: Perfect (no camera conflicts)")
+                    print(f"   Quality: Perfect color (no blue/purple issues)")
                     print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                     print(f"   Person: {person_name}")
-                    print(f"   Method: Picamera2 (existing instance)")
+                    print(f"   Method: rpicam-still (perfect color)")
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
@@ -456,13 +457,18 @@ class FaceRecognitionSystem:
                     
                     return True
                 else:
-                    print(f"[WARNING] Failed to save photo with Picamera2")
-                    raise Exception("Picamera2 photo capture failed")
+                    print(f"[WARNING] rpicam-still failed: {result.stderr}")
+                    raise Exception(f"rpicam-still failed: {result.stderr}")
                     
             except Exception as e:
-                print(f"[WARNING] Picamera2 method failed: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"[WARNING] rpicam-still method failed: {e}")
+                # Try to reacquire camera even if photo failed
+                if camera_was_running:
+                    try:
+                        self.initialize_camera()
+                        print(f"[INFO] Camera reacquired after error")
+                    except:
+                        pass
             
             # Fallback to libcamera-still if rpicam not available
             print(f"[INFO] Fallback: Trying libcamera-still...")
