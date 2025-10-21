@@ -386,14 +386,14 @@ class FaceRecognitionSystem:
             
             try:
                 import subprocess
-                    
+                
                 # Check if rpicam-still is available
-                    try:
+                try:
                     result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
                     if result_check.returncode != 0:
                         print(f"[WARNING] rpicam-still not found, trying libcamera-still")
                         raise Exception("rpicam-still not available")
-                    except:
+                except:
                     print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
                     raise Exception("rpicam-still not available")
                 
