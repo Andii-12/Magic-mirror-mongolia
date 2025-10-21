@@ -413,6 +413,18 @@ class FaceRecognitionSystem:
                     traceback.print_exc()
                     return False
             
+            # CRITICAL: Stop Picamera2 before using rpicam-still
+            print(f"[INFO] Stopping Picamera2 to free camera for rpicam-still...")
+            camera_was_running = False
+            if hasattr(self, 'camera') and self.camera is not None:
+                try:
+                    self.camera.stop()
+                    camera_was_running = True
+                    print(f"[INFO] Picamera2 stopped successfully")
+                    time.sleep(1.5)  # Give camera time to fully release
+                except Exception as e:
+                    print(f"[WARNING] Failed to stop Picamera2: {e}")
+            
             # Use rpicam-still for perfect color accuracy (NO BLUE/PURPLE ISSUES!)
             print(f"[INFO] Using rpicam-still for perfect color photo capture...")
             print(f"[DEBUG] Target photo path: {photo_path}")
@@ -431,9 +443,8 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
                     raise Exception("rpicam-still not available")
                 
-                # Try rpicam-still without releasing camera first
-                print(f"[INFO] Trying rpicam-still while camera is in use...")
-                camera_was_running = False
+                # Now camera should be free for rpicam-still
+                print(f"[INFO] Camera is now free, using rpicam-still...")
                 
                 # Use rpicam-still with aggressive color correction to fix blue-purple tint
                 cmd = [
@@ -487,6 +498,15 @@ class FaceRecognitionSystem:
                     # Trigger skin analysis with the captured photo
                     self.trigger_skin_analysis(person_name, photo_path)
                     
+                    # Restart Picamera2 for face recognition
+                    if camera_was_running:
+                        print(f"[INFO] Restarting Picamera2 for face recognition...")
+                        try:
+                            self.camera.start()
+                            print(f"[INFO] Picamera2 restarted successfully")
+                        except Exception as e:
+                            print(f"[WARNING] Failed to restart Picamera2: {e}")
+                    
                     return True
                 else:
                     print(f"[WARNING] rpicam-still failed: {result.stderr}")
@@ -527,6 +547,16 @@ class FaceRecognitionSystem:
                         self.photo_saved_this_session = True
                         self.last_photo_time = time.time()
                         self.trigger_skin_analysis(person_name, photo_path)
+                        
+                        # Restart Picamera2 for face recognition
+                        if camera_was_running:
+                            print(f"[INFO] Restarting Picamera2 for face recognition...")
+                            try:
+                                self.camera.start()
+                                print(f"[INFO] Picamera2 restarted successfully")
+                            except Exception as e:
+                                print(f"[WARNING] Failed to restart Picamera2: {e}")
+                        
                         return True
                     else:
                         print(f"[WARNING] Alternative rpicam-still also failed: {result_alt.stderr}")
@@ -580,6 +610,16 @@ class FaceRecognitionSystem:
                                 self.photo_saved_this_session = True
                                 self.last_photo_time = time.time()
                                 self.trigger_skin_analysis(person_name, photo_path)
+                                
+                                # Restart Picamera2 for face recognition
+                                if camera_was_running:
+                                    print(f"[INFO] Restarting Picamera2 for face recognition...")
+                                    try:
+                                        self.camera.start()
+                                        print(f"[INFO] Picamera2 restarted successfully")
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to restart Picamera2: {e}")
+                                
                                 return True
                             else:
                                 print(f"[WARNING] Raw conversion failed: {result_convert.stderr}")
@@ -640,6 +680,16 @@ class FaceRecognitionSystem:
                         self.photo_saved_this_session = True
                         self.last_photo_time = time.time()
                         self.trigger_skin_analysis(person_name, photo_path)
+                        
+                        # Restart Picamera2 for face recognition
+                        if camera_was_running:
+                            print(f"[INFO] Restarting Picamera2 for face recognition...")
+                            try:
+                                self.camera.start()
+                                print(f"[INFO] Picamera2 restarted successfully")
+                            except Exception as e:
+                                print(f"[WARNING] Failed to restart Picamera2: {e}")
+                        
                         return True
                     else:
                         print(f"[WARNING] ImageMagick correction failed: {result_convert.stderr}")
@@ -676,6 +726,16 @@ class FaceRecognitionSystem:
                     self.photo_saved_this_session = True
                     self.last_photo_time = time.time()
                     self.trigger_skin_analysis(person_name, photo_path)
+                    
+                    # Restart Picamera2 for face recognition
+                    if camera_was_running:
+                        print(f"[INFO] Restarting Picamera2 for face recognition...")
+                        try:
+                            self.camera.start()
+                            print(f"[INFO] Picamera2 restarted successfully")
+                        except Exception as e:
+                            print(f"[WARNING] Failed to restart Picamera2: {e}")
+                    
                     return True
                 else:
                     print(f"[WARNING] Basic rpicam-still failed: {result.stderr}")
@@ -683,10 +743,20 @@ class FaceRecognitionSystem:
             except Exception as e:
                 print(f"[WARNING] Basic rpicam-still method failed: {e}")
             
-            # All methods failed
+            # All methods failed - restart Picamera2 anyway
             print(f"\n[ERROR] All rpicam-still methods failed!")
             print(f"Tried: rpicam-still with color correction, ImageMagick correction, basic rpicam-still")
             print(f"Camera hardware may not be properly connected or enabled")
+            
+            # Restart Picamera2 for face recognition even if photo failed
+            if camera_was_running:
+                print(f"[INFO] Restarting Picamera2 for face recognition...")
+                try:
+                    self.camera.start()
+                    print(f"[INFO] Picamera2 restarted successfully")
+                except Exception as e:
+                    print(f"[WARNING] Failed to restart Picamera2: {e}")
+            
             return False
         
         except Exception as e:
