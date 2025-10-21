@@ -483,10 +483,10 @@ class FaceRecognitionSystem:
                 # Convert RGB to BGR for OpenCV
                 import cv2
                 frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                    
-                    # Save the image
+                
+                # Save the image
                 print(f"[INFO] Saving high-quality 1080x1080 image...")
-                    success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
                     
                 # Restart preview configuration for face recognition
                 try:
@@ -499,10 +499,10 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] Failed to reset camera: {e}")
                 
                 if success and os.path.exists(photo_path):
-                        file_size = os.path.getsize(photo_path)
+                    file_size = os.path.getsize(photo_path)
                     print(f"✅ Photo captured with Picamera2 fallback!")
-                        print(f"   Path: {photo_path}")
-                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                    print(f"   Path: {photo_path}")
+                    print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
                     print(f"   Resolution: 1080x1080")
                     print(f"   Quality: 95% JPEG")
                     print(f"   Method: Picamera2 (fallback)")
@@ -516,7 +516,7 @@ class FaceRecognitionSystem:
                     # Trigger skin analysis with the captured photo
                     self.trigger_skin_analysis(person_name, photo_path)
                     
-                            return True
+                    return True
                 else:
                     print(f"[WARNING] Picamera2 fallback failed")
                     raise Exception("Picamera2 fallback photo capture failed")
