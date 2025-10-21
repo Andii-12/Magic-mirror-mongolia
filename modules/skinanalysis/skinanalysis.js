@@ -68,6 +68,8 @@ Module.register("skinanalysis", {
 	socketNotificationReceived: function(notification, payload) {
 		if (notification === "FACE_STATUS_UPDATE") {
 			this.processFaceStatus(payload);
+		} else if (notification === "SKIN_ANALYSIS_TRIGGERED") {
+			this.processAnalysisTrigger(payload);
 		} else if (notification === "SKIN_ANALYSIS_RESULT") {
 			this.processAnalysisResult(payload);
 		} else if (notification === "SKIN_ANALYSIS_ERROR") {
@@ -101,6 +103,19 @@ Module.register("skinanalysis", {
 		}
 
 		this.updateDom(this.config.animationSpeed);
+	},
+	
+	// Process skin analysis trigger from face recognition system
+	processAnalysisTrigger: function(data) {
+		Log.log(`Skin Analysis: Received trigger for ${data.person} with photo: ${data.photoPath}`);
+		
+		// Clear any pending analysis timeout
+		if (this.analysisTimeout) {
+			clearTimeout(this.analysisTimeout);
+		}
+		
+		// Start analysis immediately with the specific photo
+		this.analyzeSkinWithPhoto(data.person, data.photoPath);
 	},
 
 	// Process analysis result
@@ -224,6 +239,61 @@ Module.register("skinanalysis", {
 
 		this.sendSocketNotification("ANALYZE_SKIN", {
 			person: this.currentPerson,
+			apiKey: this.config.apiKey.trim(),
+			apiUrl: this.config.apiUrl,
+			model: this.config.model,
+			maxTokens: this.config.maxTokens,
+			skinPhotosDir: this.config.skinPhotosDir
+		});
+
+		this.updateDom(this.config.animationSpeed);
+	},
+	
+	// Analyze skin with specific photo path
+	analyzeSkinWithPhoto: function(person, photoPath) {
+		// Check API key configuration
+		if (!this.config.apiKey || this.config.apiKey.trim() === "" || this.config.apiKey === "your-openai-api-key-here" || this.config.apiKey === "api input") {
+			console.error("OpenAI API key not configured");
+			this.currentAnalysis = {
+				person: person,
+				analysis: "API түлхүүр тохируулаагүй",
+				advice: "Config файлд API түлхүүр оруулна уу"
+			};
+			this.updateDom(this.config.animationSpeed);
+			return;
+		}
+
+		if (this.isAnalyzing) {
+			console.log("Analysis already in progress");
+			return;
+		}
+
+		// Rate limiting - check if enough time has passed since last request
+		const now = Date.now();
+		const timeSinceLastRequest = now - this.lastAnalysisRequest;
+		const rateLimitDelay = this.config.rateLimitDelay || 30000; // 30 seconds default
+
+		if (timeSinceLastRequest < rateLimitDelay) {
+			const remainingTime = Math.ceil((rateLimitDelay - timeSinceLastRequest) / 1000);
+			console.log(`Rate limit: Please wait ${remainingTime} seconds before next analysis`);
+			this.currentAnalysis = {
+				person: person,
+				analysis: "Хэт олон хүсэлт",
+				advice: `${remainingTime} секунд хүлээнэ үү`
+			};
+			this.updateDom(this.config.animationSpeed);
+			return;
+		}
+
+		this.isAnalyzing = true;
+		this.lastAnalysisRequest = now;
+		console.log("Starting skin analysis for:", person, "with photo:", photoPath);
+		console.log("Using API key:", this.config.apiKey.substring(0, 10) + "...");
+
+		// Send socket notification to node_helper with specific photo path
+		this.sendSocketNotification("ANALYZE_SKIN", {
+			person: person,
+			photoPath: photoPath,
 			apiKey: this.config.apiKey.trim(),
 			apiUrl: this.config.apiUrl,
 			model: this.config.model,

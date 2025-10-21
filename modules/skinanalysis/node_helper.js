@@ -15,7 +15,7 @@ module.exports = NodeHelper.create({
 		}
 	},
 
-	// Check face recognition status
+	// Check face recognition status and look for skin analysis triggers
 	checkFaceStatus: function(payload) {
 		const self = this;
 		const statusFile = payload.statusFile || "/tmp/magicmirror_face_status.json";
@@ -24,6 +24,11 @@ module.exports = NodeHelper.create({
 			if (fs.existsSync(statusFile)) {
 				const data = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
 				self.sendSocketNotification("FACE_STATUS_UPDATE", data);
+				
+				// Check for skin analysis trigger files
+				if (data.person && data.active) {
+					self.checkForSkinAnalysisTriggers(data.person);
+				}
 			} else {
 				self.sendSocketNotification("FACE_STATUS_UPDATE", {
 					person: null,
@@ -33,6 +38,31 @@ module.exports = NodeHelper.create({
 			}
 		} catch (error) {
 			Log.error(`Skin Analysis: Error reading face status: ${error.message}`);
+		}
+	},
+	
+	// Check for skin analysis trigger files
+	checkForSkinAnalysisTriggers: function(personName) {
+		const self = this;
+		const triggerFile = `/tmp/skin_analysis_trigger_${personName}.json`;
+		
+		try {
+			if (fs.existsSync(triggerFile)) {
+				const triggerData = JSON.parse(fs.readFileSync(triggerFile, 'utf8'));
+				Log.log(`Skin Analysis: Found trigger for ${personName} with photo: ${triggerData.photo_path}`);
+				
+				// Delete the trigger file to prevent duplicate processing
+				fs.unlinkSync(triggerFile);
+				
+				// Send notification to start analysis with the specific photo
+				self.sendSocketNotification("SKIN_ANALYSIS_TRIGGERED", {
+					person: personName,
+					photoPath: triggerData.photo_path,
+					timestamp: triggerData.timestamp
+				});
+			}
+		} catch (error) {
+			Log.error(`Skin Analysis: Error checking triggers: ${error.message}`);
 		}
 	},
 
@@ -70,63 +100,70 @@ module.exports = NodeHelper.create({
 		// Log API key for debugging (first 10 chars only for security)
 		Log.log(`Skin Analysis: Using API key: ${config.apiKey.substring(0, 10)}...`);
 		
-		// Find the most recent skin photo for this person
-		const skinBaseDir = path.join(process.cwd(), config.skinPhotosDir);
-		const personDir = path.join(skinBaseDir, config.person);
-		
-		Log.log(`Skin Analysis: Looking for photos in: ${personDir}`);
-		Log.log(`Skin Analysis: Current working directory: ${process.cwd()}`);
-		Log.log(`Skin Analysis: Skin base directory: ${skinBaseDir}`);
-		
-		// List all directories in Skin folder for debugging
-		try {
-			const allDirs = fs.readdirSync(skinBaseDir, { withFileTypes: true })
-				.filter(dirent => dirent.isDirectory())
-				.map(dirent => dirent.name);
-			Log.log(`Skin Analysis: Available person directories: ${allDirs.join(', ')}`);
-		} catch (e) {
-			Log.log(`Skin Analysis: Could not list base directory: ${e.message}`);
-		}
-		
-		// Check if base Skin directory exists
-		if (!fs.existsSync(skinBaseDir)) {
-			Log.error(`Skin Analysis: Base skin directory not found: ${skinBaseDir}`);
-			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Skin directory not found");
-			return;
-		}
-		
-		if (!fs.existsSync(personDir)) {
-			Log.error(`Skin Analysis: Person directory not found: ${personDir}`);
-			Log.error(`Skin Analysis: Available persons: ${fs.readdirSync(skinBaseDir).join(', ')}`);
-			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Person directory not found");
-			return;
-		}
+		// Use specific photo path if provided, otherwise find the most recent photo
+		let photoPath;
+		if (config.photoPath && fs.existsSync(config.photoPath)) {
+			photoPath = config.photoPath;
+			Log.log(`Skin Analysis: Using specific photo path: ${photoPath}`);
+		} else {
+			// Find the most recent skin photo for this person
+			const skinBaseDir = path.join(process.cwd(), config.skinPhotosDir);
+			const personDir = path.join(skinBaseDir, config.person);
+			
+			Log.log(`Skin Analysis: Looking for photos in: ${personDir}`);
+			Log.log(`Skin Analysis: Current working directory: ${process.cwd()}`);
+			Log.log(`Skin Analysis: Skin base directory: ${skinBaseDir}`);
+			
+			// List all directories in Skin folder for debugging
+			try {
+				const allDirs = fs.readdirSync(skinBaseDir, { withFileTypes: true })
+					.filter(dirent => dirent.isDirectory())
+					.map(dirent => dirent.name);
+				Log.log(`Skin Analysis: Available person directories: ${allDirs.join(', ')}`);
+			} catch (e) {
+				Log.log(`Skin Analysis: Could not list base directory: ${e.message}`);
+			}
+			
+			// Check if base Skin directory exists
+			if (!fs.existsSync(skinBaseDir)) {
+				Log.error(`Skin Analysis: Base skin directory not found: ${skinBaseDir}`);
+				self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Skin directory not found");
+				return;
+			}
+			
+			if (!fs.existsSync(personDir)) {
+				Log.error(`Skin Analysis: Person directory not found: ${personDir}`);
+				Log.error(`Skin Analysis: Available persons: ${fs.readdirSync(skinBaseDir).join(', ')}`);
+				self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "Person directory not found");
+				return;
+			}
 
-		// Get all image files in the person's directory
-		const files = fs.readdirSync(personDir)
-			.filter(file => /\.(jpg|jpeg|png)$/i.test(file))
-			.map(file => ({
-				name: file,
-				path: path.join(personDir, file),
-				stats: fs.statSync(path.join(personDir, file))
-			}))
-			.sort((a, b) => b.stats.mtime - a.stats.mtime); // Sort by modification time, newest first
+			// Get all image files in the person's directory
+			const files = fs.readdirSync(personDir)
+				.filter(file => /\.(jpg|jpeg|png)$/i.test(file))
+				.map(file => ({
+					name: file,
+					path: path.join(personDir, file),
+					stats: fs.statSync(path.join(personDir, file))
+				}))
+				.sort((a, b) => b.stats.mtime - a.stats.mtime); // Sort by modification time, newest first
 
-		if (files.length === 0) {
-			Log.error(`Skin Analysis: No skin photos found for ${config.person}`);
-			Log.error(`Skin Analysis: Directory contents: ${fs.readdirSync(personDir).join(', ')}`);
-			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "No skin photos found");
-			return;
+			if (files.length === 0) {
+				Log.error(`Skin Analysis: No skin photos found for ${config.person}`);
+				Log.error(`Skin Analysis: Directory contents: ${fs.readdirSync(personDir).join(', ')}`);
+				self.sendSocketNotification("SKIN_ANALYSIS_ERROR", "No skin photos found");
+				return;
+			}
+
+			photoPath = files[0].path;
+			Log.log(`Skin Analysis: Using latest photo: ${files[0].name}`);
 		}
-
-		const latestPhoto = files[0];
-		Log.log(`Skin Analysis: Using latest photo: ${latestPhoto.name}`);
 
 		// Read and encode the image
 		try {
-			const imageBuffer = fs.readFileSync(latestPhoto.path);
+			const imageBuffer = fs.readFileSync(photoPath);
 			const base64Image = imageBuffer.toString('base64');
-			const mimeType = this.getMimeType(latestPhoto.name);
+			const mimeType = this.getMimeType(path.basename(photoPath));
 
 			// Prepare OpenAI Vision API request
 			const requestBody = {

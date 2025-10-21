@@ -269,10 +269,10 @@ class FaceRecognitionSystem:
                 self.camera = None
 
     def save_skin_photo(self, person_name):
-        """Save high-resolution photo after successful face recognition"""
+        """Save high-resolution photo using rpicam after successful face recognition"""
         try:
             print(f"\n{'='*60}")
-            print(f"[SKIN PHOTO] Starting photo capture for: {person_name}")
+            print(f"[SKIN PHOTO] Starting rpicam photo capture for: {person_name}")
             print(f"{'='*60}")
             
             # Skip if photo already saved for this session
@@ -292,11 +292,6 @@ class FaceRecognitionSystem:
                     return False
                 else:
                     print("[WARNING] Windows test mode - photo will be simulated")
-            
-            # Check if camera is available
-            if self.camera is None and current_platform != "Windows":
-                print("[ERROR] Camera not initialized, cannot save photo")
-                return False
             
             # Create directory structure: Skin/{PersonName}/
             # Use absolute path to be sure where files are saved
@@ -342,9 +337,6 @@ class FaceRecognitionSystem:
                 photo_path = os.path.join(person_dir, photo_filename)
                 print(f"[INFO] New filename: {photo_filename}")
             
-            # Capture high-resolution frame
-            # Use higher resolution for skin photos (1920x1080 if supported, fallback to 1280x720)
-            
             # Windows test mode - create dummy file
             if current_platform == "Windows" and os.environ.get('SKIN_PHOTO_TEST'):
                 print(f"[TEST MODE] Creating test file...")
@@ -369,102 +361,68 @@ class FaceRecognitionSystem:
                     traceback.print_exc()
                     return False
             
-            # Real camera capture for Raspberry Pi - Try multiple methods
-            
-            # Method 0: Capture NEW high-res photo with Picamera2 (BEST for quality!)
-            print(f"[INFO] Method 0: Capturing high-res photo with Picamera2...")
-            try:
-                if self.camera is not None:
-                    print(f"[INFO] Using Raspberry Pi Camera Module for high-res capture")
-                    
-                    # Stop the current camera configuration
-                    try:
-                        self.camera.stop()
-                    except:
-                        pass
-                    
-                    # Create 1080x1080 still configuration with proper color correction
-                    still_config = self.camera.create_still_configuration(
-                        main={"size": (1080, 1080), "format": "RGB888"},
-                        buffer_count=1,
-                        transform=libcamera.Transform(hflip=0, vflip=0)  # Correct orientation
-                    )
-                    
-                    print(f"[INFO] Configuring camera for high-res still capture...")
-                    self.camera.configure(still_config)
-                    self.camera.start()
-                    time.sleep(0.5)  # Let camera adjust and auto-balance
-                    
-                    print(f"[INFO] Capturing 1080x1080 frame in RGB format...")
-                    frame_rgb = self.camera.capture_array("main")
-                    print(f"[INFO] Captured frame shape: {frame_rgb.shape}")
-                    print(f"[INFO] Frame format: RGB888")
-                    
-                    # Apply aggressive color correction for skin tones
-                    print(f"[INFO] Applying color correction for skin tones...")
-                    frame_bgr = self.apply_skin_tone_correction(frame_rgb)
-                    
-                    # Save the image
-                    print(f"[INFO] Saving high-quality 1080x1080 image...")
-                    success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                    
-                    # Restart preview configuration for face recognition
-                    try:
-                        self.camera.stop()
-                        preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                        self.camera.configure(preview_config)
-                        self.camera.start()
-                        print(f"[INFO] Camera reset to preview mode")
-                    except Exception as e:
-                        print(f"[WARNING] Failed to reset camera: {e}")
-                    
-                    if success and os.path.exists(photo_path):
-                        file_size = os.path.getsize(photo_path)
-                        print(f"✅ High-res photo captured successfully!")
-                        print(f"   Path: {photo_path}")
-                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                        print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
-                        print(f"   Person: {person_name}")
-                        print(f"   Method: Picamera2 high-res capture")
-                        print(f"   Resolution: 1920x1080")
-                        print(f"   Color: Full RGB color")
-                        print(f"{'='*60}\n")
-                        
-                        self.photo_saved_this_session = True
-                        return True
-                    else:
-                        print(f"[WARNING] Failed to save photo")
-                else:
-                    print(f"[WARNING] Camera not initialized")
-                    
-            except Exception as e:
-                print(f"[WARNING] Method 0 failed: {e}")
-                import traceback
-                traceback.print_exc()
-                
-                # Try to restart camera in preview mode
-                try:
-                    if self.camera is not None:
-                        self.camera.stop()
-                        preview_config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                        self.camera.configure(preview_config)
-                        self.camera.start()
-                except:
-                    pass
-            
-            # Method 1: Try libcamera-still (system command - most reliable)
-            print(f"[INFO] Method 1: Trying libcamera-still...")
+            # Use rpicam for high-quality photo capture (NO COLOR ISSUES!)
+            print(f"[INFO] Using rpicam for high-quality photo capture...")
             try:
                 import subprocess
                 
-                # Use libcamera-still to capture 1080x1080 photo with neutral settings
+                # Use rpicam-still for perfect photo capture
+                cmd = [
+                    "rpicam-still",
+                    "-o", photo_path,
+                    "--width", "1080",
+                    "--height", "1080",
+                    "-t", "1000",  # 1 second timeout
+                    "--awb", "auto",  # Auto white balance
+                    "--metering", "average",  # Average metering
+                    "--exposure", "auto",  # Auto exposure
+                    "--gain", "auto",  # Auto gain
+                    "--denoise", "auto",  # Auto denoise
+                    "--quality", "95",  # High quality JPEG
+                    "--encoding", "jpg",  # JPEG format
+                    "--immediate"  # Capture immediately
+                ]
+                
+                print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                
+                if result.returncode == 0 and os.path.exists(photo_path):
+                    file_size = os.path.getsize(photo_path)
+                    print(f"✅ Photo captured with rpicam-still!")
+                    print(f"   Path: {photo_path}")
+                    print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                    print(f"   Resolution: 1080x1080")
+                    print(f"   Quality: 95% JPEG")
+                    print(f"   Color: Perfect (no color issues)")
+                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
+                    print(f"   Person: {person_name}")
+                    print(f"   Method: rpicam-still (best quality)")
+                    print(f"{'='*60}\n")
+                    
+                    self.photo_saved_this_session = True
+                    
+                    # Trigger skin analysis with the captured photo
+                    self.trigger_skin_analysis(person_name, photo_path)
+                    
+                    return True
+                else:
+                    print(f"[WARNING] rpicam-still failed: {result.stderr}")
+                    
+            except Exception as e:
+                print(f"[WARNING] rpicam-still method failed: {e}")
+            
+            # Fallback to libcamera-still if rpicam not available
+            print(f"[INFO] Fallback: Trying libcamera-still...")
+            try:
+                import subprocess
+                
                 cmd = [
                     "libcamera-still",
                     "-o", photo_path,
                     "--width", "1080",
                     "--height", "1080",
-                    "-t", "1000",  # 1 second timeout
-                    "-n",  # No preview
+                    "-t", "1000",
+                    "-n",
                     "--awb", "auto",
                     "--metering", "average",
                     "--exposure", "auto",
@@ -481,152 +439,24 @@ class FaceRecognitionSystem:
                     print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
                     print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
                     print(f"   Person: {person_name}")
-                    print(f"   Method: libcamera-still")
-                    print(f"   Resolution: 1080x1080")
-                    print(f"   Color: Neutral (auto white balance)")
-                    print(f"{'='*60}\n")
-                    self.photo_saved_this_session = True
-                    return True
-                else:
-                    print(f"[WARNING] libcamera-still failed: {result.stderr}")
-                    
-            except Exception as e:
-                print(f"[WARNING] libcamera-still method failed: {e}")
-            
-            # Method 2: Try fswebcam (alternative camera tool)
-            print(f"[INFO] Method 2: Trying fswebcam...")
-            try:
-                import subprocess
-                
-                cmd = [
-                    "fswebcam",
-                    "-r", "1080x1080",
-                    "--jpeg", "95",
-                    "--no-banner",
-                    "--set", "brightness=50%",
-                    "--set", "contrast=50%",
-                    "--set", "saturation=50%",
-                    photo_path
-                ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-                
-                if os.path.exists(photo_path):
-                    file_size = os.path.getsize(photo_path)
-                    print(f"✅ Photo captured with fswebcam!")
-                    print(f"   Path: {photo_path}")
-                    print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
-                    print(f"   Person: {person_name}")
-                    print(f"   Method: fswebcam")
-                    print(f"   Resolution: 1080x1080")
-                    print(f"   Color: Enhanced brightness, contrast, and saturation")
-                    print(f"{'='*60}\n")
-                    self.photo_saved_this_session = True
-                    return True
-                else:
-                    print(f"[WARNING] fswebcam failed")
-                    
-            except Exception as e:
-                print(f"[WARNING] fswebcam method failed: {e}")
-            
-            # Method 3: Try Picamera2 (original method)
-            print(f"[INFO] Method 3: Trying Picamera2...")
-            try:
-                if self.camera is not None:
-                    print(f"[INFO] Reconfiguring camera for high-res capture...")
-                    config = self.camera.create_still_configuration(main={"size": (1080, 1080)})
-                    self.camera.configure(config)
-                    time.sleep(0.2)
-                    print(f"[INFO] Camera configured to 1080x1080")
-                    
-                    # Capture high-res frame
-                    print(f"[INFO] Capturing frame...")
-                    frame = self.camera.capture_array()
-                    print(f"[INFO] Frame captured: {frame.shape}")
-                    
-                    # Convert from RGB to BGR for OpenCV
-                    print(f"[INFO] Converting color space...")
-                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                    
-                    # Save the image
-                    print(f"[INFO] Writing image to disk...")
-                    success = cv2.imwrite(photo_path, frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                    
-                    if not success:
-                        print(f"[ERROR] cv2.imwrite returned False")
-                        raise Exception("cv2.imwrite failed")
-                    
-                    # Verify file was created
-                    if os.path.exists(photo_path):
-                        file_size = os.path.getsize(photo_path)
-                        print(f"✅ File created successfully!")
-                        print(f"   Path: {photo_path}")
-                        print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                    else:
-                        print(f"[ERROR] File does not exist after write")
-                        raise Exception("File not created")
-                    
-                    # Reconfigure back to preview resolution
-                    print(f"[INFO] Reconfiguring camera back to preview mode...")
-                    config = self.camera.create_preview_configuration(main={"size": (640, 480)})
-                    self.camera.configure(config)
-                    time.sleep(0.2)
-                    
-                    print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
-                    print(f"   Person: {person_name}")
-                    print(f"   Method: Picamera2")
-                    print(f"   File: {photo_path}")
-                    print(f"   Resolution: 1080x1080, Quality: 95%")
-                    print(f"   Color: Applied skin tone correction")
+                    print(f"   Method: libcamera-still (fallback)")
                     print(f"{'='*60}\n")
                     
                     self.photo_saved_this_session = True
+                    
+                    # Trigger skin analysis with the captured photo
+                    self.trigger_skin_analysis(person_name, photo_path)
+                    
                     return True
                 else:
-                    print(f"[WARNING] Camera object is None")
+                    print(f"[WARNING] libcamera-still also failed: {result.stderr}")
                     
             except Exception as e:
-                print(f"[WARNING] Picamera2 method failed: {e}")
-            
-            # Method 4: Try OpenCV VideoCapture
-            print(f"[INFO] Method 4: Trying OpenCV VideoCapture...")
-            try:
-                cap = cv2.VideoCapture(0)
-                
-                if cap.isOpened():
-                    # Set resolution
-                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-                    
-                    # Capture frame
-                    ret, frame = cap.read()
-                    cap.release()
-                    
-                    if ret and frame is not None:
-                        # Save image
-                        success = cv2.imwrite(photo_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                        
-                        if success and os.path.exists(photo_path):
-                            file_size = os.path.getsize(photo_path)
-                            print(f"✅ Photo captured with OpenCV!")
-                            print(f"   Path: {photo_path}")
-                            print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                            print(f"\n✅ SKIN PHOTO SAVED SUCCESSFULLY!")
-                            print(f"   Person: {person_name}")
-                            print(f"   Method: OpenCV")
-                            print(f"{'='*60}\n")
-                            self.photo_saved_this_session = True
-                            return True
-                else:
-                    print(f"[WARNING] Could not open camera with OpenCV")
-                    
-            except Exception as e:
-                print(f"[WARNING] OpenCV method failed: {e}")
+                print(f"[WARNING] libcamera-still fallback failed: {e}")
             
             # All methods failed
             print(f"\n[ERROR] All camera capture methods failed!")
-            print(f"Tried: libcamera-still, fswebcam, Picamera2, OpenCV")
+            print(f"Tried: rpicam-still, libcamera-still")
             print(f"Camera hardware may not be properly connected or enabled")
             return False
         
@@ -638,12 +468,13 @@ class FaceRecognitionSystem:
             print(f"{'='*60}\n")
             return False
 
-    def trigger_skin_analysis(self, person_name):
-        """Trigger skin analysis by writing a signal file"""
+    def trigger_skin_analysis(self, person_name, photo_path):
+        """Trigger skin analysis by writing a signal file with photo path"""
         try:
             analysis_trigger_file = f"/tmp/skin_analysis_trigger_{person_name}.json"
             trigger_data = {
                 "person": person_name,
+                "photo_path": photo_path,
                 "timestamp": datetime.now().isoformat(),
                 "triggered": True
             }
@@ -652,6 +483,7 @@ class FaceRecognitionSystem:
                 json.dump(trigger_data, f, indent=2)
             
             print(f"[INFO] Skin analysis triggered for {person_name}")
+            print(f"   Photo path: {photo_path}")
             
         except Exception as e:
             print(f"[WARNING] Failed to trigger skin analysis: {e}")
