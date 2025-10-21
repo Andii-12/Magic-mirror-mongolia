@@ -280,15 +280,19 @@ class FaceRecognitionSystem:
             # Skip if photo already saved for this session, unless enough time has passed
             current_time = time.time()
             time_since_last_photo = current_time - self.last_photo_time
-            PHOTO_INTERVAL = 3600  # Allow new photo every hour (3600 seconds)
+            PHOTO_INTERVAL = 300  # Allow new photo every 5 minutes (300 seconds) - more frequent for testing
             
             if self.photo_saved_this_session and time_since_last_photo < PHOTO_INTERVAL:
                 print(f"[INFO] Photo already saved for this recognition session")
                 print(f"[INFO] Time since last photo: {time_since_last_photo:.0f}s (interval: {PHOTO_INTERVAL}s)")
+                print(f"[INFO] Skipping photo save to prevent duplicates")
                 return False
             elif self.photo_saved_this_session and time_since_last_photo >= PHOTO_INTERVAL:
                 print(f"[INFO] Enough time has passed since last photo, allowing new photo")
+                print(f"[INFO] Resetting photo flag for new photo")
                 self.photo_saved_this_session = False
+            else:
+                print(f"[INFO] Photo flag is False, proceeding with photo capture")
             
             # Check platform
             current_platform = platform.system()
@@ -305,9 +309,11 @@ class FaceRecognitionSystem:
             
             # Create directory structure: Skin/{PersonName}/
             # Use absolute path to be sure where files are saved
-            skin_base_dir = os.path.join(os.getcwd(), "Skin")
+            current_working_dir = os.getcwd()
+            skin_base_dir = os.path.join(current_working_dir, "Skin")
             person_dir = os.path.join(skin_base_dir, person_name)
             
+            print(f"[INFO] Current working directory: {current_working_dir}")
             print(f"[INFO] Base directory: {skin_base_dir}")
             print(f"[INFO] Person directory: {person_dir}")
             
@@ -337,7 +343,8 @@ class FaceRecognitionSystem:
             photo_path = os.path.join(person_dir, photo_filename)
             
             print(f"[INFO] Photo filename: {photo_filename}")
-            print(f"[INFO] Full path: {photo_path}")
+            print(f"[INFO] Full photo path: {photo_path}")
+            print(f"[DEBUG] Photo path exists: {os.path.exists(photo_path)}")
             
             # If file exists, add time to make it unique
             if os.path.exists(photo_path):
@@ -615,9 +622,13 @@ class FaceRecognitionSystem:
                             print(f"✅ Face recognition successful: {name}")
                             
                             # Reset photo flag for this person if it's a new recognition
+                            print(f"[DEBUG] Current person: {self.current_person}, Recognized person: {name}")
                             if self.current_person != name:
                                 self.photo_saved_this_session = False
                                 print(f"[INFO] New person detected in recognition, resetting photo flag")
+                                print(f"[DEBUG] Photo flag reset to: {self.photo_saved_this_session}")
+                            else:
+                                print(f"[INFO] Same person recognized, checking photo flag: {self.photo_saved_this_session}")
                             
                             # Save high-resolution skin photo after successful recognition
                             photo_saved = self.save_skin_photo(name)
