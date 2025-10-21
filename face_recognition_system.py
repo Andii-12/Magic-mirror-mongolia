@@ -273,6 +273,7 @@ class FaceRecognitionSystem:
         try:
             print(f"\n{'='*60}")
             print(f"[SKIN PHOTO] Starting rpicam photo capture for: {person_name}")
+            print(f"[DEBUG] photo_saved_this_session: {self.photo_saved_this_session}")
             print(f"{'='*60}")
             
             # Skip if photo already saved for this session
@@ -363,8 +364,21 @@ class FaceRecognitionSystem:
             
             # Use rpicam for high-quality photo capture (NO COLOR ISSUES!)
             print(f"[INFO] Using rpicam for high-quality photo capture...")
+            print(f"[DEBUG] Target photo path: {photo_path}")
+            print(f"[DEBUG] Person directory exists: {os.path.exists(person_dir)}")
+            
             try:
                 import subprocess
+                
+                # Check if rpicam-still is available
+                try:
+                    result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
+                    if result_check.returncode != 0:
+                        print(f"[WARNING] rpicam-still not found, trying libcamera-still")
+                        raise Exception("rpicam-still not available")
+                except:
+                    print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
+                    raise Exception("rpicam-still not available")
                 
                 # Use rpicam-still for perfect photo capture
                 cmd = [
@@ -384,7 +398,12 @@ class FaceRecognitionSystem:
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                
+                print(f"[DEBUG] rpicam return code: {result.returncode}")
+                print(f"[DEBUG] rpicam stdout: {result.stdout}")
+                print(f"[DEBUG] rpicam stderr: {result.stderr}")
+                print(f"[DEBUG] Photo file exists after capture: {os.path.exists(photo_path)}")
                 
                 if result.returncode == 0 and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
@@ -407,6 +426,7 @@ class FaceRecognitionSystem:
                     return True
                 else:
                     print(f"[WARNING] rpicam-still failed: {result.stderr}")
+                    raise Exception(f"rpicam-still failed: {result.stderr}")
                     
             except Exception as e:
                 print(f"[WARNING] rpicam-still method failed: {e}")
@@ -415,6 +435,16 @@ class FaceRecognitionSystem:
             print(f"[INFO] Fallback: Trying libcamera-still...")
             try:
                 import subprocess
+                
+                # Check if libcamera-still is available
+                try:
+                    result_check = subprocess.run(["which", "libcamera-still"], capture_output=True, text=True)
+                    if result_check.returncode != 0:
+                        print(f"[WARNING] libcamera-still not found either")
+                        raise Exception("libcamera-still not available")
+                except:
+                    print(f"[WARNING] libcamera-still check failed")
+                    raise Exception("libcamera-still not available")
                 
                 cmd = [
                     "libcamera-still",
@@ -430,7 +460,13 @@ class FaceRecognitionSystem:
                     "--denoise", "auto"
                 ]
                 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                print(f"[INFO] Running libcamera command: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                
+                print(f"[DEBUG] libcamera return code: {result.returncode}")
+                print(f"[DEBUG] libcamera stdout: {result.stdout}")
+                print(f"[DEBUG] libcamera stderr: {result.stderr}")
+                print(f"[DEBUG] Photo file exists after capture: {os.path.exists(photo_path)}")
                 
                 if result.returncode == 0 and os.path.exists(photo_path):
                     file_size = os.path.getsize(photo_path)
@@ -450,6 +486,7 @@ class FaceRecognitionSystem:
                     return True
                 else:
                     print(f"[WARNING] libcamera-still also failed: {result.stderr}")
+                    raise Exception(f"libcamera-still failed: {result.stderr}")
                     
             except Exception as e:
                 print(f"[WARNING] libcamera-still fallback failed: {e}")
@@ -497,6 +534,15 @@ class FaceRecognitionSystem:
             if platform.system() == "Windows":
                 print("[INFO] Windows detected - simulating face recognition")
                 time.sleep(0.5)  # Reduced simulation delay
+                
+                # Save photo even in Windows simulation mode
+                photo_saved = self.save_skin_photo("Andii")
+                if photo_saved:
+                    # Get the photo path for the trigger
+                    current_date = datetime.now().strftime("%Y-%m-%d")
+                    photo_path = os.path.join(os.getcwd(), "Skin", "Andii", f"{current_date}.jpg")
+                    self.trigger_skin_analysis("Andii", photo_path)
+                
                 return "Andii"  # Return actual user for Windows
             
             # Initialize camera if not already done
@@ -554,7 +600,10 @@ class FaceRecognitionSystem:
                             
                             # Trigger skin analysis if photo was saved
                             if photo_saved:
-                                self.trigger_skin_analysis(name)
+                                # Get the photo path for the trigger
+                                current_date = datetime.now().strftime("%Y-%m-%d")
+                                photo_path = os.path.join(os.getcwd(), "Skin", name, f"{current_date}.jpg")
+                                self.trigger_skin_analysis(name, photo_path)
                             
                             return name
                         else:
@@ -564,7 +613,12 @@ class FaceRecognitionSystem:
                         print("[INFO] Face recognition simulated - returning 'Andii'")
                         
                         # Save photo even in simulation mode
-                        self.save_skin_photo("Andii")
+                        photo_saved = self.save_skin_photo("Andii")
+                        if photo_saved:
+                            # Get the photo path for the trigger
+                            current_date = datetime.now().strftime("%Y-%m-%d")
+                            photo_path = os.path.join(os.getcwd(), "Skin", "Andii", f"{current_date}.jpg")
+                            self.trigger_skin_analysis("Andii", photo_path)
                         
                         return "Andii"
                 else:
@@ -697,7 +751,7 @@ class FaceRecognitionSystem:
                         self.current_person = None  # Reset person
                         self.face_recognition_attempted = False
                         self.camera_opened = False
-                        self.photo_saved_this_session = False  # Reset for new session
+                        # Don't reset photo_saved_this_session here - only reset when new person detected
                         self.is_active = True
                         # Pre-warm camera for faster recognition
                         self.initialize_camera()
@@ -715,6 +769,10 @@ class FaceRecognitionSystem:
                             person = self.recognize_face_with_camera()
                             if person and person != "Unknown":
                                 print(f"✅ Face recognized: {person}")
+                                # Reset photo flag when new person is detected
+                                if self.current_person != person:
+                                    self.photo_saved_this_session = False
+                                    print(f"[INFO] New person detected, resetting photo flag")
                                 self.current_person = person
                                 self.shutdown_timer = None
                                 # Lock recognition until user leaves and logs out
@@ -722,6 +780,10 @@ class FaceRecognitionSystem:
                                 self.update_status_file()
                             else:
                                 print("❌ Face not recognized or cancelled - will retry in 2 seconds")
+                                # Reset photo flag when person becomes unknown
+                                if self.current_person != "Unknown":
+                                    self.photo_saved_this_session = False
+                                    print(f"[INFO] Person became unknown, resetting photo flag")
                                 # Reset recognition attempt to retry
                                 self.face_recognition_attempted = False
                                 self.last_detection_time = time.time() - 0.5  # Allow retry in 0.5 seconds
@@ -771,7 +833,7 @@ class FaceRecognitionSystem:
                             self.camera_opened = False
                             self.shutdown_timer = None
                             self.recognition_locked = False  # Allow recognition next time
-                            self.photo_saved_this_session = False  # Allow new photo on next recognition
+                            # Don't reset photo_saved_this_session here - only reset when new person detected
                             self.update_status_file()
                         else:
                             # Still in timeout period - show countdown
