@@ -24,7 +24,7 @@ ECHO_PIN = 24  # GPIO pin for ECHO
 # Face recognition settings
 STATUS_FILE = "/tmp/magicmirror_face_status.json"
 PROXIMITY_THRESHOLD = 20  # cm
-TIMEOUT_DELAY = 10  # seconds
+TIMEOUT_DELAY = 5  # seconds
 
 # Face recognition paths (matching your working code)
 CASCADE_PATH = "/home/andii/haarcascades/haarcascade_frontalface_default.xml"
