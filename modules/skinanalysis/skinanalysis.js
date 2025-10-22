@@ -83,10 +83,14 @@ Module.register("skinanalysis", {
 		const previousPerson = this.currentPerson;
 		this.currentPerson = data.person;
 		this.isActive = data.active;
+		this.isGuest = data.is_guest || false;
 
-		// If person changed and is recognized, wait for photo to be saved
+		// If person changed and is recognized (including guests), wait for photo to be saved
 		if (this.currentPerson && this.currentPerson !== previousPerson && this.currentPerson !== "Unknown") {
 			console.log("New person recognized, waiting for photo to be saved:", this.currentPerson);
+			if (this.isGuest) {
+				console.log("Guest detected:", this.currentPerson);
+			}
 			// Wait 5 seconds for photo to be saved before scheduling analysis
 			const self = this;
 			setTimeout(function() {
@@ -309,6 +313,14 @@ Module.register("skinanalysis", {
 			statusElement.innerHTML = "Хүнийг таних хэрэгтэй";
 			wrapper.appendChild(statusElement);
 			return wrapper;
+		}
+
+		// Show welcome message for guests
+		if (this.isGuest) {
+			const welcomeElement = document.createElement("div");
+			welcomeElement.className = "skinanalysis-welcome bright medium";
+			welcomeElement.innerHTML = `Сайн уу ${this.currentPerson}!`;
+			wrapper.appendChild(welcomeElement);
 		}
 
 		if (this.isAnalyzing) {

@@ -60,6 +60,8 @@ class FaceRecognitionSystem:
         self.recognition_locked = False  # Prevent re-recognition until user leaves
         self.photo_saved_this_session = False  # Track if photo was saved for current recognition
         self.last_photo_time = 0  # Track when last photo was saved
+        self.guest_counter = 0  # Counter for unknown persons (guests)
+        self.known_guests = {}  # Track guest names and their numbers
         
         # Initialize GPIO for ultrasonic sensor (matching your working code)
         try:
@@ -110,6 +112,37 @@ class FaceRecognitionSystem:
         
         print("Face Recognition System initialized")
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
+
+    def handle_unknown_person(self):
+        """Handle unknown person as a guest"""
+        # Generate a unique guest identifier based on timestamp
+        import hashlib
+        timestamp = str(int(time.time()))
+        guest_hash = hashlib.md5(timestamp.encode()).hexdigest()[:8]
+        
+        # Check if this guest was seen recently (within 5 minutes)
+        current_time = time.time()
+        for guest_id, guest_data in self.known_guests.items():
+            if current_time - guest_data['last_seen'] < 300:  # 5 minutes
+                if guest_data['hash'] == guest_hash:
+                    print(f"🔄 Returning guest detected: {guest_data['name']}")
+                    return guest_data['name']
+        
+        # New guest - assign next number
+        self.guest_counter += 1
+        guest_name = f"Зочин {self.guest_counter}"
+        
+        # Store guest info
+        self.known_guests[guest_name] = {
+            'name': guest_name,
+            'hash': guest_hash,
+            'first_seen': current_time,
+            'last_seen': current_time,
+            'is_guest': True
+        }
+        
+        print(f"👋 New guest detected: {guest_name}")
+        return guest_name
 
     def apply_skin_tone_correction(self, frame_rgb):
         """Apply color correction.
@@ -875,6 +908,23 @@ class FaceRecognitionSystem:
                             return name
                         else:
                             print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
+                            # Handle unknown person as guest
+                            guest_name = self.handle_unknown_person()
+                            
+                            # Reset photo flag for guest
+                            if self.current_person != guest_name:
+                                self.photo_saved_this_session = False
+                                print(f"[INFO] Guest mode, resetting photo flag")
+                            
+                            # Save photo for guest
+                            photo_saved = self.save_skin_photo(guest_name)
+                            if photo_saved:
+                                # Get the photo path for the trigger
+                                current_date = datetime.now().strftime("%Y-%m-%d")
+                                photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
+                                self.trigger_skin_analysis(guest_name, photo_path)
+                            
+                            return guest_name
                     else:
                         # Simulate recognition for testing
                         print("[INFO] Face recognition simulated - returning 'Andii'")
@@ -940,11 +990,17 @@ class FaceRecognitionSystem:
             else:
                 status_type = "waiting"
         
+        # Check if current person is a guest
+        is_guest = False
+        if self.current_person and self.current_person.startswith("Зочин"):
+            is_guest = True
+        
         status = {
             "distance": self.current_distance,
             "person": self.current_person,
             "active": self.is_active,
             "status": status_type,
+            "is_guest": is_guest,
             "timestamp": datetime.now().isoformat()
         }
         

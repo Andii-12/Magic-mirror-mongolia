@@ -27,6 +27,7 @@ Module.register("personalcalendar", {
 		this.userProfile = null;
 		this.events = [];
 		this.userProfiles = null;
+		this.isGuest = false;
 		this._lastRenderKey = ""; // prevent unnecessary re-render to avoid flicker
 		this.loadUserProfiles();
 		this.startStatusCheck();
@@ -142,6 +143,19 @@ Module.register("personalcalendar", {
 			// Only process if we have valid payload data
 			if (!payload || typeof payload !== 'object') {
 				console.log("Personal Calendar: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if current person is a guest
+			this.isGuest = payload.is_guest || false;
+			
+			// Hide personal data for guests
+			if (this.isGuest) {
+				console.log("Personal Calendar: Guest detected, hiding personal data");
+				this.currentUser = null;
+				this.userProfile = null;
+				this.events = [];
+				this.maybeUpdateDom(0);
 				return;
 			}
 			

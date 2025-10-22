@@ -32,6 +32,7 @@ Module.register("personalapi", {
 		this.lists = [];
 		this.loaded = false;
 		this.lastUpdate = null;
+		this.isGuest = false;
 
 		this.startStatusCheck();
 		this.fetchData();
@@ -186,6 +187,19 @@ Module.register("personalapi", {
 			// Only process if we have valid payload data
 			if (!payload || typeof payload !== 'object') {
 				console.log("Personal API: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if current person is a guest
+			this.isGuest = payload.is_guest || false;
+			
+			// Hide personal data for guests
+			if (this.isGuest) {
+				console.log("Personal API: Guest detected, hiding personal data");
+				this.currentUser = null;
+				this.events = [];
+				this.lists = [];
+				this.updateDom(this.config.animationSpeed);
 				return;
 			}
 			

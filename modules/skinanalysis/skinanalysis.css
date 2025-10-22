@@ -1,6 +1,8 @@
 .skinanalysis {
 	text-align: center;
-	padding: 15px;
+	padding: 10px;
+	max-width: 300px;
+	margin: 0 auto;
 }
 
 .skinanalysis-status {
@@ -8,32 +10,66 @@
 	font-size: 1.0em;
 }
 
+.skinanalysis-welcome {
+	margin: 8px 0;
+	font-size: 1.1em;
+	font-weight: bold;
+	color: #4CAF50;
+	text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
 .skinanalysis-analysis {
-	margin: 10px 0;
-	padding: 12px;
+	margin: 8px 0;
+	padding: 8px 12px;
 	background: rgba(255, 255, 255, 0.1);
-	border-radius: 8px;
+	border-radius: 6px;
 	border-left: 3px solid #4CAF50;
-	font-size: 0.9em;
-	line-height: 1.3;
+	font-size: 0.75em;
+	line-height: 1.2;
 	overflow: hidden;
 	display: -webkit-box;
-	-webkit-line-clamp: 2; /* limit to 2 lines */
+	-webkit-line-clamp: 3; /* limit to 3 lines */
 	-webkit-box-orient: vertical;
+	max-height: 3.6em; /* 3 lines * 1.2 line-height * 0.75em font-size */
+	position: relative;
+}
+
+.skinanalysis-analysis::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 1.2em;
+	background: linear-gradient(transparent, rgba(0, 0, 0, 0.3));
+	pointer-events: none;
 }
 
 .skinanalysis-advice {
-	margin: 10px 0;
-	padding: 12px;
+	margin: 8px 0;
+	padding: 8px 12px;
 	background: rgba(255, 255, 255, 0.1);
-	border-radius: 8px;
+	border-radius: 6px;
 	border-left: 3px solid #FF9800;
-	font-size: 0.8em;
-	line-height: 1.3;
+	font-size: 0.7em;
+	line-height: 1.2;
 	overflow: hidden;
 	display: -webkit-box;
 	-webkit-line-clamp: 2; /* limit to 2 lines */
 	-webkit-box-orient: vertical;
+	max-height: 1.68em; /* 2 lines * 1.2 line-height * 0.7em font-size */
+	position: relative;
+}
+
+.skinanalysis-advice::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 1.2em;
+	background: linear-gradient(transparent, rgba(0, 0, 0, 0.3));
+	pointer-events: none;
 }
 
 .skinanalysis-time {

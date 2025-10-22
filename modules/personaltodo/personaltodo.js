@@ -21,6 +21,7 @@ Module.register("personaltodo", {
 		this.userProfile = null;
 		this.todoItems = [];
 		this.userProfiles = null;
+		this.isGuest = false;
 		this.lastValidData = null; // Store last valid data to prevent loss
 		this._lastRenderKey = ""; // Used to prevent unnecessary re-renders (blinking)
 		this.loadUserProfiles();
@@ -95,6 +96,20 @@ Module.register("personaltodo", {
 			// Only process if we have valid payload data
 			if (!payload || typeof payload !== 'object') {
 				console.log("Personal Todo: Invalid payload, ignoring");
+				return;
+			}
+			
+			// Check if current person is a guest
+			this.isGuest = payload.is_guest || false;
+			
+			// Hide personal data for guests
+			if (this.isGuest) {
+				console.log("Personal Todo: Guest detected, hiding personal data");
+				this.currentUser = null;
+				this.userProfile = null;
+				this.todoItems = [];
+				this.lastValidData = null;
+				this.maybeUpdateDom(0);
 				return;
 			}
 			
