@@ -930,6 +930,7 @@ class FaceRecognitionSystem:
                         # Use more lenient threshold for better recognition
                         if name != "Unknown" and confidence < 90:  # More lenient threshold
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f})")
+                            print(f"[DEBUG] Known user detected - NOT a guest")
                             
                             # Reset photo flag for this person if it's a new recognition
                             print(f"[DEBUG] Current person: {self.current_person}, Recognized person: {name}")
@@ -959,6 +960,7 @@ class FaceRecognitionSystem:
                             # Handle unknown person as guest
                             guest_name = self.handle_unknown_person()
                             print(f"[DEBUG] Guest name generated: {guest_name}")
+                            print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
                             
                             # Reset photo flag for guest
                             if self.current_person != guest_name:
@@ -1045,8 +1047,26 @@ class FaceRecognitionSystem:
         
         # Check if current person is a guest
         is_guest = False
-        if self.current_person and self.current_person.startswith("Зочин"):
-            is_guest = True
+        if self.current_person:
+            print(f"[DEBUG] Checking guest status for: {self.current_person}")
+            print(f"[DEBUG] Known guests: {list(self.known_guests.keys())}")
+            print(f"[DEBUG] Label names (trained faces): {self.label_names}")
+            
+            # Check if person is in known_guests dictionary (proper guest detection)
+            if self.current_person in self.known_guests and self.known_guests[self.current_person].get('is_guest', False):
+                is_guest = True
+                print(f"[DEBUG] Person {self.current_person} is in known_guests with is_guest=True")
+            # Also check if name starts with "Зочин" as fallback
+            elif self.current_person.startswith("Зочин"):
+                is_guest = True
+                print(f"[DEBUG] Person {self.current_person} starts with 'Зочин' - marking as guest")
+            # If person is in label_names (trained faces), they are NOT a guest
+            elif self.current_person in self.label_names:
+                is_guest = False
+                print(f"[DEBUG] Person {self.current_person} is in label_names (trained) - NOT a guest")
+            else:
+                print(f"[DEBUG] Person {self.current_person} not found in known_guests or label_names - defaulting to NOT guest")
+                is_guest = False
         
         status = {
             "distance": self.current_distance,
@@ -1056,6 +1076,8 @@ class FaceRecognitionSystem:
             "is_guest": is_guest,
             "timestamp": datetime.now().isoformat()
         }
+        
+        print(f"[DEBUG] Final status: person={self.current_person}, is_guest={is_guest}, status={status_type}")
         
         try:
             # Write to temporary file first, then rename to avoid corruption
