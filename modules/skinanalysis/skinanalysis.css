@@ -78,6 +78,29 @@
 	opacity: 0.7;
 }
 
+.skinanalysis-welcome {
+	margin: 10px 0;
+	padding: 12px 16px;
+	background: linear-gradient(135deg, #4CAF50, #45a049);
+	border-radius: 8px;
+	text-align: center;
+	font-size: 1.1em;
+	font-weight: bold;
+	color: #ffffff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+	box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+	animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+	from {
+		box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+	}
+	to {
+		box-shadow: 0 4px 16px rgba(76, 175, 80, 0.6);
+	}
+}
+
 /* Style classes */
 .large {
 	font-size: 1.1em;

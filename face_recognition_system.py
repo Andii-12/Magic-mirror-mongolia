@@ -120,6 +120,8 @@ class FaceRecognitionSystem:
         timestamp = str(int(time.time()))
         guest_hash = hashlib.md5(timestamp.encode()).hexdigest()[:8]
         
+        print(f"[DEBUG] Handling unknown person - timestamp: {timestamp}, hash: {guest_hash}")
+        
         # Check if this guest was seen recently (within 5 minutes)
         current_time = time.time()
         for guest_id, guest_data in self.known_guests.items():
@@ -142,6 +144,7 @@ class FaceRecognitionSystem:
         }
         
         print(f"👋 New guest detected: {guest_name}")
+        print(f"[DEBUG] Guest counter: {self.guest_counter}, Known guests: {list(self.known_guests.keys())}")
         return guest_name
 
     def apply_skin_tone_correction(self, frame_rgb):
@@ -821,20 +824,30 @@ class FaceRecognitionSystem:
                 print("[INFO] Windows detected - simulating face recognition")
                 time.sleep(0.5)  # Reduced simulation delay
                 
+                # For Windows simulation, simulate both known and unknown faces
+                # In a real scenario, this would be handled by actual face recognition
+                
+                # Simulate that we have some known faces and some unknown faces
+                # For testing purposes, we'll simulate an unknown face as a guest
+                print("[INFO] Windows simulation: Simulating unknown face detection")
+                
+                # Simulate unknown face as guest for testing
+                guest_name = self.handle_unknown_person()
+                
                 # Reset photo flag for Windows simulation
-                if self.current_person != "Andii":
+                if self.current_person != guest_name:
                     self.photo_saved_this_session = False
-                    print(f"[INFO] Windows simulation mode, resetting photo flag")
+                    print(f"[INFO] Windows simulation mode, resetting photo flag for {guest_name}")
                 
                 # Save photo even in Windows simulation mode
-                photo_saved = self.save_skin_photo("Andii")
+                photo_saved = self.save_skin_photo(guest_name)
                 if photo_saved:
                     # Get the photo path for the trigger
                     current_date = datetime.now().strftime("%Y-%m-%d")
-                    photo_path = os.path.join(os.getcwd(), "Skin", "Andii", f"{current_date}.jpg")
-                    self.trigger_skin_analysis("Andii", photo_path)
+                    photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
+                    self.trigger_skin_analysis(guest_name, photo_path)
                 
-                return "Andii"  # Return actual user for Windows
+                return guest_name  # Return guest name for Windows simulation
             
             # Initialize camera if not already done
             if self.camera is None:
@@ -882,9 +895,10 @@ class FaceRecognitionSystem:
                         name = self.label_map.get(label, "Unknown")
                         print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
                         
-                        # More lenient confidence threshold for LBPH
-                        if name != "Unknown" and confidence < 80:  # Much lower threshold
-                            print(f"✅ Face recognition successful: {name}")
+                        # Check if face is recognized with good confidence
+                        # For LBPH: lower confidence = better match, higher confidence = worse match
+                        if name != "Unknown" and confidence < 80:  # Low confidence = good match
+                            print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f})")
                             
                             # Reset photo flag for this person if it's a new recognition
                             print(f"[DEBUG] Current person: {self.current_person}, Recognized person: {name}")
@@ -907,9 +921,13 @@ class FaceRecognitionSystem:
                             
                             return name
                         else:
-                            print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f})")
+                            # Face detected but not recognized (high confidence = bad match, or name is "Unknown")
+                            print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f}, name: {name})")
+                            print(f"[DEBUG] Confidence threshold check: name != 'Unknown' = {name != 'Unknown'}, confidence < 80 = {confidence < 80}")
+                            
                             # Handle unknown person as guest
                             guest_name = self.handle_unknown_person()
+                            print(f"[DEBUG] Guest name generated: {guest_name}")
                             
                             # Reset photo flag for guest
                             if self.current_person != guest_name:
@@ -924,25 +942,29 @@ class FaceRecognitionSystem:
                                 photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
                                 self.trigger_skin_analysis(guest_name, photo_path)
                             
+                            print(f"[DEBUG] Returning guest name: {guest_name}")
                             return guest_name
                     else:
-                        # Simulate recognition for testing
-                        print("[INFO] Face recognition simulated - returning 'Andii'")
+                        # No recognizer available - treat as unknown face (guest)
+                        print("[INFO] No recognizer available - treating as unknown face (guest)")
                         
-                        # Reset photo flag for simulation
-                        if self.current_person != "Andii":
+                        # Handle unknown person as guest
+                        guest_name = self.handle_unknown_person()
+                        
+                        # Reset photo flag for guest
+                        if self.current_person != guest_name:
                             self.photo_saved_this_session = False
-                            print(f"[INFO] Simulation mode, resetting photo flag")
+                            print(f"[INFO] Guest mode, resetting photo flag")
                         
-                        # Save photo even in simulation mode
-                        photo_saved = self.save_skin_photo("Andii")
+                        # Save photo for guest
+                        photo_saved = self.save_skin_photo(guest_name)
                         if photo_saved:
                             # Get the photo path for the trigger
                             current_date = datetime.now().strftime("%Y-%m-%d")
-                            photo_path = os.path.join(os.getcwd(), "Skin", "Andii", f"{current_date}.jpg")
-                            self.trigger_skin_analysis("Andii", photo_path)
+                            photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
+                            self.trigger_skin_analysis(guest_name, photo_path)
                         
-                        return "Andii"
+                        return guest_name
                 else:
                     print("[INFO] No face detected in frame")
                     
@@ -1095,6 +1117,7 @@ class FaceRecognitionSystem:
                             print("📷 Starting face recognition...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
+                            print(f"[DEBUG] Face recognition returned: {person}")
                             if person and person != "Unknown":
                                 print(f"✅ Face recognized: {person}")
                                 self.current_person = person
