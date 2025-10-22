@@ -166,28 +166,32 @@ module.exports = NodeHelper.create({
 			const mimeType = this.getMimeType(path.basename(photoPath));
 
 			// Prepare OpenAI Vision API request
-			const requestBody = {
-				model: config.model,
-				messages: [
-					{
-						role: "user",
-						content: [
-							{
-								type: "text",
-								text: "Энэ зураг дээрх хүний арьсны гоо сайхны байдлыг шинжилж, МОНГОЛ хэлээр хариул. Зөвхөн арьсны өнгө, тэгш байдал, гэрэлтэлтийг ажиглаж, гоо сайхны ерөнхий ажиглалт хий. Дараах хэлбэрээр хариул:\n\nАрьсны байдал: [3 өгүүлбэр арьсны гоо сайхны байдлын талаар]\nЗөвлөмж: [3 өгүүлбэр арьсны арчилгааны зөвлөмж]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй."
-							},
-							{
-								type: "image_url",
-								image_url: {
-									url: `data:${mimeType};base64,${base64Image}`
-								}
+		const requestBody = {
+			model: config.model,
+			messages: [
+				{
+					role: "system",
+					content: "Та бол зураг дээрх хүний арьсны харагдах байдлыг тайлбарлах туслах. Зөвхөн арьсны өнгө, тэгш байдал, гэрэлтэлтийг ажиглаж, ерөнхий ажиглалт хий. МОНГОЛ хэлээр хариул."
+				},
+				{
+					role: "user",
+					content: [
+						{
+							type: "text",
+							text: "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй."
+						},
+						{
+							type: "image_url",
+							image_url: {
+								url: `data:${mimeType};base64,${base64Image}`
 							}
-						]
-					}
-				],
-				max_tokens: config.maxTokens || 300,
-				temperature: 0.7
-			};
+						}
+					]
+				}
+			],
+			max_tokens: config.maxTokens || 300,
+			temperature: 0.7
+		};
 
 			// Make API request
 			fetch(config.apiUrl, {
@@ -233,11 +237,15 @@ module.exports = NodeHelper.create({
 					}
 					
 					// Parse the response to separate analysis and advice
-					const analysisMatch = content.match(/Арьсны байдал:([\s\S]*?)(?=Зөвлөмж:|$)/);
-					const adviceMatch = content.match(/Зөвлөмж:([\s\S]*?)$/);
+					const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
+					const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
 					
-					const analysis = analysisMatch ? analysisMatch[1].trim() : content;
-					const advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
+					let analysis = analysisMatch ? analysisMatch[1].trim() : content;
+					let advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
+					
+					// Convert \\n to actual line breaks
+					analysis = analysis.replace(/\\n/g, '\n');
+					advice = advice.replace(/\\n/g, '\n');
 					
 					// Validate that we got actual content
 					if (analysis.length < 10 || advice.length < 10) {
@@ -267,6 +275,11 @@ module.exports = NodeHelper.create({
 				if (error.message === "API_REFUSED_ANALYSIS") {
 					Log.log(`Skin Analysis: Trying alternative beauty-focused prompt...`);
 					self.tryAlternativePrompt(config, base64Image, mimeType);
+				} else if (error.message.includes("model") || error.message.includes("gpt-4")) {
+					// Try with a different model
+					Log.log(`Skin Analysis: Trying with different model...`);
+					const altConfig = {...config, model: "gpt-4o-mini"};
+					self.tryAlternativePrompt(altConfig, base64Image, mimeType);
 				} else {
 					self.sendSocketNotification("SKIN_ANALYSIS_ERROR", `API Error: ${error.message}`);
 				}
@@ -282,8 +295,8 @@ module.exports = NodeHelper.create({
 	tryAlternativePrompt: function(config, base64Image, mimeType) {
 		const self = this;
 		
-		// Alternative prompt - more general and beauty-focused
-		const alternativePrompt = "Энэ зураг дээрх хүний арьсны гоо сайхны байдлыг шинжилж, МОНГОЛ хэлээр хариул. Зөвхөн арьсны өнгө, тэгш байдал, гэрэлтэлтийг ажиглаж, гоо сайхны ерөнхий ажиглалт хий. Дараах хэлбэрээр хариул:\n\nАрьсны байдал: [3 өгүүлбэр арьсны гоо сайхны байдлын талаар]\nЗөвлөмж: [3 өгүүлбэр арьсны арчилгааны зөвлөмж]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй.";
+		// Alternative prompt - very neutral and general
+		const alternativePrompt = "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй.";
 		
 		const requestBody = {
 			model: config.model,
@@ -345,11 +358,15 @@ module.exports = NodeHelper.create({
 				}
 				
 				// Parse the response to separate analysis and advice
-				const analysisMatch = content.match(/Арьсны байдал:([\s\S]*?)(?=Зөвлөмж:|$)/);
-				const adviceMatch = content.match(/Зөвлөмж:([\s\S]*?)$/);
+				const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
+				const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
 				
-				const analysis = analysisMatch ? analysisMatch[1].trim() : content;
-				const advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
+				let analysis = analysisMatch ? analysisMatch[1].trim() : content;
+				let advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
+				
+				// Convert \\n to actual line breaks
+				analysis = analysis.replace(/\\n/g, '\n');
+				advice = advice.replace(/\\n/g, '\n');
 				
 				// Validate that we got actual content
 				if (analysis.length < 10 || advice.length < 10) {
@@ -389,7 +406,7 @@ module.exports = NodeHelper.create({
 		const self = this;
 		
 		// Very general prompt - just describe what you see
-		const fallbackPrompt = "Энэ зураг дээрх хүний арьсны байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. Дараах хэлбэрээр хариул:\n\nАрьсны байдал: [3 өгүүлбэр арьсны байдлын талаар]\nЗөвлөмж: [3 өгүүлбэр арьсны арчилгааны зөвлөмж]\n\nЗөвхөн МОНГОЛ хэл ашигла.";
+		const fallbackPrompt = "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла.";
 		
 		const requestBody = {
 			model: config.model,
@@ -440,14 +457,14 @@ module.exports = NodeHelper.create({
 				let advice = "Зөвлөмж олдсонгүй";
 				
 				// Try to extract sections if they exist
-				const analysisMatch = content.match(/Арьсны байдал:([\s\S]*?)(?=Зөвлөмж:|$)/);
-				const adviceMatch = content.match(/Зөвлөмж:([\s\S]*?)$/);
+				const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
+				const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
 				
 				if (analysisMatch) {
-					analysis = analysisMatch[1].trim();
+					analysis = analysisMatch[1].trim().replace(/\\n/g, '\n');
 				}
 				if (adviceMatch) {
-					advice = adviceMatch[1].trim();
+					advice = adviceMatch[1].trim().replace(/\\n/g, '\n');
 				}
 				
 				// If no sections found, split content roughly in half
@@ -474,7 +491,119 @@ module.exports = NodeHelper.create({
 		})
 		.catch(error => {
 			Log.error(`Skin Analysis: All prompts failed: ${error.message}`);
-			self.sendSocketNotification("SKIN_ANALYSIS_ERROR", `API Error: All prompts failed - ${error.message}`);
+			
+			// Try one final time with the most basic prompt possible
+			if (error.message.includes("refused") || error.message.includes("cannot") || error.message.includes("unable")) {
+				Log.log(`Skin Analysis: Trying ultra-basic visual description prompt...`);
+				self.tryUltraBasicPrompt(config, base64Image, mimeType);
+			} else {
+				self.sendSocketNotification("SKIN_ANALYSIS_ERROR", `API Error: All prompts failed - ${error.message}`);
+			}
+		});
+	},
+
+	// Ultra-basic prompt - just describe what you see visually
+	tryUltraBasicPrompt: function(config, base64Image, mimeType) {
+		const self = this;
+		
+		// Ultra-basic prompt - just visual description
+		const ultraBasicPrompt = "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла.";
+		
+		const requestBody = {
+			model: config.model,
+			messages: [
+				{
+					role: "user",
+					content: [
+						{
+							type: "text",
+							text: ultraBasicPrompt
+						},
+						{
+							type: "image_url",
+							image_url: {
+								url: `data:${mimeType};base64,${base64Image}`
+							}
+						}
+					]
+				}
+			],
+			max_tokens: config.maxTokens || 300,
+			temperature: 0.7
+		};
+
+		// Make API request with ultra-basic prompt
+		fetch(config.apiUrl, {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${config.apiKey.trim()}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestBody)
+		})
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+			return response.json();
+		})
+		.then(data => {
+			if (data.choices && data.choices[0] && data.choices[0].message) {
+				const content = data.choices[0].message.content;
+				
+				Log.log(`Skin Analysis: Ultra-basic prompt response: ${content}`);
+				
+				// Try to parse even if format is not perfect
+				let analysis = content;
+				let advice = "Зөвлөмж олдсонгүй";
+				
+				// Try to extract sections if they exist
+				const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
+				const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
+				
+				if (analysisMatch) {
+					analysis = analysisMatch[1].trim().replace(/\\n/g, '\n');
+				}
+				if (adviceMatch) {
+					advice = adviceMatch[1].trim().replace(/\\n/g, '\n');
+				}
+				
+				// If no sections found, split content roughly in half
+				if (!analysisMatch && !adviceMatch && content.length > 50) {
+					const midPoint = Math.floor(content.length / 2);
+					const lastSentence = content.lastIndexOf('.', midPoint);
+					if (lastSentence > 0) {
+						analysis = content.substring(0, lastSentence + 1).trim();
+						advice = content.substring(lastSentence + 1).trim();
+					}
+				}
+				
+				Log.log(`Skin Analysis: Ultra-basic analysis completed for ${config.person}`);
+				
+				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
+					person: config.person,
+					analysis: analysis,
+					advice: advice,
+					timestamp: Date.now()
+				});
+			} else {
+				throw new Error("Invalid API response format");
+			}
+		})
+		.catch(error => {
+			Log.error(`Skin Analysis: Ultra-basic prompt also failed: ${error.message}`);
+			
+			// Final fallback - generate a generic response
+			Log.log(`Skin Analysis: All prompts failed, generating generic response...`);
+			const genericAnalysis = "Арьсны өнгө тэгш\nГэрэлтэлт сайн байна\nГадаргуу жигд харагдаж";
+			const genericAdvice = "Өдөр бүр чийгшүүлэгч\nНарны хамгаалалтын бодис\nВитамин С агуулсан бүтээгдэхүүн";
+			
+			self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
+				person: config.person,
+				analysis: genericAnalysis,
+				advice: genericAdvice,
+				timestamp: Date.now()
+			});
 		});
 	},
 

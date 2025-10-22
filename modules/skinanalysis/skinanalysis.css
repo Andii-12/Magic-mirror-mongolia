@@ -32,6 +32,7 @@
 	-webkit-box-orient: vertical;
 	max-height: 3.6em; /* 3 lines * 1.2 line-height * 0.75em font-size */
 	position: relative;
+	white-space: pre-line; /* Preserve line breaks */
 }
 
 .skinanalysis-analysis::after {
@@ -59,6 +60,7 @@
 	-webkit-box-orient: vertical;
 	max-height: 1.68em; /* 2 lines * 1.2 line-height * 0.7em font-size */
 	position: relative;
+	white-space: pre-line; /* Preserve line breaks */
 }
 
 .skinanalysis-advice::after {
