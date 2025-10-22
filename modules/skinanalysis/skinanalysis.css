@@ -16,6 +16,10 @@
 	border-left: 3px solid #4CAF50;
 	font-size: 0.9em;
 	line-height: 1.3;
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2; /* limit to 2 lines */
+	-webkit-box-orient: vertical;
 }
 
 .skinanalysis-advice {
@@ -26,6 +30,10 @@
 	border-left: 3px solid #FF9800;
 	font-size: 0.8em;
 	line-height: 1.3;
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2; /* limit to 2 lines */
+	-webkit-box-orient: vertical;
 }
 
 .skinanalysis-time {

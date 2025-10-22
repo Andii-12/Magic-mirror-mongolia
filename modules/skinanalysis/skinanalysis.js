@@ -44,6 +44,7 @@ Module.register("skinanalysis", {
 		this.lastAnalysisRequest = 0; // Track last analysis request time
 		this.analysisRetryCount = 0; // Track retry attempts
 		this.maxRetries = 2; // Maximum retry attempts
+		this.suppressScheduledAnalysisUntil = 0; // Timestamp to suppress scheduled analysis
 
 		this.startStatusChecking();
 		this.scheduleAnalysis();
@@ -112,6 +113,15 @@ Module.register("skinanalysis", {
 		// Clear any pending analysis timeout
 		if (this.analysisTimeout) {
 			clearTimeout(this.analysisTimeout);
+		}
+		
+		// Suppress scheduled analysis shortly after a direct trigger to avoid duplicates
+		const now = Date.now();
+		const rateLimitDelay = this.config.rateLimitDelay || 30000;
+		this.suppressScheduledAnalysisUntil = now + rateLimitDelay + 5000;
+		if (this.analysisTimer) {
+			clearTimeout(this.analysisTimer);
+			this.analysisTimer = null;
 		}
 		
 		// Start analysis immediately with the specific photo
@@ -189,7 +199,8 @@ Module.register("skinanalysis", {
 		const self = this;
 		// Wait 15 seconds after recognition to allow photo to be saved
 		this.analysisTimer = setTimeout(function() {
-			if (self.currentPerson && self.currentPerson !== "Unknown") {
+			const now = Date.now();
+			if (self.currentPerson && self.currentPerson !== "Unknown" && now >= (self.suppressScheduledAnalysisUntil || 0)) {
 				console.log("Scheduled analysis starting for:", self.currentPerson);
 				self.analyzeSkin();
 			}
@@ -221,14 +232,9 @@ Module.register("skinanalysis", {
 		const rateLimitDelay = this.config.rateLimitDelay || 30000; // 30 seconds default
 
 		if (timeSinceLastRequest < rateLimitDelay) {
+			// Don't override current analysis UI; just skip making a new request
 			const remainingTime = Math.ceil((rateLimitDelay - timeSinceLastRequest) / 1000);
-			console.log(`Rate limit: Please wait ${remainingTime} seconds before next analysis`);
-			this.currentAnalysis = {
-				person: this.currentPerson,
-				analysis: "Хэт олон хүсэлт",
-				advice: `${remainingTime} секунд хүлээнэ үү`
-			};
-			this.updateDom(this.config.animationSpeed);
+			console.log(`Rate limit: Skipping new request, wait ${remainingTime}s`);
 			return;
 		}
 
@@ -268,22 +274,9 @@ Module.register("skinanalysis", {
 			return;
 		}
 
-		// Rate limiting - check if enough time has passed since last request
+		// For direct photo triggers, bypass rate limiting (we already avoid duplicates elsewhere)
 		const now = Date.now();
-		const timeSinceLastRequest = now - this.lastAnalysisRequest;
-		const rateLimitDelay = this.config.rateLimitDelay || 30000; // 30 seconds default
-
-		if (timeSinceLastRequest < rateLimitDelay) {
-			const remainingTime = Math.ceil((rateLimitDelay - timeSinceLastRequest) / 1000);
-			console.log(`Rate limit: Please wait ${remainingTime} seconds before next analysis`);
-			this.currentAnalysis = {
-				person: person,
-				analysis: "Хэт олон хүсэлт",
-				advice: `${remainingTime} секунд хүлээнэ үү`
-			};
-			this.updateDom(this.config.animationSpeed);
-			return;
-		}
+		// Note: We intentionally skip the rate-limit block for triggered photos
 
 		this.isAnalyzing = true;
 		this.lastAnalysisRequest = now;
