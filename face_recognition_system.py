@@ -102,6 +102,18 @@ class FaceRecognitionSystem:
         if not trainer_loaded:
             print("⚠️  No trainer.yml found - face recognition will be simulated")
             self.recognizer = None
+        else:
+            # Validate that the recognizer has been trained
+            try:
+                # Try to get the number of classes
+                if hasattr(self.recognizer, 'getLabelsCount'):
+                    labels_count = self.recognizer.getLabelsCount()
+                    print(f"✅ Recognizer trained with {labels_count} classes")
+                else:
+                    print("✅ Recognizer loaded successfully")
+            except Exception as e:
+                print(f"⚠️  Recognizer validation failed: {e}")
+                self.recognizer = None
         
         # Load label mapping (matching your working code)
         if IMAGE_BASE and os.path.exists(IMAGE_BASE):
@@ -824,30 +836,46 @@ class FaceRecognitionSystem:
                 print("[INFO] Windows detected - simulating face recognition")
                 time.sleep(0.5)  # Reduced simulation delay
                 
-                # For Windows simulation, simulate both known and unknown faces
-                # In a real scenario, this would be handled by actual face recognition
-                
-                # Simulate that we have some known faces and some unknown faces
-                # For testing purposes, we'll simulate an unknown face as a guest
-                print("[INFO] Windows simulation: Simulating unknown face detection")
-                
-                # Simulate unknown face as guest for testing
-                guest_name = self.handle_unknown_person()
-                
-                # Reset photo flag for Windows simulation
-                if self.current_person != guest_name:
-                    self.photo_saved_this_session = False
-                    print(f"[INFO] Windows simulation mode, resetting photo flag for {guest_name}")
-                
-                # Save photo even in Windows simulation mode
-                photo_saved = self.save_skin_photo(guest_name)
-                if photo_saved:
-                    # Get the photo path for the trigger
-                    current_date = datetime.now().strftime("%Y-%m-%d")
-                    photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
-                    self.trigger_skin_analysis(guest_name, photo_path)
-                
-                return guest_name  # Return guest name for Windows simulation
+                # For Windows simulation, first check if we have known users
+                if self.label_names and len(self.label_names) > 0 and self.label_names[0] != "Unknown":
+                    # We have known users - simulate recognizing one of them
+                    import random
+                    known_user = random.choice(self.label_names)
+                    print(f"[INFO] Windows simulation: Simulating recognition of known user: {known_user}")
+                    
+                    # Reset photo flag for Windows simulation
+                    if self.current_person != known_user:
+                        self.photo_saved_this_session = False
+                        print(f"[INFO] Windows simulation mode, resetting photo flag for {known_user}")
+                    
+                    # Save photo even in Windows simulation mode
+                    photo_saved = self.save_skin_photo(known_user)
+                    if photo_saved:
+                        # Get the photo path for the trigger
+                        current_date = datetime.now().strftime("%Y-%m-%d")
+                        photo_path = os.path.join(os.getcwd(), "Skin", known_user, f"{current_date}.jpg")
+                        self.trigger_skin_analysis(known_user, photo_path)
+                    
+                    return known_user  # Return known user name for Windows simulation
+                else:
+                    # No known users - simulate unknown face as guest
+                    print("[INFO] Windows simulation: No known users found, simulating guest")
+                    guest_name = self.handle_unknown_person()
+                    
+                    # Reset photo flag for Windows simulation
+                    if self.current_person != guest_name:
+                        self.photo_saved_this_session = False
+                        print(f"[INFO] Windows simulation mode, resetting photo flag for {guest_name}")
+                    
+                    # Save photo even in Windows simulation mode
+                    photo_saved = self.save_skin_photo(guest_name)
+                    if photo_saved:
+                        # Get the photo path for the trigger
+                        current_date = datetime.now().strftime("%Y-%m-%d")
+                        photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
+                        self.trigger_skin_analysis(guest_name, photo_path)
+                    
+                    return guest_name  # Return guest name for Windows simulation
             
             # Initialize camera if not already done
             if self.camera is None:
@@ -881,6 +909,7 @@ class FaceRecognitionSystem:
                 if len(faces) > 0:
                     print(f"[INFO] {len(faces)} face(s) detected")
                     if self.recognizer:
+                        print(f"[DEBUG] Recognizer available, known faces: {self.label_names}")
                         # Process the largest face (most likely to be the person)
                         largest_face = max(faces, key=lambda face: face[2] * face[3])
                         x, y, w, h = largest_face
@@ -894,10 +923,12 @@ class FaceRecognitionSystem:
                         label, confidence = self.recognizer.predict(face_img)
                         name = self.label_map.get(label, "Unknown")
                         print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
+                        print(f"[DEBUG] Label: {label}, Label map: {self.label_map}")
                         
                         # Check if face is recognized with good confidence
                         # For LBPH: lower confidence = better match, higher confidence = worse match
-                        if name != "Unknown" and confidence < 80:  # Low confidence = good match
+                        # Use more lenient threshold for better recognition
+                        if name != "Unknown" and confidence < 90:  # More lenient threshold
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f})")
                             
                             # Reset photo flag for this person if it's a new recognition
