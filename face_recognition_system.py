@@ -15,6 +15,7 @@ from datetime import datetime
 import RPi.GPIO as GPIO
 from picamera2 import Picamera2
 import libcamera
+import subprocess
 
 # GPIO pins for ultrasonic sensor (matching your working code)
 TRIG_PIN = 23  # GPIO pin for TRIG
@@ -418,22 +419,38 @@ class FaceRecognitionSystem:
             camera_was_running = False
             if hasattr(self, 'camera') and self.camera is not None:
                 try:
+                    # First try to stop gracefully
                     self.camera.stop()
                     camera_was_running = True
                     print(f"[INFO] Picamera2 stopped successfully")
-                    time.sleep(2.0)  # Give camera more time to fully release
+                    
+                    # Give camera time to fully release
+                    time.sleep(3.0)  # Increased wait time
+                    
+                    # Force close the camera object
+                    try:
+                        self.camera.close()
+                        print(f"[INFO] Picamera2 closed completely")
+                    except Exception as e:
+                        print(f"[WARNING] Failed to close Picamera2: {e}")
                     
                     # Additional check - kill any remaining camera processes
                     try:
                         subprocess.run(["pkill", "-f", "rpicam"], capture_output=True)
                         subprocess.run(["pkill", "-f", "libcamera"], capture_output=True)
-                        time.sleep(0.5)
+                        subprocess.run(["pkill", "-f", "picamera"], capture_output=True)
+                        time.sleep(1.0)  # Wait for processes to die
                         print(f"[INFO] Killed any remaining camera processes")
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"[WARNING] Failed to kill camera processes: {e}")
+                    
+                    # Reset camera object to None to ensure it's completely released
+                    self.camera = None
+                    print(f"[INFO] Camera object reset to None")
                         
                 except Exception as e:
                     print(f"[WARNING] Failed to stop Picamera2: {e}")
+                    camera_was_running = False
             
             # Use rpicam-still for perfect color accuracy (NO BLUE/PURPLE ISSUES!)
             print(f"[INFO] Using rpicam-still for perfect color photo capture...")
@@ -441,16 +458,14 @@ class FaceRecognitionSystem:
             print(f"[DEBUG] Person directory exists: {os.path.exists(person_dir)}")
             
             try:
-                import subprocess
-                
                 # Check if rpicam-still is available
                 try:
                     result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
                     if result_check.returncode != 0:
                         print(f"[WARNING] rpicam-still not found, trying libcamera-still")
                         raise Exception("rpicam-still not available")
-                except:
-                    print(f"[WARNING] rpicam-still check failed, trying libcamera-still")
+                except Exception as e:
+                    print(f"[WARNING] rpicam-still check failed: {e}")
                     raise Exception("rpicam-still not available")
                 
                 # Now camera should be free for rpicam-still
@@ -469,6 +484,10 @@ class FaceRecognitionSystem:
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
+                print(f"[DEBUG] Working directory: {os.getcwd()}")
+                print(f"[DEBUG] Target file: {photo_path}")
+                print(f"[DEBUG] Parent directory exists: {os.path.exists(os.path.dirname(photo_path))}")
+                
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
                 
                 print(f"[DEBUG] rpicam return code: {result.returncode}")
@@ -476,10 +495,18 @@ class FaceRecognitionSystem:
                 print(f"[DEBUG] rpicam stderr: {result.stderr}")
                 print(f"[DEBUG] Photo file exists after capture: {os.path.exists(photo_path)}")
                 
+                # Check if file was created and has content
+                if os.path.exists(photo_path):
+                    file_size = os.path.getsize(photo_path)
+                    print(f"[DEBUG] Photo file size: {file_size} bytes")
+                    if file_size == 0:
+                        print(f"[ERROR] Photo file is empty!")
+                        os.remove(photo_path)  # Remove empty file
+                
                 # Camera is still running for face recognition
                 print(f"[INFO] Camera remains active for face recognition")
                 
-                if result.returncode == 0 and os.path.exists(photo_path):
+                if result.returncode == 0 and os.path.exists(photo_path) and os.path.getsize(photo_path) > 0:
                     file_size = os.path.getsize(photo_path)
                     print(f"✅ Photo captured with rpicam-still!")
                     print(f"   Path: {photo_path}")
@@ -501,7 +528,8 @@ class FaceRecognitionSystem:
                     if camera_was_running:
                         print(f"[INFO] Restarting Picamera2 for face recognition...")
                         try:
-                            self.camera.start()
+                            # Reinitialize camera since we set it to None
+                            self.initialize_camera()
                             print(f"[INFO] Picamera2 restarted successfully")
                         except Exception as e:
                             print(f"[WARNING] Failed to restart Picamera2: {e}")
@@ -526,7 +554,7 @@ class FaceRecognitionSystem:
                     print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")
                     result_alt = subprocess.run(cmd_alt, capture_output=True, text=True, timeout=20)
                     
-                    if result_alt.returncode == 0 and os.path.exists(photo_path):
+                    if result_alt.returncode == 0 and os.path.exists(photo_path) and os.path.getsize(photo_path) > 0:
                         file_size = os.path.getsize(photo_path)
                         print(f"✅ Photo captured with alternative rpicam-still!")
                         print(f"   Path: {photo_path}")
@@ -564,7 +592,7 @@ class FaceRecognitionSystem:
                         print(f"[INFO] Running basic capture command: {' '.join(cmd_raw)}")
                         result_raw = subprocess.run(cmd_raw, capture_output=True, text=True, timeout=15)
                         
-                        if result_raw.returncode == 0 and os.path.exists(photo_path):
+                        if result_raw.returncode == 0 and os.path.exists(photo_path) and os.path.getsize(photo_path) > 0:
                             file_size = os.path.getsize(photo_path)
                             print(f"✅ Photo captured with basic method!")
                             print(f"   Path: {photo_path}")
@@ -610,7 +638,7 @@ class FaceRecognitionSystem:
                 
                 result_basic = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=10)
                 
-                if result_basic.returncode == 0 and os.path.exists(photo_path):
+                if result_basic.returncode == 0 and os.path.exists(photo_path) and os.path.getsize(photo_path) > 0:
                     # Apply aggressive color correction with ImageMagick
                     temp_path = photo_path.replace('.jpg', '_temp.jpg')
                     convert_cmd = [
@@ -630,7 +658,7 @@ class FaceRecognitionSystem:
                     print(f"[INFO] Applying aggressive ImageMagick color correction...")
                     result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
                     
-                    if result_convert.returncode == 0 and os.path.exists(temp_path):
+                    if result_convert.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
                         # Replace original with corrected version
                         os.replace(temp_path, photo_path)
                         file_size = os.path.getsize(photo_path)
@@ -678,7 +706,7 @@ class FaceRecognitionSystem:
                 print(f"[INFO] Running basic rpicam command: {' '.join(basic_cmd)}")
                 result = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=15)
                 
-                if result.returncode == 0 and os.path.exists(photo_path):
+                if result.returncode == 0 and os.path.exists(photo_path) and os.path.getsize(photo_path) > 0:
                     file_size = os.path.getsize(photo_path)
                     print(f"✅ Photo captured with basic rpicam-still!")
                     print(f"   Path: {photo_path}")
@@ -693,7 +721,8 @@ class FaceRecognitionSystem:
                     if camera_was_running:
                         print(f"[INFO] Restarting Picamera2 for face recognition...")
                         try:
-                            self.camera.start()
+                            # Reinitialize camera since we set it to None
+                            self.initialize_camera()
                             print(f"[INFO] Picamera2 restarted successfully")
                         except Exception as e:
                             print(f"[WARNING] Failed to restart Picamera2: {e}")
