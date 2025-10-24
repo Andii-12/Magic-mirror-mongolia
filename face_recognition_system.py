@@ -69,6 +69,8 @@ class FaceRecognitionSystem:
         # Relay control variables
         self.lights_on = False  # Track if lights are currently on
         self.relay_available = False  # Track if relay GPIO is available
+        self.lights_stable_count = 0  # Count stable readings for lights
+        self.lights_off_stable_count = 0  # Count stable readings for lights off
         
         # Initialize GPIO for ultrasonic sensor and relay (matching your working code)
         try:
@@ -1139,22 +1141,43 @@ class FaceRecognitionSystem:
             return False
 
     def control_lights_based_on_proximity(self, distance):
-        """Control lights based on proximity detection"""
+        """Control lights based on proximity detection with stability"""
         if not self.relay_available:
             return
         
-        # Turn on lights when someone is close (within threshold)
-        if distance <= PROXIMITY_THRESHOLD and not self.lights_on:
-            self.turn_on_lights()
-        # Turn off lights when someone moves away (beyond threshold + buffer)
-        elif distance > (PROXIMITY_THRESHOLD + 5) and self.lights_on:  # 5cm buffer to prevent flickering
-            self.turn_off_lights()
+        # Stability thresholds for relay control
+        LIGHTS_ON_STABLE_THRESHOLD = 3  # Need 3 consecutive readings under threshold
+        LIGHTS_OFF_STABLE_THRESHOLD = 3  # Need 3 consecutive readings over threshold + buffer
+        LIGHTS_OFF_BUFFER = 8  # 8cm buffer to prevent flickering (20 + 8 = 28cm)
+        
+        # Check if lights should be ON (within threshold)
+        if distance <= PROXIMITY_THRESHOLD:
+            self.lights_stable_count += 1
+            self.lights_off_stable_count = 0  # Reset off counter
+            
+            # Turn on lights if stable for required readings and not already on
+            if self.lights_stable_count >= LIGHTS_ON_STABLE_THRESHOLD and not self.lights_on:
+                self.turn_on_lights()
+        else:
+            # Check if lights should be OFF (beyond threshold + buffer)
+            if distance > (PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER):
+                self.lights_off_stable_count += 1
+                self.lights_stable_count = 0  # Reset on counter
+                
+                # Turn off lights if stable for required readings and currently on
+                if self.lights_off_stable_count >= LIGHTS_OFF_STABLE_THRESHOLD and self.lights_on:
+                    self.turn_off_lights()
+            else:
+                # In the buffer zone (20-28cm) - maintain current state
+                self.lights_stable_count = 0
+                self.lights_off_stable_count = 0
 
     def run(self):
         """Main loop with improved proximity detection and state management"""
         print("Starting face recognition system...")
         print(f"Proximity threshold: {PROXIMITY_THRESHOLD}cm")
         print(f"Timeout delay: {TIMEOUT_DELAY}s")
+        print(f"Relay control: ON at <{PROXIMITY_THRESHOLD}cm, OFF at >{PROXIMITY_THRESHOLD + 8}cm (with stability)")
         print("Press Ctrl+C to stop")
         
         # Add distance smoothing for more stable readings
@@ -1188,7 +1211,7 @@ class FaceRecognitionSystem:
                 
                 # Debug output every 10 iterations
                 if len(distance_history) % 10 == 0:
-                    print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'}")
+                    print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'} (on_stable: {self.lights_stable_count}, off_stable: {self.lights_off_stable_count})")
                 
                 # Check proximity with smoothed distance
                 if smoothed_distance <= PROXIMITY_THRESHOLD:

@@ -34,10 +34,10 @@ Relay Output (NO, COM, NC):
    - `GPIO.HIGH` = Relay ON (lights on)
    - `GPIO.LOW` = Relay OFF (lights off)
 
-2. **Proximity Detection**:
-   - When ultrasonic sensor detects < 20cm → Lights turn ON
-   - When ultrasonic sensor detects > 25cm → Lights turn OFF
-   - 5cm buffer prevents flickering
+2. **Proximity Detection with Stability**:
+   - When ultrasonic sensor detects < 20cm for 3 consecutive readings → Lights turn ON
+   - When ultrasonic sensor detects > 28cm for 3 consecutive readings → Lights turn OFF
+   - 8cm buffer zone (20-28cm) maintains current state to prevent flickering
 
 3. **Safety Features**:
    - Lights automatically turn OFF on system shutdown
