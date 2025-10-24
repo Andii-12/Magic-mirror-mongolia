@@ -79,8 +79,8 @@ class FaceRecognitionSystem:
             GPIO.setup(ECHO_PIN, GPIO.IN)
             # Setup relay pin as output
             GPIO.setup(RELAY_PIN, GPIO.OUT)
-            # Initialize relay pin to OFF (LOW = relay OFF, HIGH = relay ON)
-            GPIO.output(RELAY_PIN, GPIO.LOW)
+            # Initialize relay pin to OFF (HIGH = relay OFF for normally-closed relay)
+            GPIO.output(RELAY_PIN, GPIO.HIGH)
             print("✅ GPIO setup complete - Ultrasonic sensor + single relay")
             self.gpio_available = True
             self.relay_available = True
@@ -1115,8 +1115,8 @@ class FaceRecognitionSystem:
             return False
         
         try:
-            # Turn on relay (HIGH = relay ON)
-            GPIO.output(RELAY_PIN, GPIO.HIGH)
+            # Turn on relay (LOW = relay ON for normally-closed relay)
+            GPIO.output(RELAY_PIN, GPIO.LOW)
             self.lights_on = True
             print("💡 Lights turned ON")
             return True
@@ -1131,8 +1131,8 @@ class FaceRecognitionSystem:
             return False
         
         try:
-            # Turn off relay (LOW = relay OFF)
-            GPIO.output(RELAY_PIN, GPIO.LOW)
+            # Turn off relay (HIGH = relay OFF for normally-closed relay)
+            GPIO.output(RELAY_PIN, GPIO.HIGH)
             self.lights_on = False
             print("🌙 Lights turned OFF")
             return True
