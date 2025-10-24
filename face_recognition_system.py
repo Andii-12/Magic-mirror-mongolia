@@ -21,6 +21,9 @@ import subprocess
 TRIG_PIN = 23  # GPIO pin for TRIG
 ECHO_PIN = 24  # GPIO pin for ECHO
 
+# GPIO pin for 12V relay (single channel)
+RELAY_PIN = 18  # GPIO pin for relay control
+
 # Face recognition settings
 STATUS_FILE = "/tmp/magicmirror_face_status.json"
 PROXIMITY_THRESHOLD = 20  # cm
@@ -63,17 +66,27 @@ class FaceRecognitionSystem:
         self.guest_counter = 0  # Counter for unknown persons (guests)
         self.known_guests = {}  # Track guest names and their numbers
         
-        # Initialize GPIO for ultrasonic sensor (matching your working code)
+        # Relay control variables
+        self.lights_on = False  # Track if lights are currently on
+        self.relay_available = False  # Track if relay GPIO is available
+        
+        # Initialize GPIO for ultrasonic sensor and relay (matching your working code)
         try:
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(TRIG_PIN, GPIO.OUT)
             GPIO.setup(ECHO_PIN, GPIO.IN)
+            # Setup relay pin as output
+            GPIO.setup(RELAY_PIN, GPIO.OUT)
+            # Initialize relay pin to OFF (LOW = relay OFF, HIGH = relay ON)
+            GPIO.output(RELAY_PIN, GPIO.LOW)
+            print("✅ GPIO setup complete - Ultrasonic sensor + single relay")
+            self.gpio_available = True
+            self.relay_available = True
         except Exception as e:
             print(f"⚠️  GPIO setup warning: {e}")
-            print("   Continuing without ultrasonic sensor...")
+            print("   Continuing without ultrasonic sensor and relay...")
             self.gpio_available = False
-        else:
-            self.gpio_available = True
+            self.relay_available = False
         
         # Load face recognition components (matching your working code)
         if CASCADE_PATH and os.path.exists(CASCADE_PATH):
@@ -1093,6 +1106,50 @@ class FaceRecognitionSystem:
         except Exception as e:
             print(f"Error writing status file: {e}")
 
+    def turn_on_lights(self):
+        """Turn on the relay-controlled lights"""
+        if not self.relay_available:
+            print("⚠️  Relay not available - cannot control lights")
+            return False
+        
+        try:
+            # Turn on relay (HIGH = relay ON)
+            GPIO.output(RELAY_PIN, GPIO.HIGH)
+            self.lights_on = True
+            print("💡 Lights turned ON")
+            return True
+        except Exception as e:
+            print(f"❌ Error turning on lights: {e}")
+            return False
+
+    def turn_off_lights(self):
+        """Turn off the relay-controlled lights"""
+        if not self.relay_available:
+            print("⚠️  Relay not available - cannot control lights")
+            return False
+        
+        try:
+            # Turn off relay (LOW = relay OFF)
+            GPIO.output(RELAY_PIN, GPIO.LOW)
+            self.lights_on = False
+            print("🌙 Lights turned OFF")
+            return True
+        except Exception as e:
+            print(f"❌ Error turning off lights: {e}")
+            return False
+
+    def control_lights_based_on_proximity(self, distance):
+        """Control lights based on proximity detection"""
+        if not self.relay_available:
+            return
+        
+        # Turn on lights when someone is close (within threshold)
+        if distance <= PROXIMITY_THRESHOLD and not self.lights_on:
+            self.turn_on_lights()
+        # Turn off lights when someone moves away (beyond threshold + buffer)
+        elif distance > (PROXIMITY_THRESHOLD + 5) and self.lights_on:  # 5cm buffer to prevent flickering
+            self.turn_off_lights()
+
     def run(self):
         """Main loop with improved proximity detection and state management"""
         print("Starting face recognition system...")
@@ -1126,9 +1183,12 @@ class FaceRecognitionSystem:
                 smoothed_distance = sum(distance_history) / len(distance_history)
                 self.current_distance = smoothed_distance
                 
+                # Control lights based on proximity
+                self.control_lights_based_on_proximity(smoothed_distance)
+                
                 # Debug output every 10 iterations
                 if len(distance_history) % 10 == 0:
-                    print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}")
+                    print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'}")
                 
                 # Check proximity with smoothed distance
                 if smoothed_distance <= PROXIMITY_THRESHOLD:
@@ -1258,6 +1318,15 @@ class FaceRecognitionSystem:
                 print("[INFO] Camera closed")
             except Exception as e:
                 print(f"[WARNING] Error closing camera: {e}")
+        
+        # Turn off lights before cleanup
+        if self.relay_available and self.lights_on:
+            try:
+                self.turn_off_lights()
+                print("[INFO] Lights turned off during cleanup")
+            except Exception as e:
+                print(f"[WARNING] Error turning off lights: {e}")
+        
         GPIO.cleanup()
         print("Cleanup completed")
 

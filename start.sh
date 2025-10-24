@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # MagicMirror² Complete Startup Script for Raspberry Pi 4
-# Starts face recognition + ultrasonic + MagicMirror² + personal data
+# Starts face recognition + ultrasonic + relay lights + MagicMirror² + personal data
 
 echo "🚀 Starting MagicMirror² Complete System"
 echo "======================================="
@@ -73,6 +73,7 @@ echo "   Address: 0.0.0.0:8080"
 echo "   Mode: Standalone (Kiosk)"
 echo "   Language: Mongolian"
 echo "   Face Recognition: Running"
+echo "   Relay Lights: GPIO 18"
 echo ""
 echo "Press Ctrl+C to stop everything"
 echo ""
