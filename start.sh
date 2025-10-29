@@ -51,8 +51,12 @@ if [ "$1" = "test" ]; then
     FACE_RECOGNITION_TEST=true python3 face_recognition_system.py &
     FACE_PID=$!
 else
-    echo "🎯 Starting face recognition system with blue fix color correction..."
-    SKIN_COLOR_MODE=blue_fix python3 face_recognition_system.py &
+    echo "🎯 Starting face recognition system with cooler white balance (reduce yellow tint)..."
+    # Prefer cooler WB to remove yellow cast; can be tuned via env if needed
+    SKIN_COLOR_MODE=natural \
+    SKIN_AWB=fluorescent \
+    SKIN_AWB_GAINS=1.0,2.0 \
+    python3 face_recognition_system.py &
     FACE_PID=$!
 fi
 

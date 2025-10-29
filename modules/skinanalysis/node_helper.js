@@ -165,32 +165,30 @@ module.exports = NodeHelper.create({
 			const base64Image = imageBuffer.toString('base64');
 			const mimeType = this.getMimeType(path.basename(photoPath));
 
-			// Prepare OpenAI Vision API request
+			// Prepare OpenAI Vision API request (3 sentences; focus on acne, dryness, oiliness)
 		const requestBody = {
 			model: config.model,
 			messages: [
 				{
 					role: "system",
-					content: "Та бол зураг дээрх хүний арьсны харагдах байдлыг тайлбарлах туслах. Зөвхөн арьсны өнгө, тэгш байдал, гэрэлтэлтийг ажиглаж, ерөнхий ажиглалт хий. ХУН ТАНИХ ХЭРЭГГҮЙ, ЗУРАГ ДЭЭРХ АРЬСНЫ БАЙДЛЫГ ТАЙЛБАРЛАХ ХЭРЭГТЭЙ. ЭНЭ БОЛ ЗУРАГ ШИНЖИЛГЭЭ, ХУН ТАНИХ БИШ. МОНГОЛ хэлээр хариул."
+					content: "Та зураг дээрх арьсны байдлыг дүгнэдэг туслах. Хүнийг таних эсвэл эмнэлгийн онош бүү хий. Батга/үрэвсэл, хуурайшилт, тослогжилтын шинжийг ажиглан, Монгол хэлээр энгийн зөвлөгөө өг."
 				},
 				{
 					role: "user",
 					content: [
 						{
 							type: "text",
-							text: "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. ХУН ТАНИХ ХЭРЭГГҮЙ, ЗУРАГ ДЭЭРХ АРЬСНЫ БАЙДЛЫГ ТАЙЛБАРЛАХ ХЭРЭГТЭЙ. ЭНЭ БОЛ ЗУРАГ ШИНЖИЛГЭЭ, ХУН ТАНИХ БИШ. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй."
+							text: "Зургийг хараад яг ГУРВАН урт өгүүлбэрээр тайлбарла. 1) Батга/үрэвслийн түвшинг дүгнэ. 2) Хуурайшилт буюу чийгшлийн шинжийг тайлбарла. 3) Тослогжилтын түвшин, өдөр тутмын нийтлэг зөвлөгөөг хэл. Хэрэв асуудал тод харагдахгүй бол арьс ерөнхийдөө хэвийн, цэвэрлэгээ ба чийгшлээ тогтмол баримтлаарай гэж дүгнэ. Жагсаалт, эмоджи бүү ашигла; зөвхөн гурван өгүүлбэр."
 						},
 						{
 							type: "image_url",
-							image_url: {
-								url: `data:${mimeType};base64,${base64Image}`
-							}
+							image_url: { url: `data:${mimeType};base64,${base64Image}` }
 						}
 					]
 				}
 			],
 			max_tokens: config.maxTokens || 300,
-			temperature: 0.7
+			temperature: 0.6
 		};
 
 			// Make API request
@@ -222,47 +220,14 @@ module.exports = NodeHelper.create({
 					
 					Log.log(`Skin Analysis: Raw response: ${content}`);
 					
-					// Check if response contains the expected format
-					if (!content.includes("Арьсны байдал") || !content.includes("Зөвлөмж")) {
-						Log.error(`Skin Analysis: Invalid response format - missing required sections`);
-						Log.error(`Skin Analysis: Response was: ${content}`);
-						
-						// If response indicates refusal, try a different approach
-						if (content.includes("cannot") || content.includes("unable") || content.includes("sorry") || 
-							content.includes("identify") || content.includes("recognize") || content.includes("who") ||
-							content.includes("таних") || content.includes("тодорхойл") || content.includes("хэн")) {
-							Log.log(`Skin Analysis: API refused analysis, trying alternative approach...`);
-							throw new Error("API_REFUSED_ANALYSIS");
-						}
-						
-						throw new Error("Invalid response format - AI did not follow instructions");
-					}
-					
-					// Parse the response to separate analysis and advice
-					const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
-					const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
-					
-					let analysis = analysisMatch ? analysisMatch[1].trim() : content;
-					let advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
-					
-					// Convert \\n to actual line breaks
-					analysis = analysis.replace(/\\n/g, '\n');
-					advice = advice.replace(/\\n/g, '\n');
-					
-					// Validate that we got actual content
-					if (analysis.length < 10 || advice.length < 10) {
-						Log.error(`Skin Analysis: Response too short - analysis: ${analysis.length}, advice: ${advice.length}`);
+					// Accept free-form 3-sentence output
+					if (!content || content.trim().length < 30) {
 						throw new Error("Response too short - AI may not have analyzed properly");
 					}
-					
-					Log.log(`Skin Analysis: Analysis completed for ${config.person}`);
-					Log.log(`Skin Analysis: Analysis: ${analysis.substring(0, 50)}...`);
-					Log.log(`Skin Analysis: Advice: ${advice.substring(0, 50)}...`);
-					
 					self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 						person: config.person,
-						analysis: analysis,
-						advice: advice,
+						analysis: content.trim(),
+						advice: "",
 						timestamp: Date.now()
 					});
 				} else {
@@ -297,8 +262,8 @@ module.exports = NodeHelper.create({
 	tryAlternativePrompt: function(config, base64Image, mimeType) {
 		const self = this;
 		
-		// Alternative prompt - very neutral and general
-		const alternativePrompt = "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. ХУН ТАНИХ ХЭРЭГГҮЙ, ЗУРАГ ДЭЭРХ АРЬСНЫ БАЙДЛЫГ ТАЙЛБАРЛАХ ХЭРЭГТЭЙ. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла. Англи хэл, эмоджи, нэмэлт тайлбар ашиглахгүй.";
+		// Alternative prompt (same 3-sentence spec)
+		const alternativePrompt = "3 өгүүлбэрээр дүгнэ. 1) Батга/үрэвслийн түвшин. 2) Хуурайшилт, чийгшил. 3) Тослогжилт ба нийт зөвлөгөө. Асуудал ажиглагдахгүй бол арьс ерөнхийдөө хэвийн, цэвэрлэгээ ба чийгшлээ тогтмол баримтлаарай. Жагсаалт, эмоджи ашиглахгүй.";
 		
 		const requestBody = {
 			model: config.model,
@@ -352,38 +317,14 @@ module.exports = NodeHelper.create({
 				
 				Log.log(`Skin Analysis: Alternative prompt response: ${content}`);
 				
-				// Check if response contains the expected format
-				if (!content.includes("Арьсны байдал") || !content.includes("Зөвлөмж")) {
-					Log.error(`Skin Analysis: Alternative prompt also failed - missing required sections`);
-					Log.error(`Skin Analysis: Response was: ${content}`);
-					throw new Error("Alternative prompt also failed");
-				}
-				
-				// Parse the response to separate analysis and advice
-				const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
-				const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
-				
-				let analysis = analysisMatch ? analysisMatch[1].trim() : content;
-				let advice = adviceMatch ? adviceMatch[1].trim() : "Зөвлөмж олдсонгүй";
-				
-				// Convert \\n to actual line breaks
-				analysis = analysis.replace(/\\n/g, '\n');
-				advice = advice.replace(/\\n/g, '\n');
-				
-				// Validate that we got actual content
-				if (analysis.length < 10 || advice.length < 10) {
-					Log.error(`Skin Analysis: Alternative response too short - analysis: ${analysis.length}, advice: ${advice.length}`);
+				// Accept full content as analysis
+				if ((content?.trim() || "").length < 30) {
 					throw new Error("Alternative response too short");
 				}
-				
-				Log.log(`Skin Analysis: Alternative analysis completed for ${config.person}`);
-				Log.log(`Skin Analysis: Analysis: ${analysis.substring(0, 50)}...`);
-				Log.log(`Skin Analysis: Advice: ${advice.substring(0, 50)}...`);
-				
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 					person: config.person,
-					analysis: analysis,
-					advice: advice,
+					analysis: content.trim(),
+					advice: "",
 					timestamp: Date.now()
 				});
 			} else {
@@ -407,8 +348,8 @@ module.exports = NodeHelper.create({
 	tryFinalFallbackPrompt: function(config, base64Image, mimeType) {
 		const self = this;
 		
-		// Very general prompt - just describe what you see
-		const fallbackPrompt = "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. ХУН ТАНИХ ХЭРЭГГҮЙ, ЗУРАГ ДЭЭРХ АРЬСНЫ БАЙДЛЫГ ТАЙЛБАРЛАХ ХЭРЭГТЭЙ. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла.";
+		// Final fallback prompt (3 sentences only)
+		const fallbackPrompt = "Гурван урт өгүүлбэрээр дүгнэ. 1) Батга/үрэвсэл. 2) Хуурайшилт/чийгшил. 3) Тослогжилт ба нийт зөвлөгөө. Хэрэв асуудал тод биш бол арьс хэвийн, тогтмол цэвэрлэж чийгшүүлээрэй гэж дүгнэ.";
 		
 		const requestBody = {
 			model: config.model,
@@ -454,37 +395,11 @@ module.exports = NodeHelper.create({
 				
 				Log.log(`Skin Analysis: Fallback prompt response: ${content}`);
 				
-				// Try to parse even if format is not perfect
-				let analysis = content;
-				let advice = "Зөвлөмж олдсонгүй";
-				
-				// Try to extract sections if they exist
-				const analysisMatch = content.match(/Арьсны байдал:?([\s\S]*?)(?=Зөвлөмж:|$)/);
-				const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
-				
-				if (analysisMatch) {
-					analysis = analysisMatch[1].trim().replace(/\\n/g, '\n');
-				}
-				if (adviceMatch) {
-					advice = adviceMatch[1].trim().replace(/\\n/g, '\n');
-				}
-				
-				// If no sections found, split content roughly in half
-				if (!analysisMatch && !adviceMatch && content.length > 50) {
-					const midPoint = Math.floor(content.length / 2);
-					const lastSentence = content.lastIndexOf('.', midPoint);
-					if (lastSentence > 0) {
-						analysis = content.substring(0, lastSentence + 1).trim();
-						advice = content.substring(lastSentence + 1).trim();
-					}
-				}
-				
-				Log.log(`Skin Analysis: Fallback analysis completed for ${config.person}`);
-				
+				// Use the whole content as analysis
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 					person: config.person,
-					analysis: analysis,
-					advice: advice,
+					analysis: (content || "").trim(),
+					advice: "",
 					timestamp: Date.now()
 				});
 			} else {

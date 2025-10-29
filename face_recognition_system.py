@@ -47,8 +47,13 @@ TEST_MODE = os.environ.get('FACE_RECOGNITION_TEST', 'false').lower() == 'true'
 if TEST_MODE:
     print("🧪 Running in TEST MODE - ultrasonic sensor will be simulated")
 
-# Color correction mode (natural | aggressive)
+# Color/WB configuration
+# - SKIN_COLOR_MODE: natural | aggressive | blue_fix (processing fallback)
+# - SKIN_AWB: rpicam white balance mode (auto|daylight|fluorescent|incandescent|tungsten|greyworld)
+# - SKIN_AWB_GAINS: manual red,blue gains (e.g. "1.0,1.8" to cool down yellow cast)
 SKIN_COLOR_MODE = os.environ.get('SKIN_COLOR_MODE', 'natural').lower()
+SKIN_AWB = os.environ.get('SKIN_AWB', 'auto')
+SKIN_AWB_GAINS = os.environ.get('SKIN_AWB_GAINS', '1.0,1.8')  # default add blue to reduce yellow
 
 class FaceRecognitionSystem:
     def __init__(self):
@@ -542,8 +547,8 @@ class FaceRecognitionSystem:
                     "--height", "1080",
                     "-t", "3000",  # 3 second timeout
                     "--immediate",  # Capture immediately
-                    "--awb", "auto",  # Auto white balance
-                    "--awbgains", "1.8,1.0"  # Boost red channel
+                    "--awb", f"{SKIN_AWB}",
+                    "--awbgains", f"{SKIN_AWB_GAINS}"  # Prefer cooler WB by default (more blue)
                 ]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
@@ -610,8 +615,8 @@ class FaceRecognitionSystem:
                         "--height", "1080",
                         "-t", "3000",  # Longer timeout
                         "--immediate",
-                        "--awb", "incandescent",  # Warmer white balance
-                        "--awbgains", "2.0,1.0"  # More red boost
+                        "--awb", "fluorescent",  # Cooler white balance to remove yellow tint
+                        "--awbgains", "1.0,2.0"  # Increase blue channel
                     ]
                     
                     print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")

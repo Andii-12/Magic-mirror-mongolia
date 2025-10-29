@@ -8,7 +8,7 @@ Module.register("skinanalysis", {
 		apiKey: "", // OpenAI API key - set in config
 		apiUrl: "https://api.openai.com/v1/chat/completions",
 		model: "gpt-4o", // Vision model
-		maxTokens: 200, // Reduced token limit
+		maxTokens: 400,
 		statusFile: "/tmp/magicmirror_face_status.json",
 		skinPhotosDir: "Skin",
 		showAnalysis: true,
