@@ -165,20 +165,20 @@ module.exports = NodeHelper.create({
 			const base64Image = imageBuffer.toString('base64');
 			const mimeType = this.getMimeType(path.basename(photoPath));
 
-			// Prepare OpenAI Vision API request (3 sentences; focus on acne, dryness, oiliness)
+			// Prepare OpenAI Vision API request (3 moderately long sentences with line breaks; focus on acne, dryness, oiliness)
 		const requestBody = {
 			model: config.model,
 			messages: [
 				{
 					role: "system",
-					content: "Та зураг дээрх арьсны байдлыг дүгнэдэг туслах. Хүнийг таних эсвэл эмнэлгийн онош бүү хий. Батга/үрэвсэл, хуурайшилт, тослогжилтын шинжийг ажиглан, Монгол хэлээр энгийн зөвлөгөө өг."
+					content: "Та нь зураг дээр харагдах арьсны гадаад шинжийг дүгнэдэг туслах. ЭНЭ БОЛ АРЬСНЫ ШИНЖИЛГЭЭ, ХҮН ТАНИХ БИШ. Зураг дээр харагдах арьсны байдлыг ажиглаж, зөвхөн батга/үрэвсэл, хуурайшилт, тослогжилтын шинжийг тайлбарла. Монгол хэлээр хариул."
 				},
 				{
 					role: "user",
 					content: [
 						{
 							type: "text",
-							text: "Зургийг хараад яг ГУРВАН урт өгүүлбэрээр тайлбарла. 1) Батга/үрэвслийн түвшинг дүгнэ. 2) Хуурайшилт буюу чийгшлийн шинжийг тайлбарла. 3) Тослогжилтын түвшин, өдөр тутмын нийтлэг зөвлөгөөг хэл. Хэрэв асуудал тод харагдахгүй бол арьс ерөнхийдөө хэвийн, цэвэрлэгээ ба чийгшлээ тогтмол баримтлаарай гэж дүгнэ. Жагсаалт, эмоджи бүү ашигла; зөвхөн гурван өгүүлбэр."
+							text: "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. Эхний өгүүлбэр: Зургийг хараад батга, үрэвслийн шинж тэмдэг эсвэл нөхцөл байдлыг дэлгэрэнгүй дүгнэ (хэрэв байхгүй бол энгийн, цэвэрхэн гэж хэл). \\n Хоёр дахь өгүүлбэр: Хуурайшилт эсвэл чийгшлийн түвшинг ажиглаж, дэлгэрэнгүй тайлбарла (хэрэв хэвийн бол тодорхой хэл). \\n Гурав дахь өгүүлбэр: Тослогжилтын түвшин болон өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг (хэрэв арьс сайн байвал цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл). Жагсаалт, эмоджи ашиглахгүй, зөвхөн гурван өгүүлбэр бөгөөд мөр бүрийн төгсгөлд \\n байх ёстой."
 						},
 						{
 							type: "image_url",
@@ -187,8 +187,8 @@ module.exports = NodeHelper.create({
 					]
 				}
 			],
-			max_tokens: config.maxTokens || 300,
-			temperature: 0.6
+			max_tokens: config.maxTokens || 400,
+			temperature: 0.7
 		};
 
 			// Make API request
@@ -216,9 +216,14 @@ module.exports = NodeHelper.create({
 			})
 			.then(data => {
 				if (data.choices && data.choices[0] && data.choices[0].message) {
-					const content = data.choices[0].message.content;
+					let content = data.choices[0].message.content;
 					
 					Log.log(`Skin Analysis: Raw response: ${content}`);
+					
+					// Convert \\n to actual line breaks
+					if (content) {
+						content = content.replace(/\\n/g, '\n');
+					}
 					
 					// Accept free-form 3-sentence output
 					if (!content || content.trim().length < 30) {
@@ -262,8 +267,8 @@ module.exports = NodeHelper.create({
 	tryAlternativePrompt: function(config, base64Image, mimeType) {
 		const self = this;
 		
-		// Alternative prompt (same 3-sentence spec)
-		const alternativePrompt = "3 өгүүлбэрээр дүгнэ. 1) Батга/үрэвслийн түвшин. 2) Хуурайшилт, чийгшил. 3) Тослогжилт ба нийт зөвлөгөө. Асуудал ажиглагдахгүй бол арьс ерөнхийдөө хэвийн, цэвэрлэгээ ба чийгшлээ тогтмол баримтлаарай. Жагсаалт, эмоджи ашиглахгүй.";
+		// Alternative prompt (same 3-sentence spec with line breaks)
+		const alternativePrompt = "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. 1) Батга/үрэвслийн түвшинг дэлгэрэнгүй дүгнэ. \\n 2) Хуурайшилт, чийгшлийн шинжийг дэлгэрэнгүй тайлбарла. \\n 3) Тослогжилтын түвшин, өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг. Асуудал ажиглагдахгүй бол арьс хэвийн, цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл. Жагсаалт, эмоджи ашиглахгүй.";
 		
 		const requestBody = {
 			model: config.model,
@@ -313,9 +318,14 @@ module.exports = NodeHelper.create({
 		})
 		.then(data => {
 			if (data.choices && data.choices[0] && data.choices[0].message) {
-				const content = data.choices[0].message.content;
+				let content = data.choices[0].message.content;
 				
 				Log.log(`Skin Analysis: Alternative prompt response: ${content}`);
+				
+				// Convert \\n to actual line breaks
+				if (content) {
+					content = content.replace(/\\n/g, '\n');
+				}
 				
 				// Accept full content as analysis
 				if ((content?.trim() || "").length < 30) {
@@ -348,8 +358,8 @@ module.exports = NodeHelper.create({
 	tryFinalFallbackPrompt: function(config, base64Image, mimeType) {
 		const self = this;
 		
-		// Final fallback prompt (3 sentences only)
-		const fallbackPrompt = "Гурван урт өгүүлбэрээр дүгнэ. 1) Батга/үрэвсэл. 2) Хуурайшилт/чийгшил. 3) Тослогжилт ба нийт зөвлөгөө. Хэрэв асуудал тод биш бол арьс хэвийн, тогтмол цэвэрлэж чийгшүүлээрэй гэж дүгнэ.";
+		// Final fallback prompt (3 sentences with line breaks)
+		const fallbackPrompt = "Гурван дунд урт өгүүлбэрээр дүгнэ, мөр бүрийн төгсгөлд \\n ашигла. 1) Батга/үрэвсэлийн түвшинг дэлгэрэнгүй. \\n 2) Хуурайшилт/чийгшлийн шинжийг дэлгэрэнгүй. \\n 3) Тослогжилт ба нийт зөвлөгөөг дэлгэрэнгүй. Асуудал тод биш бол арьс хэвийн, тогтмол цэвэрлэж чийгшүүлээрэй гэж хэл.";
 		
 		const requestBody = {
 			model: config.model,
@@ -391,9 +401,14 @@ module.exports = NodeHelper.create({
 		})
 		.then(data => {
 			if (data.choices && data.choices[0] && data.choices[0].message) {
-				const content = data.choices[0].message.content;
+				let content = data.choices[0].message.content;
 				
 				Log.log(`Skin Analysis: Fallback prompt response: ${content}`);
+				
+				// Convert \\n to actual line breaks
+				if (content) {
+					content = content.replace(/\\n/g, '\n');
+				}
 				
 				// Use the whole content as analysis
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {

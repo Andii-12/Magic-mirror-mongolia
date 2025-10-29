@@ -53,7 +53,7 @@ if TEST_MODE:
 # - SKIN_AWB_GAINS: manual red,blue gains (e.g. "1.0,1.8" to cool down yellow cast)
 SKIN_COLOR_MODE = os.environ.get('SKIN_COLOR_MODE', 'natural').lower()
 SKIN_AWB = os.environ.get('SKIN_AWB', 'auto')
-SKIN_AWB_GAINS = os.environ.get('SKIN_AWB_GAINS', '1.0,1.8')  # default add blue to reduce yellow
+SKIN_AWB_GAINS = os.environ.get('SKIN_AWB_GAINS', '1.0,1.2')  # Balanced for natural skin tones
 
 class FaceRecognitionSystem:
     def __init__(self):
@@ -615,8 +615,8 @@ class FaceRecognitionSystem:
                         "--height", "1080",
                         "-t", "3000",  # Longer timeout
                         "--immediate",
-                        "--awb", "fluorescent",  # Cooler white balance to remove yellow tint
-                        "--awbgains", "1.0,2.0"  # Increase blue channel
+                        "--awb", "daylight",  # Balanced white balance for natural skin tones
+                        "--awbgains", "1.0,1.3"  # Slightly cooler for natural look
                     ]
                     
                     print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")
