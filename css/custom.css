@@ -12,6 +12,18 @@
 /* General improvements */
 body {
     font-family: 'Roboto', sans-serif;
+    /* Rotate display 90 degrees counterclockwise (turn left) */
+    transform: rotate(-90deg);
+    transform-origin: center center;
+    /* Adjust dimensions for rotated display */
+    width: 100vh;
+    height: 100vw;
+    /* Position to center the rotated content */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-top: -50vw;
+    margin-left: -50vh;
 }
 
 /* Module positioning improvements */
