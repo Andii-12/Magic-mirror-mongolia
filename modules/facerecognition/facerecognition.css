@@ -97,7 +97,8 @@
 	padding: 10px 15px;
 	border-radius: 8px;
 	border-left: 4px solid #4CAF50;
-	color: #81C784;
+	color: #ffffff;
+	text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 	position: fixed;
 	top: 20px;
@@ -117,7 +118,8 @@
 	padding: 10px 15px;
 	border-radius: 8px;
 	border-right: 4px solid #2196F3;
-	color: #64B5F6;
+	color: #ffffff;
+	text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 	position: fixed;
 	top: 20px;

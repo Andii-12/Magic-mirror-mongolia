@@ -33,6 +33,8 @@
 	max-height: 3.6em; /* 3 lines * 1.2 line-height * 0.75em font-size */
 	position: relative;
 	white-space: pre-line; /* Preserve line breaks */
+	color: #ffffff;
+	text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 .skinanalysis-analysis::after {
@@ -61,6 +63,8 @@
 	max-height: 1.68em; /* 2 lines * 1.2 line-height * 0.7em font-size */
 	position: relative;
 	white-space: pre-line; /* Preserve line breaks */
+	color: #ffffff;
+	text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 .skinanalysis-advice::after {
