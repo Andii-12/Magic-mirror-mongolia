@@ -40,6 +40,22 @@ module.exports = NodeHelper.create({
 		
 		return wrappedLines.join('\n').trim();
 	},
+
+	// Generate a short, simple advice line based on detected keywords
+	generateSimpleAdvice: function(analysisText) {
+		const text = (analysisText || '').toLowerCase();
+		if (!text) return "Цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай.";
+		if (text.includes('батга') || text.includes('үрэвс')) {
+			return "Зөөлөн цэвэрлэгээ, BHA-г 7 хоногт 2-3 удаа.";
+		}
+		if (text.includes('хуурай') || text.includes('хуурайш')) {
+			return "Өглөө, орой чийгшүүлэгч; өдөр SPF заавал.";
+		}
+		if (text.includes('тослог')) {
+			return "Хөнгөн гель чийгшүүлэгч, тослог багатай бүтээгдэхүүн.";
+		}
+		return "Цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай.";
+	},
 	
 	// Override socketNotificationReceived method.
 	socketNotificationReceived: function(notification, payload) {
@@ -257,9 +273,11 @@ module.exports = NodeHelper.create({
 					
 					Log.log(`Skin Analysis: Raw response: ${content}`);
 					
-					// Convert \\n to actual line breaks
+					// Convert literal \n or \\n into actual line breaks
 					if (content) {
-						content = content.replace(/\\n/g, '\n');
+						content = content
+							.replace(/\\n/g, '\n')
+							.replace(/\\\\n/g, '\n');
 					}
 					
 					// Remove person recognition disclaimers and wrap every 4 words
@@ -272,7 +290,7 @@ module.exports = NodeHelper.create({
 					self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 						person: config.person,
 						analysis: content.trim(),
-						advice: "",
+						advice: this.generateSimpleAdvice(content),
 						timestamp: Date.now()
 					});
 				} else {
@@ -362,9 +380,11 @@ module.exports = NodeHelper.create({
 				
 				Log.log(`Skin Analysis: Alternative prompt response: ${content}`);
 				
-				// Convert \\n to actual line breaks
+				// Convert literal \n or \\n into actual line breaks
 				if (content) {
-					content = content.replace(/\\n/g, '\n');
+					content = content
+						.replace(/\\n/g, '\n')
+						.replace(/\\\\n/g, '\n');
 				}
 				
 				// Remove person recognition disclaimers and wrap every 4 words
@@ -377,7 +397,7 @@ module.exports = NodeHelper.create({
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 					person: config.person,
 					analysis: content.trim(),
-					advice: "",
+					advice: this.generateSimpleAdvice(content),
 					timestamp: Date.now()
 				});
 			} else {
@@ -448,9 +468,11 @@ module.exports = NodeHelper.create({
 				
 				Log.log(`Skin Analysis: Fallback prompt response: ${content}`);
 				
-				// Convert \\n to actual line breaks
+				// Convert literal \n or \\n into actual line breaks
 				if (content) {
-					content = content.replace(/\\n/g, '\n');
+					content = content
+						.replace(/\\n/g, '\n')
+						.replace(/\\\\n/g, '\n');
 				}
 				
 				// Remove person recognition disclaimers and wrap every 4 words
@@ -460,7 +482,7 @@ module.exports = NodeHelper.create({
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 					person: config.person,
 					analysis: (content || "").trim(),
-					advice: "",
+					advice: this.generateSimpleAdvice(content),
 					timestamp: Date.now()
 				});
 			} else {
@@ -559,6 +581,8 @@ module.exports = NodeHelper.create({
 				// Remove person recognition disclaimers and wrap every 4 words
 				analysis = self.wrapTextEveryFourWords(analysis);
 				advice = self.wrapTextEveryFourWords(advice);
+				// Simplify advice to a short single line based on analysis
+				advice = self.generateSimpleAdvice(analysis);
 				
 				Log.log(`Skin Analysis: Ultra-basic analysis completed for ${config.person}`);
 				
