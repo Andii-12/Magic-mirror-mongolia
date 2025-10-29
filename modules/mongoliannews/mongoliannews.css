@@ -6,6 +6,13 @@
 	margin: 0 auto;
 }
 
+/* Ensure module header is bright and visible behind mirror */
+.mongoliannews .module-header {
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,0.35);
+}
+
 .newsfeed {
 	width: 100%;
 }
@@ -72,12 +79,14 @@
 }
 
 .news-description {
-	font-size: 13px;
-	line-height: 1.5;
-	color: #e8e8e8;
-	text-align: left;
-	margin-top: 6px;
-	opacity: 0.9;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #ffffff;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    text-align: left;
+    margin-top: 6px;
+    opacity: 0.95;
 }
 
 /* Loading and error states */

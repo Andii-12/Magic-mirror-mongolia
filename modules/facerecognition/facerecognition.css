@@ -91,14 +91,14 @@
 /* Top-left status message styling */
 .facerecognition .facerecognition-status.top-left {
 	font-size: 1.4em;
-	font-weight: 500;
+	font-weight: 600;
 	text-align: left;
 	background: rgba(0, 0, 0, 0.8);
 	padding: 10px 15px;
 	border-radius: 8px;
 	border-left: 4px solid #4CAF50;
 	color: #ffffff;
-	text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+	text-shadow: 0 0 6px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,0.8);
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 	position: fixed;
 	top: 20px;
@@ -112,14 +112,14 @@
 /* Top-right status message styling */
 .facerecognition .facerecognition-status.top-right {
 	font-size: 1.4em;
-	font-weight: 500;
+	font-weight: 600;
 	text-align: right;
 	background: rgba(0, 0, 0, 0.8);
 	padding: 10px 15px;
 	border-radius: 8px;
 	border-right: 4px solid #2196F3;
 	color: #ffffff;
-	text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+	text-shadow: 0 0 6px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,0.8);
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 	position: fixed;
 	top: 20px;

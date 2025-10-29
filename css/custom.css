@@ -53,6 +53,13 @@
     margin: 3px 0;
 }
 
+/* Make personaltodo waiting message bright and readable behind mirror */
+.personaltodo.dimmed.light.small {
+    color: #ffffff !important;
+    font-weight: 600;
+    text-shadow: 0 0 6px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,0.8);
+}
+
 /* Module spacing for top_left position */
 .region.top.left .module {
     margin-bottom: 20px;

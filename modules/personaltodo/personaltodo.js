@@ -372,14 +372,14 @@ Module.register("personaltodo", {
 		// Show message when no user is recognized
 		if (!this.currentUser) {
 			wrapper.innerHTML = "Царай танилт хүлээж байна...<br><small>Царай танигдсаны дараа хувийн даалгаварууд харагдана</small>";
-			wrapper.className = "dimmed light small";
+			wrapper.className = "personaltodo dimmed light small";
 			return wrapper;
 		}
 
 		// Show todo items if available
 		if (this.todoItems.length === 0) {
 			wrapper.innerHTML = `${this.currentUser}-ийн өнөөдрийн даалгавар хоосон байна`;
-			wrapper.className = "dimmed light small";
+			wrapper.className = "personaltodo dimmed light small";
 			return wrapper;
 		}
 
