@@ -54,6 +54,7 @@ if TEST_MODE:
 SKIN_COLOR_MODE = os.environ.get('SKIN_COLOR_MODE', 'natural').lower()
 SKIN_AWB = os.environ.get('SKIN_AWB', 'auto')
 SKIN_AWB_GAINS = os.environ.get('SKIN_AWB_GAINS', '1.0,1.2')  # Balanced for natural skin tones
+SKIN_DESATURATE = os.environ.get('SKIN_DESATURATE', 'false').lower() == 'true'
 
 class FaceRecognitionSystem:
     def __init__(self):
@@ -539,7 +540,7 @@ class FaceRecognitionSystem:
                 # Now camera should be free for rpicam-still
                 print(f"[INFO] Camera is now free, using rpicam-still...")
                 
-                # Use rpicam-still with simple, working options
+                # Use rpicam-still with normal camera settings
                 cmd = [
                     "rpicam-still",
                     "-o", photo_path,
@@ -547,9 +548,17 @@ class FaceRecognitionSystem:
                     "--height", "1080",
                     "-t", "3000",  # 3 second timeout
                     "--immediate",  # Capture immediately
-                    "--awb", f"{SKIN_AWB}",
-                    "--awbgains", f"{SKIN_AWB_GAINS}"  # Prefer cooler WB by default (more blue)
+                    "--awb", f"{SKIN_AWB}"
                 ]
+                # Only add manual gains if specified (let auto WB work naturally otherwise)
+                if SKIN_AWB_GAINS and SKIN_AWB_GAINS.strip() and SKIN_AWB == "auto":
+                    # Skip manual gains for auto WB - let it work naturally
+                    pass
+                elif SKIN_AWB_GAINS and SKIN_AWB_GAINS.strip():
+                    cmd += ["--awbgains", f"{SKIN_AWB_GAINS}"]
+                # Add desaturation only if requested
+                if SKIN_DESATURATE:
+                    cmd += ["--saturation", "0"]
                 
                 print(f"[INFO] Running rpicam command: {' '.join(cmd)}")
                 print(f"[DEBUG] Working directory: {os.getcwd()}")
@@ -607,7 +616,7 @@ class FaceRecognitionSystem:
                     print(f"[WARNING] rpicam-still failed: {result.stderr}")
                     print(f"[INFO] Trying alternative rpicam-still with different color settings...")
                     
-                    # Try alternative rpicam-still command with different settings
+                    # Try alternative rpicam-still command with normal auto white balance
                     cmd_alt = [
                         "rpicam-still",
                         "-o", photo_path,
@@ -615,9 +624,10 @@ class FaceRecognitionSystem:
                         "--height", "1080",
                         "-t", "3000",  # Longer timeout
                         "--immediate",
-                        "--awb", "daylight",  # Balanced white balance for natural skin tones
-                        "--awbgains", "1.0,1.3"  # Slightly cooler for natural look
+                        "--awb", "auto"  # Normal auto white balance for natural colors
                     ]
+                    if SKIN_DESATURATE:
+                        cmd_alt += ["--saturation", "0"]
                     
                     print(f"[INFO] Running alternative rpicam command: {' '.join(cmd_alt)}")
                     result_alt = subprocess.run(cmd_alt, capture_output=True, text=True, timeout=20)
@@ -656,6 +666,8 @@ class FaceRecognitionSystem:
                             "-t", "2000",
                             "--immediate"
                         ]
+                        if SKIN_DESATURATE:
+                            cmd_raw += ["--saturation", "0"]
                         
                         print(f"[INFO] Running basic capture command: {' '.join(cmd_raw)}")
                         result_raw = subprocess.run(cmd_raw, capture_output=True, text=True, timeout=15)
@@ -701,58 +713,61 @@ class FaceRecognitionSystem:
                     "--width", "1080",
                     "--height", "1080",
                     "-t", "2000",
-                    "--immediate"
+                    "--immediate",
+                    "--awb", "auto"
                 ]
+                if SKIN_DESATURATE:
+                    basic_cmd += ["--saturation", "0"]
                 
                 result_basic = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=10)
                 
                 if result_basic.returncode == 0 and os.path.exists(photo_path) and os.path.getsize(photo_path) > 0:
-                    # Apply aggressive color correction with ImageMagick
-                    temp_path = photo_path.replace('.jpg', '_temp.jpg')
-                    convert_cmd = [
-                        "convert", photo_path,
-                        "-colorspace", "RGB",
-                        "-channel", "R", "-evaluate", "multiply", "1.4",  # Boost red channel
-                        "-channel", "G", "-evaluate", "multiply", "1.1",  # Slight green boost
-                        "-channel", "B", "-evaluate", "multiply", "0.8",  # Reduce blue channel
-                        "+channel",  # Reset channel selection
-                        "-gamma", "1.3",  # Increase gamma for better skin tones
-                        "-saturation", "130%",  # Higher saturation
-                        "-brightness-contrast", "8x8",  # More brightness and contrast
-                        "-color-matrix", "1.2,0,0,0,1.1,0,0,0,0.9",  # Custom color matrix
-                        temp_path
-                    ]
-                    
-                    print(f"[INFO] Applying aggressive ImageMagick color correction...")
-                    result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
-                    
-                    if result_convert.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                        # Replace original with corrected version
-                        os.replace(temp_path, photo_path)
+                    # Apply desaturation/grayscale if requested, otherwise keep photo as-is (normal camera)
+                    if SKIN_DESATURATE:
+                        temp_path = photo_path.replace('.jpg', '_temp.jpg')
+                        convert_cmd = [
+                            "convert", photo_path,
+                            "-colorspace", "Gray",
+                            temp_path
+                        ]
+                        print(f"[INFO] Applying grayscale conversion...")
+                        result_convert = subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
+                        
+                        if result_convert.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                            os.replace(temp_path, photo_path)
+                            file_size = os.path.getsize(photo_path)
+                            print(f"✅ Photo captured with grayscale conversion!")
+                            print(f"   Path: {photo_path}")
+                            print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
+                        else:
+                            print(f"[WARNING] ImageMagick grayscale conversion failed")
+                            if os.path.exists(temp_path):
+                                os.remove(temp_path)
+                            # Use original photo anyway
+                    else:
+                        # Normal camera - use photo as-is without processing
                         file_size = os.path.getsize(photo_path)
-                        print(f"✅ Photo captured with aggressive ImageMagick color correction!")
+                        print(f"✅ Photo captured with normal camera settings!")
                         print(f"   Path: {photo_path}")
                         print(f"   Size: {file_size} bytes ({file_size/1024:.2f} KB)")
-                        print(f"   Method: rpicam-still + aggressive ImageMagick correction")
-                        
-                        self.photo_saved_this_session = True
-                        self.last_photo_time = time.time()
-                        self.trigger_skin_analysis(person_name, photo_path)
-                        
-                        # Restart Picamera2 for face recognition
-                        if camera_was_running:
-                            print(f"[INFO] Restarting Picamera2 for face recognition...")
-                            try:
-                                self.camera.start()
-                                print(f"[INFO] Picamera2 restarted successfully")
-                            except Exception as e:
-                                print(f"[WARNING] Failed to restart Picamera2: {e}")
-                        
-                        return True
-                    else:
-                        print(f"[WARNING] ImageMagick correction failed: {result_convert.stderr}")
-                        if os.path.exists(temp_path):
-                            os.remove(temp_path)
+                    
+                    file_size = os.path.getsize(photo_path)
+                    print(f"   Method: rpicam-still (normal camera)")
+                    
+                    self.photo_saved_this_session = True
+                    self.last_photo_time = time.time()
+                    self.trigger_skin_analysis(person_name, photo_path)
+                    
+                    # Restart Picamera2 for face recognition
+                    if camera_was_running:
+                        print(f"[INFO] Restarting Picamera2 for face recognition...")
+                        try:
+                            self.camera.start()
+                            print(f"[INFO] Picamera2 restarted successfully")
+                        except Exception as e:
+                            print(f"[WARNING] Failed to restart Picamera2: {e}")
+                    
+                    return True
                 else:
                     print(f"[WARNING] Basic rpicam-still failed: {result_basic.stderr}")
                     
@@ -768,8 +783,11 @@ class FaceRecognitionSystem:
                     "--width", "1080",
                     "--height", "1080",
                     "-t", "3000",  # 3 second timeout
-                    "--immediate"
+                    "--immediate",
+                    "--awb", "auto"  # Normal auto white balance
                 ]
+                if SKIN_DESATURATE:
+                    basic_cmd += ["--saturation", "0"]
                 
                 print(f"[INFO] Running basic rpicam command: {' '.join(basic_cmd)}")
                 result = subprocess.run(basic_cmd, capture_output=True, text=True, timeout=15)

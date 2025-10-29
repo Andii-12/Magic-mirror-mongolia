@@ -4,6 +4,43 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports = NodeHelper.create({
+	// Helper function to wrap text after every 4 words and remove person recognition disclaimers
+	wrapTextEveryFourWords: function(text) {
+		if (!text) return text;
+		
+		// First, remove any person recognition disclaimers
+		const disclaimers = [
+			/уучлаарай[^.]*[.]/gi,
+			/би энэ зураг дээрх хүнийг таних боломжгүй[^.]*[.]/gi,
+			/хүн таних[^.]*[.]/gi,
+			/таних боломжгүй[^.]*[.]/gi
+		];
+		
+		let cleaned = text;
+		for (const pattern of disclaimers) {
+			cleaned = cleaned.replace(pattern, '');
+		}
+		
+		// Split by existing newlines first to preserve paragraph structure
+		const lines = cleaned.split('\n');
+		const wrappedLines = lines.map(line => {
+			if (!line.trim()) return line;
+			
+			// Split into words (handling Mongolian text and punctuation)
+			const words = line.trim().split(/\s+/).filter(w => w.length > 0);
+			const wrapped = [];
+			
+			for (let i = 0; i < words.length; i += 4) {
+				const chunk = words.slice(i, i + 4).join(' ');
+				wrapped.push(chunk);
+			}
+			
+			return wrapped.join('\n');
+		});
+		
+		return wrappedLines.join('\n').trim();
+	},
+	
 	// Override socketNotificationReceived method.
 	socketNotificationReceived: function(notification, payload) {
 		Log.log(`${this.name} received a socket notification: ${notification}`);
@@ -171,14 +208,14 @@ module.exports = NodeHelper.create({
 			messages: [
 				{
 					role: "system",
-					content: "Та нь зураг дээр харагдах арьсны гадаад шинжийг дүгнэдэг туслах. ЭНЭ БОЛ АРЬСНЫ ШИНЖИЛГЭЭ, ХҮН ТАНИХ БИШ. Зураг дээр харагдах арьсны байдлыг ажиглаж, зөвхөн батга/үрэвсэл, хуурайшилт, тослогжилтын шинжийг тайлбарла. Монгол хэлээр хариул."
+					content: "Та нь зураг дээр харагдах арьсны гадаад шинжийг дүгнэдэг туслах. ЭНЭ БОЛ АРЬСНЫ ШИНЖИЛГЭЭ, ХҮН ТАНИХ БИШ. Зураг дээр харагдах арьсны байдлыг ажиглаж, зөвхөн батга/үрэвсэл, хуурайшилт, тослогжилтын шинжийг тайлбарла. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг ашиглахгүй. Шууд арьсны байдлыг тайлбарла. Монгол хэлээр хариул."
 				},
 				{
 					role: "user",
 					content: [
 						{
 							type: "text",
-							text: "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. Эхний өгүүлбэр: Зургийг хараад батга, үрэвслийн шинж тэмдэг эсвэл нөхцөл байдлыг дэлгэрэнгүй дүгнэ (хэрэв байхгүй бол энгийн, цэвэрхэн гэж хэл). \\n Хоёр дахь өгүүлбэр: Хуурайшилт эсвэл чийгшлийн түвшинг ажиглаж, дэлгэрэнгүй тайлбарла (хэрэв хэвийн бол тодорхой хэл). \\n Гурав дахь өгүүлбэр: Тослогжилтын түвшин болон өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг (хэрэв арьс сайн байвал цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл). Жагсаалт, эмоджи ашиглахгүй, зөвхөн гурван өгүүлбэр бөгөөд мөр бүрийн төгсгөлд \\n байх ёстой."
+							text: "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг бүү ашигла. Шууд арьсны байдлыг тайлбарла. Эхний өгүүлбэр: Зургийг хараад батга, үрэвслийн шинж тэмдэг эсвэл нөхцөл байдлыг дэлгэрэнгүй дүгнэ (хэрэв байхгүй бол энгийн, цэвэрхэн гэж хэл). \\n Хоёр дахь өгүүлбэр: Хуурайшилт эсвэл чийгшлийн түвшинг ажиглаж, дэлгэрэнгүй тайлбарла (хэрэв хэвийн бол тодорхой хэл). \\n Гурав дахь өгүүлбэр: Тослогжилтын түвшин болон өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг (хэрэв арьс сайн байвал цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл). Жагсаалт, эмоджи ашиглахгүй, зөвхөн гурван өгүүлбэр бөгөөд мөр бүрийн төгсгөлд \\n байх ёстой."
 						},
 						{
 							type: "image_url",
@@ -225,6 +262,9 @@ module.exports = NodeHelper.create({
 						content = content.replace(/\\n/g, '\n');
 					}
 					
+					// Remove person recognition disclaimers and wrap every 4 words
+					content = self.wrapTextEveryFourWords(content);
+					
 					// Accept free-form 3-sentence output
 					if (!content || content.trim().length < 30) {
 						throw new Error("Response too short - AI may not have analyzed properly");
@@ -268,7 +308,7 @@ module.exports = NodeHelper.create({
 		const self = this;
 		
 		// Alternative prompt (same 3-sentence spec with line breaks)
-		const alternativePrompt = "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. 1) Батга/үрэвслийн түвшинг дэлгэрэнгүй дүгнэ. \\n 2) Хуурайшилт, чийгшлийн шинжийг дэлгэрэнгүй тайлбарла. \\n 3) Тослогжилтын түвшин, өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг. Асуудал ажиглагдахгүй бол арьс хэвийн, цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл. Жагсаалт, эмоджи ашиглахгүй.";
+		const alternativePrompt = "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг бүү ашигла. Шууд арьсны байдлыг тайлбарла. 1) Батга/үрэвслийн түвшинг дэлгэрэнгүй дүгнэ. \\n 2) Хуурайшилт, чийгшлийн шинжийг дэлгэрэнгүй тайлбарла. \\n 3) Тослогжилтын түвшин, өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг. Асуудал ажиглагдахгүй бол арьс хэвийн, цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл. Жагсаалт, эмоджи ашиглахгүй.";
 		
 		const requestBody = {
 			model: config.model,
@@ -327,6 +367,9 @@ module.exports = NodeHelper.create({
 					content = content.replace(/\\n/g, '\n');
 				}
 				
+				// Remove person recognition disclaimers and wrap every 4 words
+				content = self.wrapTextEveryFourWords(content);
+				
 				// Accept full content as analysis
 				if ((content?.trim() || "").length < 30) {
 					throw new Error("Alternative response too short");
@@ -359,7 +402,7 @@ module.exports = NodeHelper.create({
 		const self = this;
 		
 		// Final fallback prompt (3 sentences with line breaks)
-		const fallbackPrompt = "Гурван дунд урт өгүүлбэрээр дүгнэ, мөр бүрийн төгсгөлд \\n ашигла. 1) Батга/үрэвсэлийн түвшинг дэлгэрэнгүй. \\n 2) Хуурайшилт/чийгшлийн шинжийг дэлгэрэнгүй. \\n 3) Тослогжилт ба нийт зөвлөгөөг дэлгэрэнгүй. Асуудал тод биш бол арьс хэвийн, тогтмол цэвэрлэж чийгшүүлээрэй гэж хэл.";
+		const fallbackPrompt = "Гурван дунд урт өгүүлбэрээр дүгнэ, мөр бүрийн төгсгөлд \\n ашигла. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг бүү ашигла. Шууд арьсны байдлыг тайлбарла. 1) Батга/үрэвсэлийн түвшинг дэлгэрэнгүй. \\n 2) Хуурайшилт/чийгшлийн шинжийг дэлгэрэнгүй. \\n 3) Тослогжилт ба нийт зөвлөгөөг дэлгэрэнгүй. Асуудал тод биш бол арьс хэвийн, тогтмол цэвэрлэж чийгшүүлээрэй гэж хэл.";
 		
 		const requestBody = {
 			model: config.model,
@@ -410,6 +453,9 @@ module.exports = NodeHelper.create({
 					content = content.replace(/\\n/g, '\n');
 				}
 				
+				// Remove person recognition disclaimers and wrap every 4 words
+				content = self.wrapTextEveryFourWords(content);
+				
 				// Use the whole content as analysis
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 					person: config.person,
@@ -439,7 +485,7 @@ module.exports = NodeHelper.create({
 		const self = this;
 		
 		// Ultra-basic prompt - just visual description
-		const ultraBasicPrompt = "Энэ зураг дээрх хүний арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. ХУН ТАНИХ ХЭРЭГГҮЙ, ЗУРАГ ДЭЭРХ АРЬСНЫ БАЙДЛЫГ ТАЙЛБАРЛАХ ХЭРЭГТЭЙ. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла.";
+		const ultraBasicPrompt = "Энэ зураг дээрх арьсны харагдах байдлыг тайлбарлаж, МОНГОЛ хэлээр хариул. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг бүү ашигла. ЗУРАГ ДЭЭРХ АРЬСНЫ БАЙДЛЫГ ШУУД ТАЙЛБАРЛА. Дараах хэлбэрээр хариул:\n\nАрьсны байдал:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвлөмж:\n[3 мөр, мөр бүрт 3 үг, \\n ашиглаж шинэ мөр хий]\n\nЗөвхөн МОНГОЛ хэл ашигла.";
 		
 		const requestBody = {
 			model: config.model,
@@ -509,6 +555,10 @@ module.exports = NodeHelper.create({
 						advice = content.substring(lastSentence + 1).trim();
 					}
 				}
+				
+				// Remove person recognition disclaimers and wrap every 4 words
+				analysis = self.wrapTextEveryFourWords(analysis);
+				advice = self.wrapTextEveryFourWords(advice);
 				
 				Log.log(`Skin Analysis: Ultra-basic analysis completed for ${config.person}`);
 				

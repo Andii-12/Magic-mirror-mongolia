@@ -51,11 +51,11 @@ if [ "$1" = "test" ]; then
     FACE_RECOGNITION_TEST=true python3 face_recognition_system.py &
     FACE_PID=$!
 else
-    echo "🎯 Starting face recognition system with neutral white balance (natural skin tones)..."
-    # Balanced white balance for natural skin colors (not too yellow, not too blue)
+    echo "🎯 Starting face recognition system with normal camera capture (natural colors)..."
+    # Normal camera settings - auto white balance for natural colors
     SKIN_COLOR_MODE=natural \
+    SKIN_DESATURATE=false \
     SKIN_AWB=auto \
-    SKIN_AWB_GAINS=1.0,1.2 \
     python3 face_recognition_system.py &
     FACE_PID=$!
 fi
