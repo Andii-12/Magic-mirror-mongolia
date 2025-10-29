@@ -96,6 +96,7 @@ let config = {
 			module: "weather",
 			position: "top_left",
 			header: "Цаг агаар", // "Weather" in Mongolian
+			order: 1, // Position between holidays (order: 0) and skin analysis (order: 2)
 			config: {
 				weatherProvider: "openmeteo", // Free weather provider
 				type: "current",
@@ -229,6 +230,7 @@ let config = {
 			module: "skinanalysis",
 			position: "top_left",
 			header: "Арьсны шинжилгээ", // "Skin Analysis" in Mongolian
+			order: 2, // Position after weather (order: 1)
 			config: {
 				// 🔑 EASY API KEY SETUP:
 				// 1. Go to https://platform.openai.com/api-keys
