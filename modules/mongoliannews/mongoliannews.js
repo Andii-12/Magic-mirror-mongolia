@@ -31,6 +31,11 @@ Module.register("mongoliannews", {
 		return ["moment.js"];
 	},
 
+	// Load module-specific styles
+	getStyles: function() {
+		return ["mongoliannews.css"];
+	},
+
 	// Define start sequence.
 	start: function() {
 		console.log("Starting module: " + this.name);
