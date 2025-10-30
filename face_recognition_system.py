@@ -309,7 +309,7 @@ class FaceRecognitionSystem:
         try:
             # Ensure trigger is low initially
             GPIO.output(TRIG_PIN, False)
-            time.sleep(0.01)  # Reduced wait time
+            time.sleep(0.002)  # Shorter settle time for lower latency
 
             # Send trigger pulse
             GPIO.output(TRIG_PIN, True)
@@ -319,7 +319,7 @@ class FaceRecognitionSystem:
             # Wait for echo to start (with timeout)
             timeout_start = time.time()
             while GPIO.input(ECHO_PIN) == 0:
-                if time.time() - timeout_start > 0.1:  # 100ms timeout
+                if time.time() - timeout_start > 0.05:  # 50ms timeout
                     print("Warning: Echo start timeout")
                     return 999
                 pulse_start = time.time()
@@ -327,7 +327,7 @@ class FaceRecognitionSystem:
             # Wait for echo to end (with timeout)
             timeout_start = time.time()
             while GPIO.input(ECHO_PIN) == 1:
-                if time.time() - timeout_start > 0.1:  # 100ms timeout
+                if time.time() - timeout_start > 0.05:  # 50ms timeout
                     print("Warning: Echo end timeout")
                     return 999
                 pulse_end = time.time()
@@ -336,7 +336,7 @@ class FaceRecognitionSystem:
             pulse_duration = pulse_end - pulse_start
             
             # Validate pulse duration (should be reasonable for ultrasonic sensor)
-            if pulse_duration < 0.0001 or pulse_duration > 0.1:  # 0.1ms to 100ms
+            if pulse_duration < 0.00005 or pulse_duration > 0.1:  # 0.05ms to 100ms
                 print(f"Warning: Invalid pulse duration: {pulse_duration}")
                 return 999
             
@@ -1121,7 +1121,7 @@ class FaceRecognitionSystem:
             # Write to temporary file first, then rename to avoid corruption
             temp_file = STATUS_FILE + ".tmp"
             with open(temp_file, 'w') as f:
-                json.dump(status, f, indent=2)
+                json.dump(status, f, separators=(",", ":"))  # compact for faster writes
             # Atomic rename to avoid partial reads
             os.rename(temp_file, STATUS_FILE)
             # Only print status updates when they change significantly
@@ -1168,9 +1168,9 @@ class FaceRecognitionSystem:
         if not self.relay_available:
             return
         
-        # Stability thresholds for relay control
-        LIGHTS_ON_STABLE_THRESHOLD = 3  # Need 3 consecutive readings under threshold
-        LIGHTS_OFF_STABLE_THRESHOLD = 3  # Need 3 consecutive readings over threshold + buffer
+        # Stability thresholds for relay control (faster response)
+        LIGHTS_ON_STABLE_THRESHOLD = 2  # Need 2 consecutive readings under threshold
+        LIGHTS_OFF_STABLE_THRESHOLD = 2  # Need 2 consecutive readings over threshold + buffer
         LIGHTS_OFF_BUFFER = 8  # 8cm buffer to prevent flickering (20 + 8 = 28cm)
         
         # Check if lights should be ON (within threshold)
@@ -1205,9 +1205,9 @@ class FaceRecognitionSystem:
         
         # Add distance smoothing for more stable readings
         distance_history = []
-        HISTORY_SIZE = 3  # Reduced for faster response
+        HISTORY_SIZE = 2  # Smaller window for faster response
         last_status_update = 0
-        STATUS_UPDATE_INTERVAL = 1.0  # Update every 1 second to reduce blinking
+        STATUS_UPDATE_INTERVAL = 0.2  # Update up to 5x/sec for snappier UI
         
         # State tracking variables
         proximity_stable_count = 0
@@ -1271,8 +1271,8 @@ class FaceRecognitionSystem:
                         # Ensure detection time is set
                         if self.last_detection_time is None:
                             self.last_detection_time = time.time()
-                        # Wait only 0.5 seconds for stable proximity before camera activation
-                        if time.time() - self.last_detection_time > 0.5:
+                        # Wait only ~0.3 seconds for stable proximity before camera activation
+                        if time.time() - self.last_detection_time > 0.3:
                             print("📷 Starting face recognition...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()

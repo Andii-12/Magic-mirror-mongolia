@@ -38,10 +38,13 @@ module.exports = NodeHelper.create({
 	startFileWatcher: function() {
 		const self = this;
 		
-		// Check file every 1 second to reduce CPU usage
+		// Faster polling for lower UI latency
+		if (this.watchTimer) {
+			clearInterval(this.watchTimer);
+		}
 		this.watchTimer = setInterval(() => {
 			self.readStatusFile();
-		}, 1000);
+		}, 150);
 	},
 
 	// Read status from file

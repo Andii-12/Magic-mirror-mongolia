@@ -3,7 +3,7 @@
 Module.register("facerecognition", {
 	// Default module config.
 	defaults: {
-		updateInterval: 2000, // Check for updates every 2 seconds - reduce blinking
+		updateInterval: 500, // Faster status checks for lower latency
 		proximityThreshold: 20, // 20 cm threshold
 		timeoutDelay: 10000, // 10 seconds delay before shutdown
 		greetingDuration: 5000, // Show greeting for 5 seconds
@@ -53,8 +53,8 @@ Module.register("facerecognition", {
 	// Start checking for status updates from Python script
 	startStatusChecking: function() {
 		const self = this;
-		// Increase interval to reduce CPU usage
-		const checkInterval = Math.max(this.config.updateInterval, 1000); // At least 1 second
+		// Lower interval for faster reaction while still bounded
+		const checkInterval = Math.max(this.config.updateInterval, 200); // At least 200ms
 		this.statusCheckTimer = setInterval(function() {
 			self.checkStatus();
 		}, checkInterval);
