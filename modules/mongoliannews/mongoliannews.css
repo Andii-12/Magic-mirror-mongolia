@@ -6,10 +6,12 @@
 	margin: 0 auto;
 }
 
-/* Force white, bold text for all content in this module */
+/* Force high-contrast white, bold text for all content in this module */
 .mongoliannews, .mongoliannews * {
 	color: #ffffff !important;
-	font-weight: 700;
+	font-weight: 900 !important;
+	opacity: 1 !important;
+	text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 2px rgba(255,255,255,0.15);
 }
 
 /* Ensure module header is bright and visible behind mirror */
@@ -31,10 +33,10 @@
 	margin-bottom: 15px;
 	padding: 15px;
 	border-radius: 8px;
-	background-color: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.1);
+	background-color: rgba(0, 0, 0, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.25);
 	transition: all 0.5s ease;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 	min-height: 120px;
 	display: flex;
 	flex-direction: column;
@@ -42,32 +44,32 @@
 }
 
 .news-item:hover {
-	background-color: rgba(255, 255, 255, 0.12);
-	border-color: rgba(255, 255, 255, 0.2);
+	background-color: rgba(0, 0, 0, 0.65);
+	border-color: rgba(255, 255, 255, 0.35);
 	transform: translateY(-2px);
-	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.8);
 }
 
 .news-title {
-    font-size: 16px;
-    font-weight: 900;
-    margin-bottom: 8px;
-    line-height: 1.4;
-    color: #ffffff !important;
-    text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 8px rgba(0,0,0,0.95), 2px 2px 5px rgba(0,0,0,0.9);
+	font-size: 18px;
+	font-weight: 900;
+	margin-bottom: 8px;
+	line-height: 1.4;
+	color: #ffffff !important;
+	text-shadow: 0 0 12px rgba(0,0,0,0.95), 2px 2px 6px rgba(0,0,0,0.9);
 }
 
 .news-meta {
-    font-size: 11px;
-    color: #ffffff !important;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 7px rgba(0,0,0,0.95), 2px 2px 5px rgba(0,0,0,0.9);
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+	font-size: 11px;
+	color: #ffffff !important;
+	font-weight: 900;
+	text-shadow: 0 0 10px rgba(0,0,0,0.95), 2px 2px 5px rgba(0,0,0,0.9);
+	margin-bottom: 8px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
 }
 
 .news-source {
@@ -80,21 +82,21 @@
 }
 
 .news-date {
-    color: #ffffff !important;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 7px rgba(0,0,0,0.95), 2px 2px 5px rgba(0,0,0,0.9);
-    font-size: 10px;
+	color: #ffffff !important;
+	font-weight: 900;
+	text-shadow: 0 0 10px rgba(0,0,0,0.95), 2px 2px 5px rgba(0,0,0,0.9);
+	font-size: 10px;
 }
 
 .news-description {
-    font-size: 13px;
-    line-height: 1.5;
-    color: #ffffff !important;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 8px rgba(0,0,0,0.95), 2px 2px 5px rgba(0,0,0,0.9);
-    text-align: left;
-    margin-top: 6px;
-    opacity: 1;
+	font-size: 14px;
+	line-height: 1.6;
+	color: #ffffff !important;
+	font-weight: 900;
+	text-shadow: 0 0 12px rgba(0,0,0,0.95), 2px 2px 6px rgba(0,0,0,0.9);
+	text-align: left;
+	margin-top: 6px;
+	opacity: 1 !important;
 }
 
 /* Loading and error states */
