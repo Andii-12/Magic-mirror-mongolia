@@ -50,6 +50,22 @@ Module.register("skinanalysis", {
 		this.scheduleAnalysis();
 	},
 
+	// Wrap text by inserting a line break after every N words
+	wrapTextByWords: function(text, wordsPerLine) {
+		try {
+			if (!text || typeof text !== "string") return "";
+			const words = text.trim().split(/\s+/);
+			if (words.length === 0) return "";
+			const lines = [];
+			for (let i = 0; i < words.length; i += wordsPerLine) {
+				lines.push(words.slice(i, i + wordsPerLine).join(" "));
+			}
+			return lines.join("<br>");
+		} catch (e) {
+			return text;
+		}
+	},
+
 	// Start checking for status updates from face recognition
 	startStatusChecking: function() {
 		const self = this;
@@ -345,14 +361,14 @@ Module.register("skinanalysis", {
 		if (this.config.showAnalysis && this.currentAnalysis.analysis) {
 			const analysisElement = document.createElement("div");
 			analysisElement.className = "skinanalysis-analysis " + this.config.analysisStyle;
-			analysisElement.innerHTML = this.currentAnalysis.analysis;
+			analysisElement.innerHTML = this.wrapTextByWords(this.currentAnalysis.analysis, 4);
 			wrapper.appendChild(analysisElement);
 		}
 
 		if (this.config.showAdvice && this.currentAnalysis.advice) {
 			const adviceElement = document.createElement("div");
 			adviceElement.className = "skinanalysis-advice " + this.config.adviceStyle;
-			adviceElement.innerHTML = this.currentAnalysis.advice;
+			adviceElement.innerHTML = this.wrapTextByWords(this.currentAnalysis.advice, 4);
 			wrapper.appendChild(adviceElement);
 		}
 

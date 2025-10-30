@@ -6,6 +6,12 @@
 	margin: 0 auto;
 }
 
+/* Force white, bold text for all content in this module */
+.mongoliannews, .mongoliannews * {
+	color: #ffffff !important;
+	font-weight: 700;
+}
+
 /* Ensure module header is bright and visible behind mirror */
 .mongoliannews .module-header {
     color: #ffffff;
@@ -94,8 +100,8 @@
 /* Loading and error states */
 .dimmed.light.small {
 	color: #ffffff;
+	font-weight: 700;
 	text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-	font-style: italic;
 	text-align: center;
 	padding: 20px;
 }
