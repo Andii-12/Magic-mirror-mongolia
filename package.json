@@ -47,6 +47,7 @@
 		"test-holidays": "node -e \"fetch('https://date.nager.at/api/v3/PublicHolidays/2025/MN').then(r=>r.json()).then(d=>console.log('Holidays for 2025:', d.length, 'holidays found'))\"",
 		"test-ultrasonic": "python3 scripts/test-ultrasonic-sensor.py",
 		"test-face-recognition": "FACE_RECOGNITION_TEST=true python3 face_recognition_system.py",
+		"test-face-confidence": "python3 test_face_confidence.py",
 		"debug-face-recognition": "python3 scripts/debug-face-recognition.py",
 		"test-face-display": "node scripts/test-face-recognition-display.js",
 		"test-google-maps-traffic": "node scripts/test-google-maps-traffic.js",

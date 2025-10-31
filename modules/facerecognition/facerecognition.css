@@ -134,4 +134,70 @@
 	transform: translateY(0);
 }
 
+/* Recognition container styling */
+.facerecognition-recognition-container {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: rgba(0, 0, 0, 0.85);
+	padding: 30px 40px;
+	border-radius: 20px;
+	backdrop-filter: blur(15px);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+	border: 2px solid rgba(255, 255, 255, 0.2);
+	z-index: 1002;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	min-width: 300px;
+	animation: fadeInScale 0.5s ease-out;
+}
+
+/* Greeting text styling */
+.facerecognition-greeting-text {
+	font-size: 2.5em;
+	font-weight: bold;
+	color: #fff;
+	text-align: center;
+	text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+	margin-bottom: 10px;
+}
+
+/* Confidence percentage styling */
+.facerecognition-confidence {
+	font-size: 1.5em;
+	color: #4CAF50;
+	text-align: center;
+	font-weight: 600;
+	text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+	background: rgba(76, 175, 80, 0.1);
+	padding: 8px 16px;
+	border-radius: 8px;
+	border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Recognition image styling */
+.facerecognition-recognition-image {
+	max-width: 300px;
+	max-height: 300px;
+	border-radius: 10px;
+	border: 3px solid rgba(255, 255, 255, 0.3);
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+	object-fit: cover;
+}
+
+/* Animation for recognition container */
+@keyframes fadeInScale {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.7);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+}
+
 /* Clean styling - no extra indicators */

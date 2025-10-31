@@ -72,10 +72,23 @@ python3 train_face_recognition.py
 # Verify training setup
 python3 test_face_training.py
 
-# Test with live camera
+# Test with live camera and confidence display (NEW!)
+npm run test-face-confidence
+# or directly:
+python3 test_face_confidence.py
+
+# Alternative: Test with old method
 python3 train_faces.py
 # Select option 5: Test trained model
 ```
+
+**New: Face Confidence Test Tool** 🎯
+- Shows real-time recognition with confidence percentage
+- Color-coded: Green (70%+) = Good, Yellow (50-70%) = Moderate, Red = Unknown
+- Supports both webcam and PiCamera
+- Press 'h' to toggle histogram equalization
+- Press 's' to save test images
+- Press 'q' to quit
 
 ### 📸 Image Collection Tips
 
@@ -106,6 +119,7 @@ python3 train_faces.py
 | `train_faces.py` | **Complete training system** | **All users** |
 | `simple_train_faces.py` | Quick and easy training | Beginners |
 | `train_face_recognition.py` | Advanced training options | Power users |
+| `test_face_confidence.py` | **Real-time confidence display** | **Testing & Debugging** |
 | `setup_face_training.py` | Directory setup | Initial setup |
 | `test_face_training.py` | Verify training | Testing |
 

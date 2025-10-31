@@ -47,6 +47,8 @@ Module.register("facerecognition", {
 
 		this.lastRecognizedPerson = null;
 		this.recognitionLocked = false;
+		this.currentConfidence = 0;
+		this.recognitionImage = null;
 		this.startStatusChecking();
 	},
 
@@ -102,13 +104,19 @@ Module.register("facerecognition", {
 		this.currentPerson = (typeof data.person === "string" && data.person.length > 0) ? data.person : null;
 		this.isActive = !!data.active;
 		this.currentStatus = data.status || (this.isActive ? (this.currentPerson ? "recognized" : "detecting") : "waiting");
+		
+		// Store confidence and recognition image
+		this.currentConfidence = data.confidence || 0;
+		this.recognitionImage = data.recognition_image || null;
 
 		// Fire recognition notification only on first recognition or person change
 		if (this.currentPerson && this.currentPerson !== previousPerson) {
 			console.log("Face recognized:", this.currentPerson);
 			this.sendNotification("FACE_RECOGNIZED", {
 				person: this.currentPerson,
-				distance: this.currentDistance
+				distance: this.currentDistance,
+				confidence: this.currentConfidence,
+				image: this.recognitionImage
 			});
 		}
 
@@ -196,10 +204,34 @@ Module.register("facerecognition", {
 		// Show different messages based on backend-driven status
 		// Keep greeting as long as person is recognized; only show "Ойртож зогсоорой" after backend timeout
 		if (this.currentPerson && this.currentPerson !== "Unknown") {
-			const statusElement = document.createElement("div");
-			statusElement.className = "facerecognition-status top-right";
-			statusElement.innerHTML = `Сайн уу, ${this.currentPerson}`;
-			wrapper.appendChild(statusElement);
+			// Create main status container
+			const statusContainer = document.createElement("div");
+			statusContainer.className = "facerecognition-recognition-container";
+			
+			// Add greeting text
+			const greetingElement = document.createElement("div");
+			greetingElement.className = "facerecognition-greeting-text";
+			greetingElement.innerHTML = `Сайн уу, ${this.currentPerson}`;
+			statusContainer.appendChild(greetingElement);
+			
+			// Add confidence percentage
+			if (this.currentConfidence > 0) {
+				const confidenceElement = document.createElement("div");
+				confidenceElement.className = "facerecognition-confidence";
+				confidenceElement.innerHTML = `${Math.round(this.currentConfidence)}%-ийн магадлалтай танигдлаа`;
+				statusContainer.appendChild(confidenceElement);
+			}
+			
+			// Add recognition image if available
+			if (this.recognitionImage) {
+				const imageElement = document.createElement("img");
+				imageElement.className = "facerecognition-recognition-image";
+				imageElement.src = this.recognitionImage;
+				imageElement.alt = `Recognized: ${this.currentPerson}`;
+				statusContainer.appendChild(imageElement);
+			}
+			
+			wrapper.appendChild(statusContainer);
 		} else if (this.currentStatus === "detecting") {
 			const statusElement = document.createElement("div");
 			statusElement.className = "facerecognition-status top-left";

@@ -71,6 +71,8 @@ class FaceRecognitionSystem:
         self.last_photo_time = 0  # Track when last photo was saved
         self.guest_counter = 0  # Counter for unknown persons (guests)
         self.known_guests = {}  # Track guest names and their numbers
+        self.current_confidence = 0  # Current recognition confidence percentage
+        self.recognition_image_path = None  # Path to the captured/recognition image
         
         # Relay control variables
         self.lights_on = False  # Track if lights are currently on
@@ -960,15 +962,30 @@ class FaceRecognitionSystem:
                         
                         label, confidence = self.recognizer.predict(face_img)
                         name = self.label_map.get(label, "Unknown")
-                        print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f})")
+                        
+                        # Calculate confidence percentage (for LBPH: lower = better)
+                        confidence_percent = max(0, min(100, 100 - confidence))
+                        self.current_confidence = confidence_percent
+                        
+                        print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f}, Percent: {confidence_percent:.1f}%)")
                         print(f"[DEBUG] Label: {label}, Label map: {self.label_map}")
                         
                         # Check if face is recognized with good confidence
                         # For LBPH: lower confidence = better match, higher confidence = worse match
                         # Use more lenient threshold for better recognition
                         if name != "Unknown" and confidence < 90:  # More lenient threshold
-                            print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f})")
+                            print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
                             print(f"[DEBUG] Known user detected - NOT a guest")
+                            
+                            # Save current frame as recognition image for display
+                            try:
+                                recognition_temp = os.path.join(os.getcwd(), "recognition_temp.jpg")
+                                cv2.imwrite(recognition_temp, frame)
+                                self.recognition_image_path = recognition_temp
+                                print(f"[DEBUG] Saved recognition frame to: {recognition_temp}")
+                            except Exception as e:
+                                print(f"[WARNING] Failed to save recognition frame: {e}")
+                                self.recognition_image_path = None
                             
                             # Reset photo flag for this person if it's a new recognition
                             print(f"[DEBUG] Current person: {self.current_person}, Recognized person: {name}")
@@ -1112,6 +1129,8 @@ class FaceRecognitionSystem:
             "active": self.is_active,
             "status": status_type,
             "is_guest": is_guest,
+            "confidence": self.current_confidence,
+            "recognition_image": self.recognition_image_path,
             "timestamp": datetime.now().isoformat()
         }
         
