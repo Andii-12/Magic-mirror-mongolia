@@ -79,6 +79,7 @@ class FaceRecognitionSystem:
         self.relay_available = False  # Track if relay GPIO is available
         self.lights_stable_count = 0  # Count stable readings for lights
         self.lights_off_stable_count = 0  # Count stable readings for lights off
+        self.last_light_change_time = 0  # Debounce relay toggles
         
         # Initialize GPIO for ultrasonic sensor and relay (matching your working code)
         try:
@@ -1010,8 +1011,9 @@ class FaceRecognitionSystem:
                             
                             # Save current frame as recognition image under a static-served path
                             try:
-                                # Ensure static dir exists and save as a fixed name
-                                static_dir = os.path.join(os.getcwd(), "modules", "facerecognition", "public")
+                                # Ensure static dir exists and save as a fixed name (use project root, not CWD)
+                                project_root = os.path.dirname(os.path.abspath(__file__))
+                                static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 if cv2.imwrite(file_fs_path, frame):
@@ -1225,10 +1227,19 @@ class FaceRecognitionSystem:
         if not self.relay_available:
             return
         
-        # Stability thresholds for relay control (faster response)
-        LIGHTS_ON_STABLE_THRESHOLD = 2  # Need 2 consecutive readings under threshold
-        LIGHTS_OFF_STABLE_THRESHOLD = 2  # Need 2 consecutive readings over threshold + buffer
-        LIGHTS_OFF_BUFFER = 8  # 8cm buffer to prevent flickering (20 + 8 = 28cm)
+        # Ignore invalid/noisy readings
+        if distance >= 400 or distance == 999:
+            return
+        
+        # Stability thresholds and hysteresis
+        LIGHTS_ON_STABLE_THRESHOLD = 3  # Need 3 consecutive readings under threshold
+        LIGHTS_OFF_STABLE_THRESHOLD = 3  # Need 3 consecutive readings over threshold + buffer
+        LIGHTS_OFF_BUFFER = 12  # Larger buffer to prevent flickering (e.g., 20 + 12 = 32cm)
+        
+        # Debounce minimum durations to avoid rapid toggling
+        MIN_ON_SECONDS = 2.0
+        MIN_OFF_SECONDS = 2.0
+        now = time.time()
         
         # Check if lights should be ON (within threshold)
         if distance <= PROXIMITY_THRESHOLD:
@@ -1237,7 +1248,10 @@ class FaceRecognitionSystem:
             
             # Turn on lights if stable for required readings and not already on
             if self.lights_stable_count >= LIGHTS_ON_STABLE_THRESHOLD and not self.lights_on:
-                self.turn_on_lights()
+                # Respect debounce time since last change
+                if now - self.last_light_change_time >= MIN_OFF_SECONDS:
+                    if self.turn_on_lights():
+                        self.last_light_change_time = now
         else:
             # Check if lights should be OFF (beyond threshold + buffer)
             if distance > (PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER):
@@ -1246,7 +1260,10 @@ class FaceRecognitionSystem:
                 
                 # Turn off lights if stable for required readings and currently on
                 if self.lights_off_stable_count >= LIGHTS_OFF_STABLE_THRESHOLD and self.lights_on:
-                    self.turn_off_lights()
+                    # Respect debounce time since last change
+                    if now - self.last_light_change_time >= MIN_ON_SECONDS:
+                        if self.turn_off_lights():
+                            self.last_light_change_time = now
             else:
                 # In the buffer zone (20-28cm) - maintain current state
                 self.lights_stable_count = 0

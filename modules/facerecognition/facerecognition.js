@@ -207,7 +207,7 @@ Module.register("facerecognition", {
 		wrapper.className = "facerecognition";
 
 		// Show different messages based on backend-driven status
-		// Keep greeting as long as person is recognized; only show "Ойртож зогсоорой" after backend timeout
+		// Keep greeting as long as person is recognized; otherwise show waiting/detecting messages
 		if (this.currentPerson && this.currentPerson !== "Unknown") {
 			// Create main status container
 			const statusContainer = document.createElement("div");
@@ -249,6 +249,29 @@ Module.register("facerecognition", {
 			}
 			
 			wrapper.appendChild(statusContainer);
+		} else {
+			// Not recognized yet: show waiting/detecting messages prominently
+			const statusElement = document.createElement("div");
+			statusElement.className = "facerecognition-status";
+			let text = "Ойртож зогсоорой"; // default waiting
+			if (this.currentStatus === "detecting" || (this.isActive && !this.currentPerson)) {
+				text = "Царай уншиж байна";
+			}
+			statusElement.innerHTML = text;
+			wrapper.appendChild(statusElement);
+
+			// If a recent recognition image exists, show it under the status too
+			if (this.recognitionImage) {
+				const imageElement = document.createElement("img");
+				imageElement.className = "facerecognition-recognition-image";
+				const timestamp = new Date().getTime();
+				imageElement.src = this.recognitionImage + "?t=" + timestamp;
+				imageElement.alt = "Recognition preview";
+				imageElement.onerror = function() {
+					console.error("Failed to load recognition image:", this.src);
+				};
+				wrapper.appendChild(imageElement);
+			}
 		}
 
 		return wrapper;
