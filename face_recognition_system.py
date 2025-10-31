@@ -1271,28 +1271,25 @@ class FaceRecognitionSystem:
             return
         
         # Stability thresholds and hysteresis
-        LIGHTS_ON_STABLE_THRESHOLD = 4  # More stable before turning on
-        LIGHTS_OFF_STABLE_THRESHOLD = 3  # A bit more stable before turning off
-        LIGHTS_OFF_BUFFER = 10  # Wider buffer to avoid chatter
+        LIGHTS_ON_STABLE_THRESHOLD = 5  # Require more consecutive readings to turn on
+        LIGHTS_OFF_STABLE_THRESHOLD = 5  # Require more consecutive readings to turn off
+        LIGHTS_OFF_BUFFER = 15  # Wider buffer to avoid chatter
         
         # Debounce minimum durations to avoid rapid toggling
-        MIN_ON_SECONDS = 5.0
-        MIN_OFF_SECONDS = 5.0
+        MIN_ON_SECONDS = 8.0
+        MIN_OFF_SECONDS = 8.0
         now = time.time()
 
         # Global block to avoid re-toggling too soon (extra safety)
         if now < self.relay_block_until:
             return
 
-        # Safety: if lights are on but no recent proximity for timeout duration, force off
-        if self.lights_on and self.last_detection_time is not None:
-            if (now - self.last_detection_time) > (TIMEOUT_DELAY + 0.5):
-                if now - self.last_light_change_time >= MIN_ON_SECONDS:
-                    if self.turn_off_lights():
-                        self.last_light_change_time = now
+        # Schmitt-trigger style control with maintain-on buffer zone
+        threshold_on = PROXIMITY_THRESHOLD
+        threshold_off = PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER
         
         # Check if lights should be ON (within threshold, stable)
-        if distance <= PROXIMITY_THRESHOLD:
+        if distance <= threshold_on:
             self.lights_stable_count += 1
             self.lights_off_stable_count = 0  # Reset off counter
             
@@ -1305,7 +1302,7 @@ class FaceRecognitionSystem:
                         self.relay_block_until = now + 3.0
         else:
             # Check if lights should be OFF (beyond threshold + buffer)
-            if distance > (PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER):
+            if distance > threshold_off:
                 self.lights_off_stable_count += 1
                 self.lights_stable_count = 0  # Reset on counter
                 
@@ -1315,11 +1312,13 @@ class FaceRecognitionSystem:
                     if now - self.last_light_change_time >= MIN_ON_SECONDS:
                         if self.turn_off_lights():
                             self.last_light_change_time = now
-                            self.relay_block_until = now + 3.0
+                            self.relay_block_until = now + 5.0
             else:
-                # In the buffer zone (20-28cm) - maintain current state
+                # In the buffer zone - maintain current state strictly
                 self.lights_stable_count = 0
-                self.lights_off_stable_count = 0
+                # If lights are on and we're in buffer, do not accumulate off counter
+                if not self.lights_on:
+                    self.lights_off_stable_count = 0
 
     def run(self):
         """Main loop with improved proximity detection and state management"""
