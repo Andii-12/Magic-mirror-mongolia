@@ -100,3 +100,22 @@
 }
 
 /* Clean styling - no extra indicators */
+
+.facerecognition-log {
+    margin-top: 8px;
+    width: 100%;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.facerecognition-log-entry {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.3em;
+}

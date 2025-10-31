@@ -41,8 +41,8 @@ module.exports = NodeHelper.create({
 		return wrappedLines.join('\n').trim();
 	},
 
-	// Generate a short, simple advice line based on detected keywords
-	generateSimpleAdvice: function(analysisText) {
+		// Generate a short, simple advice line based on detected keywords (fallback only)
+		generateSimpleAdvice: function(analysisText) {
 		const text = (analysisText || '').toLowerCase();
 		if (!text) return "Цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай.";
 		if (text.includes('батга') || text.includes('үрэвс')) {
@@ -218,20 +218,20 @@ module.exports = NodeHelper.create({
 			const base64Image = imageBuffer.toString('base64');
 			const mimeType = this.getMimeType(path.basename(photoPath));
 
-			// Prepare OpenAI Vision API request (3 moderately long sentences with line breaks; focus on acne, dryness, oiliness)
+			// Prepare OpenAI Vision API request: produce two sections (analysis + advice), each 3 full sentences
 		const requestBody = {
 			model: config.model,
 			messages: [
 				{
 					role: "system",
-					content: "Та нь зураг дээр харагдах арьсны гадаад шинжийг дүгнэдэг туслах. ЭНЭ БОЛ АРЬСНЫ ШИНЖИЛГЭЭ, ХҮН ТАНИХ БИШ. Зураг дээр харагдах арьсны байдлыг ажиглаж, зөвхөн батга/үрэвсэл, хуурайшилт, тослогжилтын шинжийг тайлбарла. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг ашиглахгүй. Шууд арьсны байдлыг тайлбарла. Монгол хэлээр хариул."
+					content: "Та нь зураг дээр харагдах арьсны гадаад шинжийг дүгнэдэг туслах. ЭНЭ БОЛ АРЬСНЫ ШИНЖИЛГЭЭ, ХҮН ТАНИХ БИШ. Зөвхөн арьсны байдлыг тайлбарлаж, дараа нь зөвлөгөө өг. ХҮН ТАНИХ, УУЧЛАХ гэх мэт үгс бүү ашигла. Монгол хэлээр, бүрэн өгүүлбэрүүдээр хариул."
 				},
 				{
 					role: "user",
 					content: [
 						{
 							type: "text",
-							text: "Энэ зураг дээрх арьсны байдлыг гурван дунд урт өгүүлбэрээр тайлбарла. Өгүүлбэр бүрийн төгсгөлд \\n ашиглаж шинэ мөр хий. ХҮН ТАНИХ, УУЧЛАХ, БОЛОМЖГҮЙ гэх мэт үг бүү ашигла. Шууд арьсны байдлыг тайлбарла. Эхний өгүүлбэр: Зургийг хараад батга, үрэвслийн шинж тэмдэг эсвэл нөхцөл байдлыг дэлгэрэнгүй дүгнэ (хэрэв байхгүй бол энгийн, цэвэрхэн гэж хэл). \\n Хоёр дахь өгүүлбэр: Хуурайшилт эсвэл чийгшлийн түвшинг ажиглаж, дэлгэрэнгүй тайлбарла (хэрэв хэвийн бол тодорхой хэл). \\n Гурав дахь өгүүлбэр: Тослогжилтын түвшин болон өдөр бүрийн зөвлөмжийг дэлгэрэнгүй өг (хэрэв арьс сайн байвал цэвэрлэгээ, чийгшлээ тогтмол баримтлаарай гэж хэл). Жагсаалт, эмоджи ашиглахгүй, зөвхөн гурван өгүүлбэр бөгөөд мөр бүрийн төгсгөлд \\n байх ёстой."
+							text: "ЭХЛЭЭД 'Анализ:' гэсэн гарчгийн дараа 3 бүрэн өгүүлбэрээр арьсны байдлыг тайлбарла (батга/үрэвсэл, хуурайшилт, тослогжилт). ДАРААҐААР НЬ 'Зөвлөмж:' гэсэн гарчгийн дор 3 бүрэн өгүүлбэрээр өдөр тутмын зөвлөгөө өг. Жагсаалт, эмоджи хэрэглэхгүй. ХҮН ТАНИХ, УУЧЛАХ гэх мэт үгсийг бүү хэрэглэ. Бүх өгүүлбэрийг бүрэн бич."
 						},
 						{
 							type: "image_url",
@@ -280,17 +280,24 @@ module.exports = NodeHelper.create({
 							.replace(/\\\\n/g, '\n');
 					}
 					
-					// Remove person recognition disclaimers and wrap every 4 words
-					content = self.wrapTextEveryFourWords(content);
+					// Parse into analysis and advice sections
+					let analysis = content;
+					let advice = "";
+					const analysisMatch = content.match(/Анализ:?([\s\S]*?)(?=Зөвлөмж:|$)/);
+					const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
+					if (analysisMatch) analysis = analysisMatch[1].trim();
+					if (adviceMatch) advice = adviceMatch[1].trim();
+					// Cleanup and soft-wrap
+					analysis = self.wrapTextEveryFourWords(analysis);
+					advice = self.wrapTextEveryFourWords(advice || "");
 					
-					// Accept free-form 3-sentence output
-					if (!content || content.trim().length < 30) {
+					if (!analysis || analysis.trim().length < 30) {
 						throw new Error("Response too short - AI may not have analyzed properly");
 					}
 					self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 						person: config.person,
-						analysis: content.trim(),
-						advice: this.generateSimpleAdvice(content),
+						analysis: (analysis || "").trim(),
+						advice: (advice && advice.length >= 10 ? advice : analysis),
 						timestamp: Date.now()
 					});
 				} else {
@@ -387,17 +394,23 @@ module.exports = NodeHelper.create({
 						.replace(/\\\\n/g, '\n');
 				}
 				
-				// Remove person recognition disclaimers and wrap every 4 words
-				content = self.wrapTextEveryFourWords(content);
+				// Parse into analysis and advice sections
+				let analysis = content;
+				let advice = "";
+				const analysisMatch = content.match(/Анализ:?([\s\S]*?)(?=Зөвлөмж:|$)/);
+				const adviceMatch = content.match(/Зөвлөмж:?([\s\S]*?)$/);
+				if (analysisMatch) analysis = analysisMatch[1].trim();
+				if (adviceMatch) advice = adviceMatch[1].trim();
+				analysis = self.wrapTextEveryFourWords(analysis);
+				advice = self.wrapTextEveryFourWords(advice || "");
 				
-				// Accept full content as analysis
-				if ((content?.trim() || "").length < 30) {
+				if ((analysis?.trim() || "").length < 30) {
 					throw new Error("Alternative response too short");
 				}
 				self.sendSocketNotification("SKIN_ANALYSIS_RESULT", {
 					person: config.person,
-					analysis: content.trim(),
-					advice: this.generateSimpleAdvice(content),
+					analysis: (analysis || "").trim(),
+					advice: (advice && advice.length >= 10 ? advice : analysis),
 					timestamp: Date.now()
 				});
 			} else {
@@ -581,8 +594,6 @@ module.exports = NodeHelper.create({
 				// Remove person recognition disclaimers and wrap every 4 words
 				analysis = self.wrapTextEveryFourWords(analysis);
 				advice = self.wrapTextEveryFourWords(advice);
-				// Simplify advice to a short single line based on analysis
-				advice = self.generateSimpleAdvice(analysis);
 				
 				Log.log(`Skin Analysis: Ultra-basic analysis completed for ${config.person}`);
 				

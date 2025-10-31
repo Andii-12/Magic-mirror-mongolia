@@ -83,12 +83,14 @@ module.exports = NodeHelper.create({
 			// Increment read count
 			this.readCount = (this.readCount || 0) + 1;
 			
-			// Build payload
+			// Build payload (pass through additional fields if present)
 			const payload = {
 				distance: status.distance || 999,
 				person: status.person || null,
 				active: status.active || false,
 				status: status.status || "waiting",
+				confidence: status.confidence || 0,
+				recognition_image: status.recognition_image || null,
 				timestamp: status.timestamp || Date.now()
 			};
 			// Throttle duplicate updates to prevent flicker

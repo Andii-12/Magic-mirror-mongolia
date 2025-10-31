@@ -1233,13 +1233,20 @@ class FaceRecognitionSystem:
         
         # Stability thresholds and hysteresis
         LIGHTS_ON_STABLE_THRESHOLD = 3  # Need 3 consecutive readings under threshold
-        LIGHTS_OFF_STABLE_THRESHOLD = 3  # Need 3 consecutive readings over threshold + buffer
-        LIGHTS_OFF_BUFFER = 12  # Larger buffer to prevent flickering (e.g., 20 + 12 = 32cm)
+        LIGHTS_OFF_STABLE_THRESHOLD = 2  # Turn off a bit quicker once well beyond buffer
+        LIGHTS_OFF_BUFFER = 8  # 8cm buffer (e.g., 20 + 8 = 28cm)
         
         # Debounce minimum durations to avoid rapid toggling
         MIN_ON_SECONDS = 2.0
         MIN_OFF_SECONDS = 2.0
         now = time.time()
+
+        # Safety: if lights are on but no recent proximity for timeout duration, force off
+        if self.lights_on and self.last_detection_time is not None:
+            if (now - self.last_detection_time) > (TIMEOUT_DELAY + 0.5):
+                if now - self.last_light_change_time >= MIN_ON_SECONDS:
+                    if self.turn_off_lights():
+                        self.last_light_change_time = now
         
         # Check if lights should be ON (within threshold)
         if distance <= PROXIMITY_THRESHOLD:
@@ -1413,6 +1420,12 @@ class FaceRecognitionSystem:
                             self.camera_opened = False
                             self.shutdown_timer = None
                             self.recognition_locked = False  # Allow recognition next time
+                            # Ensure lights are turned off on timeout
+                            if self.lights_on:
+                                try:
+                                    self.turn_off_lights()
+                                except Exception as e:
+                                    print(f"[WARNING] Failed to turn off lights on timeout: {e}")
                             # Don't reset photo_saved_this_session here - only reset when new person detected
                             self.update_status_file()
                         else:
