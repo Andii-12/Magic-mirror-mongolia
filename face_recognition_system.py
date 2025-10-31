@@ -48,10 +48,10 @@ if TEST_MODE:
     print("🧪 Running in TEST MODE - ultrasonic sensor will be simulated")
 
 # Color/WB configuration
-# - SKIN_COLOR_MODE: natural | aggressive | blue_fix (processing fallback)
+# - SKIN_COLOR_MODE: auto | natural | aggressive | blue_fix
 # - SKIN_AWB: rpicam white balance mode (auto|daylight|fluorescent|incandescent|tungsten|greyworld)
 # - SKIN_AWB_GAINS: manual red,blue gains (e.g. "1.0,1.8" to cool down yellow cast)
-SKIN_COLOR_MODE = os.environ.get('SKIN_COLOR_MODE', 'natural').lower()
+SKIN_COLOR_MODE = os.environ.get('SKIN_COLOR_MODE', 'auto').lower()
 SKIN_AWB = os.environ.get('SKIN_AWB', 'auto')
 SKIN_AWB_GAINS = os.environ.get('SKIN_AWB_GAINS', '1.0,1.2')  # Balanced for natural skin tones
 SKIN_DESATURATE = os.environ.get('SKIN_DESATURATE', 'false').lower() == 'true'
@@ -73,6 +73,9 @@ class FaceRecognitionSystem:
         self.known_guests = {}  # Track guest names and their numbers
         self.current_confidence = 0  # Current recognition confidence percentage
         self.recognition_image_path = None  # Path to the captured/recognition image
+        self.unknown_attempts = 0  # Count consecutive unknown recognitions before assigning guest
+        self.last_recognized_name = None  # Sticky identity name
+        self.last_recognized_time = 0  # Sticky identity timestamp
         
         # Relay control variables
         self.lights_on = False  # Track if lights are currently on
@@ -80,6 +83,7 @@ class FaceRecognitionSystem:
         self.lights_stable_count = 0  # Count stable readings for lights
         self.lights_off_stable_count = 0  # Count stable readings for lights off
         self.last_light_change_time = 0  # Debounce relay toggles
+        self.relay_block_until = 0  # Absolute time until which no relay toggles are allowed
         
         # Initialize GPIO for ultrasonic sensor and relay (matching your working code)
         try:
@@ -218,13 +222,19 @@ class FaceRecognitionSystem:
     def apply_skin_tone_correction(self, frame_rgb):
         """Apply color correction.
         Modes:
-        - natural (default): gray-world white balance + mild contrast; no hue/saturation shifts
+        - auto (default): no manual correction; use camera's auto WB for natural colors
+        - natural: gray-world white balance + mild contrast; no hue/saturation shifts
         - aggressive: legacy strong adjustments for yellow-green cast
         - blue_fix: specific fix for blue-purple skin tone issues
         """
         try:
             # Convert RGB to BGR for OpenCV processing
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+
+            if SKIN_COLOR_MODE in ('auto', 'off', 'none'):
+                # Pass-through: trust camera auto white balance
+                # Avoid any manual channel/hue changes to prevent blue tint
+                return frame_bgr
 
             if SKIN_COLOR_MODE == 'blue_fix':
                 # Specific fix for blue-purple skin tone issues
@@ -319,7 +329,9 @@ class FaceRecognitionSystem:
             return cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
     def get_distance(self):
-        """Get distance from ultrasonic sensor in cm with improved accuracy and error handling"""
+        """Get distance from ultrasonic sensor in cm with improved accuracy and error handling
+        Take multiple micro-samples and return a median-filtered value to reject spikes.
+        """
         if not self.gpio_available or TEST_MODE:
             if TEST_MODE:
                 # Simulate distance changes for testing
@@ -342,50 +354,57 @@ class FaceRecognitionSystem:
             return 999  # Return far distance if GPIO not available
             
         try:
-            # Ensure trigger is low initially
-            GPIO.output(TRIG_PIN, False)
-            time.sleep(0.002)  # Shorter settle time for lower latency
+            def read_once():
+                # Ensure trigger is low initially
+                GPIO.output(TRIG_PIN, False)
+                time.sleep(0.001)
+                # Send trigger pulse
+                GPIO.output(TRIG_PIN, True)
+                time.sleep(0.00001)
+                GPIO.output(TRIG_PIN, False)
 
-            # Send trigger pulse
-            GPIO.output(TRIG_PIN, True)
-            time.sleep(0.00001)  # 10 microseconds
-            GPIO.output(TRIG_PIN, False)
-
-            # Wait for echo to start (with timeout)
-            timeout_start = time.time()
-            while GPIO.input(ECHO_PIN) == 0:
-                if time.time() - timeout_start > 0.05:  # 50ms timeout
-                    print("Warning: Echo start timeout")
-                    return 999
+                # Wait for echo start
+                start_deadline = time.time() + 0.05
+                while GPIO.input(ECHO_PIN) == 0:
+                    if time.time() > start_deadline:
+                        return None
                 pulse_start = time.time()
 
-            # Wait for echo to end (with timeout)
-            timeout_start = time.time()
-            while GPIO.input(ECHO_PIN) == 1:
-                if time.time() - timeout_start > 0.05:  # 50ms timeout
-                    print("Warning: Echo end timeout")
-                    return 999
+                # Wait for echo end
+                end_deadline = time.time() + 0.05
+                while GPIO.input(ECHO_PIN) == 1:
+                    if time.time() > end_deadline:
+                        return None
                 pulse_end = time.time()
 
-            # Calculate distance
-            pulse_duration = pulse_end - pulse_start
-            
-            # Validate pulse duration (should be reasonable for ultrasonic sensor)
-            if pulse_duration < 0.00005 or pulse_duration > 0.1:  # 0.05ms to 100ms
-                print(f"Warning: Invalid pulse duration: {pulse_duration}")
+                pulse_duration = pulse_end - pulse_start
+                if pulse_duration < 0.00005 or pulse_duration > 0.1:
+                    return None
+                distance = (pulse_duration * 34300) / 2
+                if distance < 2 or distance > 400:
+                    return None
+                return round(distance, 2)
+
+            # Take multiple samples and median-filter
+            samples = []
+            for _ in range(3):
+                d = read_once()
+                if d is not None:
+                    samples.append(d)
+                time.sleep(0.002)
+
+            if not samples:
                 return 999
-            
-            # Convert to distance (speed of sound = 34300 cm/s, divide by 2 for round trip)
-            distance = (pulse_duration * 34300) / 2
-            distance = round(distance, 2)
-            
-            # Validate distance range (2cm to 400cm)
-            if distance < 2 or distance > 400:
-                print(f"Warning: Distance out of range: {distance}cm")
-                return 999
-                
-            return distance
-            
+            samples.sort()
+            median = samples[len(samples)//2]
+            # Soft-limit sudden drops/jumps by clamping to previous reading window
+            if hasattr(self, '_last_distance_valid'):
+                prev = self._last_distance_valid
+                # Allow change by at most 20cm per cycle to reject spikes
+                if abs(median - prev) > 20:
+                    median = prev + (20 if median > prev else -20)
+            self._last_distance_valid = median
+            return median
         except Exception as e:
             print(f"Error reading distance: {e}")
             return 999
@@ -1005,7 +1024,7 @@ class FaceRecognitionSystem:
                         
                         # Check if face is recognized with good confidence (lower=better)
                         # Threshold tuned to align with ~90%+ mapping for strong matches
-                        if name != "Unknown" and confidence < 100:
+                        if name != "Unknown" and confidence < 110:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
                             print(f"[DEBUG] Known user detected - NOT a guest")
                             
@@ -1046,13 +1065,28 @@ class FaceRecognitionSystem:
                                 photo_path = os.path.join(os.getcwd(), "Skin", name, f"{current_date}.jpg")
                                 self.trigger_skin_analysis(name, photo_path)
                             
+                            # Sticky identity
+                            self.last_recognized_name = name
+                            self.last_recognized_time = time.time()
+                            self.unknown_attempts = 0
                             return name
                         else:
                             # Face detected but not recognized (high confidence = bad match, or name is "Unknown")
                             print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f}, name: {name})")
                             print(f"[DEBUG] Confidence threshold check: name != 'Unknown' = {name != 'Unknown'}, confidence < 80 = {confidence < 80}")
-                            
-                            # Handle unknown person as guest
+                            # If we recently recognized someone, prefer sticky identity for a short window
+                            now_ts = time.time()
+                            if self.last_recognized_name and (now_ts - self.last_recognized_time) < 8.0:
+                                print(f"[INFO] Using sticky identity: {self.last_recognized_name}")
+                                return self.last_recognized_name
+
+                            # Increment unknown attempts and only assign a guest after 2 consecutive failures
+                            self.unknown_attempts += 1
+                            if self.unknown_attempts < 2:
+                                print(f"[INFO] Unknown attempt {self.unknown_attempts}/2 - will retry before assigning guest")
+                                return None
+
+                            # Handle unknown person as guest after consecutive failures
                             guest_name = self.handle_unknown_person()
                             print(f"[DEBUG] Guest name generated: {guest_name}")
                             print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
@@ -1077,6 +1111,11 @@ class FaceRecognitionSystem:
                         print("[INFO] No recognizer available - treating as unknown face (guest)")
                         
                         # Handle unknown person as guest
+                        # Prefer sticky identity if very recent
+                        now_ts = time.time()
+                        if self.last_recognized_name and (now_ts - self.last_recognized_time) < 8.0:
+                            print(f"[INFO] Using sticky identity without recognizer: {self.last_recognized_name}")
+                            return self.last_recognized_name
                         guest_name = self.handle_unknown_person()
                         
                         # Reset photo flag for guest
@@ -1232,14 +1271,18 @@ class FaceRecognitionSystem:
             return
         
         # Stability thresholds and hysteresis
-        LIGHTS_ON_STABLE_THRESHOLD = 3  # Need 3 consecutive readings under threshold
-        LIGHTS_OFF_STABLE_THRESHOLD = 2  # Turn off a bit quicker once well beyond buffer
-        LIGHTS_OFF_BUFFER = 8  # 8cm buffer (e.g., 20 + 8 = 28cm)
+        LIGHTS_ON_STABLE_THRESHOLD = 4  # More stable before turning on
+        LIGHTS_OFF_STABLE_THRESHOLD = 3  # A bit more stable before turning off
+        LIGHTS_OFF_BUFFER = 10  # Wider buffer to avoid chatter
         
         # Debounce minimum durations to avoid rapid toggling
-        MIN_ON_SECONDS = 2.0
-        MIN_OFF_SECONDS = 2.0
+        MIN_ON_SECONDS = 5.0
+        MIN_OFF_SECONDS = 5.0
         now = time.time()
+
+        # Global block to avoid re-toggling too soon (extra safety)
+        if now < self.relay_block_until:
+            return
 
         # Safety: if lights are on but no recent proximity for timeout duration, force off
         if self.lights_on and self.last_detection_time is not None:
@@ -1248,7 +1291,7 @@ class FaceRecognitionSystem:
                     if self.turn_off_lights():
                         self.last_light_change_time = now
         
-        # Check if lights should be ON (within threshold)
+        # Check if lights should be ON (within threshold, stable)
         if distance <= PROXIMITY_THRESHOLD:
             self.lights_stable_count += 1
             self.lights_off_stable_count = 0  # Reset off counter
@@ -1259,6 +1302,7 @@ class FaceRecognitionSystem:
                 if now - self.last_light_change_time >= MIN_OFF_SECONDS:
                     if self.turn_on_lights():
                         self.last_light_change_time = now
+                        self.relay_block_until = now + 3.0
         else:
             # Check if lights should be OFF (beyond threshold + buffer)
             if distance > (PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER):
@@ -1271,6 +1315,7 @@ class FaceRecognitionSystem:
                     if now - self.last_light_change_time >= MIN_ON_SECONDS:
                         if self.turn_off_lights():
                             self.last_light_change_time = now
+                            self.relay_block_until = now + 3.0
             else:
                 # In the buffer zone (20-28cm) - maintain current state
                 self.lights_stable_count = 0
@@ -1286,15 +1331,15 @@ class FaceRecognitionSystem:
         
         # Add distance smoothing for more stable readings
         distance_history = []
-        HISTORY_SIZE = 2  # Smaller window for faster response
+        HISTORY_SIZE = 4  # Larger window for smoother response
         last_status_update = 0
         STATUS_UPDATE_INTERVAL = 0.2  # Update up to 5x/sec for snappier UI
         
         # State tracking variables
         proximity_stable_count = 0
-        PROXIMITY_STABLE_THRESHOLD = 2  # Need 2 consecutive readings under threshold
+        PROXIMITY_STABLE_THRESHOLD = 3  # Require more stable proximity before activation
         away_stable_count = 0
-        AWAY_STABLE_THRESHOLD = 3  # Need 3 consecutive readings over threshold
+        AWAY_STABLE_THRESHOLD = 4  # Require more stability before starting timeout
         
         try:
             while True:
@@ -1339,6 +1384,7 @@ class FaceRecognitionSystem:
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
+                        self.unknown_attempts = 0   # Reset unknown counter on new activation
                         self.current_confidence = 0  # Reset confidence
                         self.recognition_image_path = None  # Reset image
                         self.face_recognition_attempted = False

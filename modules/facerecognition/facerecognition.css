@@ -79,9 +79,9 @@
 
 /* Recognition image styling */
 .facerecognition-recognition-image {
-    max-width: 96px;
-    max-height: 96px;
-	border-radius: 10px;
+    max-width: 64px;
+    max-height: 64px;
+	border-radius: 8px;
 	border: 2px solid rgba(255, 255, 255, 0.3);
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 	object-fit: cover;
@@ -101,24 +101,3 @@
 
 /* Clean styling - no extra indicators */
 
-.facerecognition-log {
-    margin-top: 8px;
-    width: 100%;
-    max-width: 420px;
-    margin-left: auto;
-    margin-right: auto;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    padding: 8px 10px;
-    /* show up to 5 rows; newer entries appear at the bottom */
-    max-height: calc(1.3em * 5 + 12px);
-    overflow: hidden;
-}
-
-.facerecognition-log-entry {
-    font-family: monospace;
-    font-size: 0.9em;
-    color: rgba(255, 255, 255, 0.85);
-    line-height: 1.3em;
-}

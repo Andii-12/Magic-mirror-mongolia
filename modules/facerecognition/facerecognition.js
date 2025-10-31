@@ -49,24 +49,7 @@ Module.register("facerecognition", {
 		this.recognitionLocked = false;
 		this.currentConfidence = 0;
 		this.recognitionImage = null;
-		this.eventLog = [];
 		this.startStatusChecking();
-	},
-
-	// Append a message to the on-screen event log
-	addLog: function(message) {
-		try {
-			const ts = new Date();
-			const hh = ts.getHours().toString().padStart(2, '0');
-			const mm = ts.getMinutes().toString().padStart(2, '0');
-			const ss = ts.getSeconds().toString().padStart(2, '0');
-			this.eventLog = this.eventLog || [];
-			// Append to bottom; keep only last 5 entries
-			this.eventLog.push(`[${hh}:${mm}:${ss}] ${message}`);
-			if (this.eventLog.length > 5) this.eventLog = this.eventLog.slice(-5);
-		} catch (e) {
-			// no-op
-		}
 	},
 
 	// Start checking for status updates from Python script
@@ -142,13 +125,6 @@ Module.register("facerecognition", {
 				confidence: this.currentConfidence,
 				image: this.recognitionImage
 			});
-		}
-
-		// Log meaningful state changes
-		if (previousStatus !== this.currentStatus || previousPerson !== this.currentPerson) {
-			const who = this.currentPerson ? this.currentPerson : (this.isActive ? "Unknown" : "-");
-			const img = this.recognitionImage ? "img" : "no-img";
-			this.addLog(`status=${this.currentStatus} person=${who} conf=${Math.round(this.currentConfidence)}% ${img}`);
 		}
 
 		// Update DOM when person/active/status/confidence/image changes
@@ -304,19 +280,6 @@ Module.register("facerecognition", {
 				};
 				wrapper.appendChild(imageElement);
 			}
-		}
-
-		// Append a small log section
-		if (this.eventLog && this.eventLog.length) {
-			const logContainer = document.createElement("div");
-			logContainer.className = "facerecognition-log";
-			for (const line of this.eventLog) {
-				const row = document.createElement("div");
-				row.className = "facerecognition-log-entry";
-				row.innerHTML = line;
-				logContainer.appendChild(row);
-			}
-			wrapper.appendChild(logContainer);
 		}
 
 		return wrapper;
