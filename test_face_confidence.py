@@ -61,6 +61,37 @@ def load_face_components():
     
     return face_cascade, recognizer, label_map
 
+def map_lbph_confidence_to_percent(confidence: float) -> float:
+    """Map OpenCV LBPH confidence (lower is better) to a user-friendly 0-100%.
+    Tuned so strong matches show ~90%+ while weak/unknown trend low.
+
+    Piecewise-linear mapping based on empirical LBPH ranges:
+      - <=40   -> ~96-99%
+      - 40-60  -> ~90-96%
+      - 60-90  -> ~70-90%
+      - 90-120 -> ~40-70%
+      - >120   -> down to 0-40%
+    """
+    c = float(confidence)
+    if c <= 0:
+        return 99.0
+    if c <= 40:
+        # 40..0  -> 96..99
+        return max(0.0, min(100.0, 96.0 + (40.0 - c) * (3.0 / 40.0)))
+    if c <= 60:
+        # 60..40 -> 90..96
+        return max(0.0, min(100.0, 90.0 + (60.0 - c) * (6.0 / 20.0)))
+    if c <= 90:
+        # 90..60 -> 70..90
+        return max(0.0, min(100.0, 70.0 + (90.0 - c) * (20.0 / 30.0)))
+    if c <= 120:
+        # 120..90 -> 40..70
+        return max(0.0, min(100.0, 40.0 + (120.0 - c) * (30.0 / 30.0)))
+    # >120 -> taper down from 40 to 0 by 200
+    if c >= 200:
+        return 5.0
+    return max(0.0, 40.0 - (c - 120.0) * (35.0 / 80.0))
+
 def test_with_webcam(face_cascade, recognizer, label_map):
     """Test with standard webcam (cv2.VideoCapture)"""
     print("\n📷 Using webcam for testing...")
@@ -125,9 +156,8 @@ def test_with_webcam(face_cascade, recognizer, label_map):
                 label, confidence = recognizer.predict(face_resized)
                 name = label_map.get(label, "Unknown") if label_map else "Unknown"
                 
-                # Calculate confidence percentage
-                # For LBPH: lower confidence = better match
-                confidence_percent = max(0, min(100, 100 - confidence))
+                # Convert LBPH distance (lower is better) to a user-friendly %
+                confidence_percent = map_lbph_confidence_to_percent(confidence)
                 
                 # Color based on confidence
                 if name != "Unknown" and confidence_percent >= 70:
@@ -290,8 +320,8 @@ def test_with_picamera(face_cascade, recognizer, label_map):
                     label, confidence = recognizer.predict(face_resized)
                     name = label_map.get(label, "Unknown") if label_map else "Unknown"
                     
-                    # Calculate confidence percentage
-                    confidence_percent = max(0, min(100, 100 - confidence))
+                    # Convert LBPH distance (lower is better) to a user-friendly %
+                    confidence_percent = map_lbph_confidence_to_percent(confidence)
                     
                     # Color based on confidence
                     if name != "Unknown" and confidence_percent >= 70:

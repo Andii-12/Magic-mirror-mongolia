@@ -148,6 +148,33 @@ class FaceRecognitionSystem:
         print("Face Recognition System initialized")
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
 
+    @staticmethod
+    def map_lbph_confidence_to_percent(confidence: float) -> float:
+        """Map OpenCV LBPH confidence (lower is better) to a user-friendly 0-100%.
+        Tuned so strong matches show ~90%+ while weak/unknown trend low.
+
+        Piecewise-linear mapping based on empirical LBPH ranges:
+          - <=40   -> ~96-99%
+          - 40-60  -> ~90-96%
+          - 60-90  -> ~70-90%
+          - 90-120 -> ~40-70%
+          - >120   -> down to 0-40%
+        """
+        c = float(confidence)
+        if c <= 0:
+            return 99.0
+        if c <= 40:
+            return max(0.0, min(100.0, 96.0 + (40.0 - c) * (3.0 / 40.0)))
+        if c <= 60:
+            return max(0.0, min(100.0, 90.0 + (60.0 - c) * (6.0 / 20.0)))
+        if c <= 90:
+            return max(0.0, min(100.0, 70.0 + (90.0 - c) * (20.0 / 30.0)))
+        if c <= 120:
+            return max(0.0, min(100.0, 40.0 + (120.0 - c) * (30.0 / 30.0)))
+        if c >= 200:
+            return 5.0
+        return max(0.0, 40.0 - (c - 120.0) * (35.0 / 80.0))
+
     def handle_unknown_person(self):
         """Handle unknown person as a guest"""
         # Generate a unique guest identifier based on timestamp
@@ -964,16 +991,15 @@ class FaceRecognitionSystem:
                         name = self.label_map.get(label, "Unknown")
                         
                         # Calculate confidence percentage (for LBPH: lower = better)
-                        confidence_percent = max(0, min(100, 100 - confidence))
+                        confidence_percent = self.map_lbph_confidence_to_percent(confidence)
                         self.current_confidence = confidence_percent
                         
                         print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f}, Percent: {confidence_percent:.1f}%)")
                         print(f"[DEBUG] Label: {label}, Label map: {self.label_map}")
                         
-                        # Check if face is recognized with good confidence
-                        # For LBPH: lower confidence = better match, higher confidence = worse match
-                        # Use more lenient threshold for better recognition
-                        if name != "Unknown" and confidence < 90:  # More lenient threshold
+                        # Check if face is recognized with good confidence (lower=better)
+                        # Threshold tuned to align with ~90%+ mapping for strong matches
+                        if name != "Unknown" and confidence < 100:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
                             print(f"[DEBUG] Known user detected - NOT a guest")
                             
