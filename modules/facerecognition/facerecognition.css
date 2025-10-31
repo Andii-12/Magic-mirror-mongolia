@@ -111,6 +111,9 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
     padding: 8px 10px;
+    /* show up to 5 rows; newer entries appear at the bottom */
+    max-height: calc(1.3em * 5 + 12px);
+    overflow: hidden;
 }
 
 .facerecognition-log-entry {

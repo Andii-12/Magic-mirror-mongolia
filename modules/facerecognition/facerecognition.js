@@ -61,8 +61,9 @@ Module.register("facerecognition", {
 			const mm = ts.getMinutes().toString().padStart(2, '0');
 			const ss = ts.getSeconds().toString().padStart(2, '0');
 			this.eventLog = this.eventLog || [];
-			this.eventLog.unshift(`[${hh}:${mm}:${ss}] ${message}`);
-			if (this.eventLog.length > 10) this.eventLog.pop();
+			// Append to bottom; keep only last 5 entries
+			this.eventLog.push(`[${hh}:${mm}:${ss}] ${message}`);
+			if (this.eventLog.length > 5) this.eventLog = this.eventLog.slice(-5);
 		} catch (e) {
 			// no-op
 		}
@@ -114,6 +115,8 @@ Module.register("facerecognition", {
 		const previousPerson = this.currentPerson;
 		const previousActive = this.isActive;
 		const previousStatus = this.currentStatus;
+		const previousImage = this.recognitionImage;
+		const previousConfidence = this.currentConfidence;
 
 		// Trust backend status entirely to avoid UI oscillation
 		this.currentDistance = data.distance || 0;
@@ -149,7 +152,13 @@ Module.register("facerecognition", {
 		}
 
 		// Update DOM when person/active/status/confidence/image changes
-		if (previousPerson !== this.currentPerson || previousActive !== this.isActive || previousStatus !== this.currentStatus) {
+		if (
+			previousPerson !== this.currentPerson ||
+			previousActive !== this.isActive ||
+			previousStatus !== this.currentStatus ||
+			previousConfidence !== this.currentConfidence ||
+			previousImage !== this.recognitionImage
+		) {
 			this.updateDom(this.config.animationSpeed);
 		}
 	},
