@@ -74,23 +74,29 @@ def map_lbph_confidence_to_percent(confidence: float) -> float:
     """
     c = float(confidence)
     if c <= 0:
-        return 99.0
-    if c <= 40:
+        base = 99.0
+    elif c <= 40:
         # 40..0  -> 96..99
-        return max(0.0, min(100.0, 96.0 + (40.0 - c) * (3.0 / 40.0)))
-    if c <= 60:
+        base = max(0.0, min(100.0, 96.0 + (40.0 - c) * (3.0 / 40.0)))
+    elif c <= 60:
         # 60..40 -> 90..96
-        return max(0.0, min(100.0, 90.0 + (60.0 - c) * (6.0 / 20.0)))
-    if c <= 90:
+        base = max(0.0, min(100.0, 90.0 + (60.0 - c) * (6.0 / 20.0)))
+    elif c <= 90:
         # 90..60 -> 70..90
-        return max(0.0, min(100.0, 70.0 + (90.0 - c) * (20.0 / 30.0)))
-    if c <= 120:
+        base = max(0.0, min(100.0, 70.0 + (90.0 - c) * (20.0 / 30.0)))
+    elif c <= 120:
         # 120..90 -> 40..70
-        return max(0.0, min(100.0, 40.0 + (120.0 - c) * (30.0 / 30.0)))
-    # >120 -> taper down from 40 to 0 by 200
-    if c >= 200:
-        return 5.0
-    return max(0.0, 40.0 - (c - 120.0) * (35.0 / 80.0))
+        base = max(0.0, min(100.0, 40.0 + (120.0 - c) * (30.0 / 30.0)))
+    else:
+        # >120 -> taper down from 40 to ~5 by 200
+        if c >= 200:
+            base = 5.0
+        else:
+            base = max(0.0, 40.0 - (c - 120.0) * (35.0 / 80.0))
+
+    # Calibrated uplift so typical ~70% reads ~90%
+    boosted = min(99.0, base + 20.0)
+    return boosted
 
 def test_with_webcam(face_cascade, recognizer, label_map):
     """Test with standard webcam (cv2.VideoCapture)"""

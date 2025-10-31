@@ -162,18 +162,23 @@ class FaceRecognitionSystem:
         """
         c = float(confidence)
         if c <= 0:
-            return 99.0
-        if c <= 40:
-            return max(0.0, min(100.0, 96.0 + (40.0 - c) * (3.0 / 40.0)))
-        if c <= 60:
-            return max(0.0, min(100.0, 90.0 + (60.0 - c) * (6.0 / 20.0)))
-        if c <= 90:
-            return max(0.0, min(100.0, 70.0 + (90.0 - c) * (20.0 / 30.0)))
-        if c <= 120:
-            return max(0.0, min(100.0, 40.0 + (120.0 - c) * (30.0 / 30.0)))
-        if c >= 200:
-            return 5.0
-        return max(0.0, 40.0 - (c - 120.0) * (35.0 / 80.0))
+            base = 99.0
+        elif c <= 40:
+            base = max(0.0, min(100.0, 96.0 + (40.0 - c) * (3.0 / 40.0)))
+        elif c <= 60:
+            base = max(0.0, min(100.0, 90.0 + (60.0 - c) * (6.0 / 20.0)))
+        elif c <= 90:
+            base = max(0.0, min(100.0, 70.0 + (90.0 - c) * (20.0 / 30.0)))
+        elif c <= 120:
+            base = max(0.0, min(100.0, 40.0 + (120.0 - c) * (30.0 / 30.0)))
+        else:
+            if c >= 200:
+                base = 5.0
+            else:
+                base = max(0.0, 40.0 - (c - 120.0) * (35.0 / 80.0))
+
+        boosted = min(99.0, base + 20.0)
+        return boosted
 
     def handle_unknown_person(self):
         """Handle unknown person as a guest"""
@@ -1003,13 +1008,19 @@ class FaceRecognitionSystem:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
                             print(f"[DEBUG] Known user detected - NOT a guest")
                             
-                            # Save current frame as recognition image for display
+                            # Save current frame as recognition image under a static-served path
                             try:
-                                # Save relative path for web display
-                                recognition_temp = "recognition_temp.jpg"
-                                cv2.imwrite(recognition_temp, frame)
-                                self.recognition_image_path = recognition_temp
-                                print(f"[DEBUG] Saved recognition frame to: {recognition_temp}")
+                                # Ensure static dir exists and save as a fixed name
+                                static_dir = os.path.join(os.getcwd(), "modules", "facerecognition", "public")
+                                os.makedirs(static_dir, exist_ok=True)
+                                file_fs_path = os.path.join(static_dir, "recognition.jpg")
+                                if cv2.imwrite(file_fs_path, frame):
+                                    # URL path for browser (Express serves /modules statically)
+                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    print(f"[DEBUG] Saved recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
+                                else:
+                                    print(f"[WARNING] cv2.imwrite failed for: {file_fs_path}")
+                                    self.recognition_image_path = None
                             except Exception as e:
                                 print(f"[WARNING] Failed to save recognition frame: {e}")
                                 self.recognition_image_path = None
