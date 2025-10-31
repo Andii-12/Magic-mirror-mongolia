@@ -205,7 +205,7 @@ let config = {
 		},
 		{
 			module: "facerecognition",
-			position: "top_center",
+			position: "top_right",
 			config: {
 				updateInterval: 1000, // Check for updates every 1 second
 				proximityThreshold: 20, // 20 cm threshold

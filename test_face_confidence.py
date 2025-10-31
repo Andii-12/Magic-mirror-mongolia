@@ -70,6 +70,10 @@ def test_with_webcam(face_cascade, recognizer, label_map):
         print("❌ Could not open camera")
         return False
     
+    # Set resolution for better performance (640x480 is optimal for processing speed)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    
     print("\n🎯 Face Recognition Confidence Test")
     print("=" * 50)
     print("Controls:")
@@ -98,12 +102,12 @@ def test_with_webcam(face_cascade, recognizer, label_map):
         else:
             gray_processed = gray
         
-        # Detect faces
+        # Detect faces with optimized parameters for performance
         faces = face_cascade.detectMultiScale(
             gray_processed, 
-            scaleFactor=1.05,
-            minNeighbors=3,
-            minSize=(60, 60),
+            scaleFactor=1.1,  # Slightly faster
+            minNeighbors=4,  # Fewer false positives
+            minSize=(80, 80),  # Larger minimum size for speed
             flags=cv2.CASCADE_SCALE_IMAGE
         )
         
@@ -135,19 +139,19 @@ def test_with_webcam(face_cascade, recognizer, label_map):
                 else:
                     color = (0, 0, 255)  # Red - unknown
                 
-                # Draw prediction text
-                text = f"{name} ({confidence_percent:.1f}%)"
-                cv2.putText(frame, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+                # Draw prediction text (smaller font for better performance)
+                text = f"{name} ({confidence_percent:.0f}%)"
+                cv2.putText(frame, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
-                # Draw confidence bar
+                # Draw confidence bar (simpler rendering)
                 bar_width = int((confidence_percent / 100) * w)
-                cv2.rectangle(frame, (x, y+h+5), (x+bar_width, y+h+15), color, -1)
-                cv2.rectangle(frame, (x, y+h+5), (x+w, y+h+15), (255, 255, 255), 1)
+                cv2.rectangle(frame, (x, y+h+5), (x+bar_width, y+h+12), color, -1)
+                cv2.rectangle(frame, (x, y+h+5), (x+w, y+h+12), (255, 255, 255), 1)
                 
             else:
                 # No recognizer - just show "Detecting..."
                 cv2.putText(frame, "Face Detected", (x, y-10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
         # Draw info overlay
         if show_info:
@@ -205,6 +209,9 @@ def test_with_webcam(face_cascade, recognizer, label_map):
             print(f"Histogram equalization: {'ON' if use_equalization else 'OFF'}")
         elif key == ord('i'):
             show_info = not show_info
+        
+        # Small delay to reduce CPU usage (allows ~30 FPS)
+        time.sleep(0.03)
     
     cap.release()
     cv2.destroyAllWindows()
@@ -224,7 +231,7 @@ def test_with_picamera(face_cascade, recognizer, label_map):
     
     picam2 = Picamera2()
     config = picam2.create_preview_configuration(
-        main={"size": (1280, 720), "format": "RGB888"},
+        main={"size": (640, 480), "format": "RGB888"},  # 640x480 is optimal for processing speed
         transform=libcamera.Transform(hflip=0, vflip=0)
     )
     picam2.configure(config)
@@ -261,12 +268,12 @@ def test_with_picamera(face_cascade, recognizer, label_map):
             else:
                 gray_processed = gray
             
-            # Detect faces
+            # Detect faces with optimized parameters for performance
             faces = face_cascade.detectMultiScale(
                 gray_processed, 
-                scaleFactor=1.05,
-                minNeighbors=3,
-                minSize=(60, 60),
+                scaleFactor=1.1,  # Slightly faster
+                minNeighbors=4,  # Fewer false positives
+                minSize=(80, 80),  # Larger minimum size for speed
                 flags=cv2.CASCADE_SCALE_IMAGE
             )
             
@@ -296,18 +303,18 @@ def test_with_picamera(face_cascade, recognizer, label_map):
                     else:
                         color = (0, 0, 255)  # Red
                     
-                    # Draw prediction
-                    text = f"{name} ({confidence_percent:.1f}%)"
-                    cv2.putText(frame, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2)
+                    # Draw prediction (smaller font for better performance)
+                    text = f"{name} ({confidence_percent:.0f}%)"
+                    cv2.putText(frame, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
                     
-                    # Draw confidence bar
+                    # Draw confidence bar (simpler rendering)
                     bar_width = int((confidence_percent / 100) * w)
-                    cv2.rectangle(frame, (x, y+h+5), (x+bar_width, y+h+15), color, -1)
-                    cv2.rectangle(frame, (x, y+h+5), (x+w, y+h+15), (255, 255, 255), 1)
+                    cv2.rectangle(frame, (x, y+h+5), (x+bar_width, y+h+12), color, -1)
+                    cv2.rectangle(frame, (x, y+h+5), (x+w, y+h+12), (255, 255, 255), 1)
                 
                 else:
                     cv2.putText(frame, "Face Detected", (x, y-10), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             
             # Draw info overlay
             if show_info:
@@ -358,6 +365,9 @@ def test_with_picamera(face_cascade, recognizer, label_map):
                 print(f"Histogram equalization: {'ON' if use_equalization else 'OFF'}")
             elif key == ord('i'):
                 show_info = not show_info
+            
+            # Small delay to reduce CPU usage (allows ~30 FPS)
+            time.sleep(0.03)
     
     finally:
         picam2.close()

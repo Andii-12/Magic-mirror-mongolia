@@ -979,7 +979,8 @@ class FaceRecognitionSystem:
                             
                             # Save current frame as recognition image for display
                             try:
-                                recognition_temp = os.path.join(os.getcwd(), "recognition_temp.jpg")
+                                # Save relative path for web display
+                                recognition_temp = "recognition_temp.jpg"
                                 cv2.imwrite(recognition_temp, frame)
                                 self.recognition_image_path = recognition_temp
                                 print(f"[DEBUG] Saved recognition frame to: {recognition_temp}")
@@ -1277,6 +1278,8 @@ class FaceRecognitionSystem:
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
+                        self.current_confidence = 0  # Reset confidence
+                        self.recognition_image_path = None  # Reset image
                         self.face_recognition_attempted = False
                         self.camera_opened = False
                         # Don't reset photo_saved_this_session here - only reset when new person detected
@@ -1349,6 +1352,8 @@ class FaceRecognitionSystem:
                             print(f"⏰ Timeout reached ({TIMEOUT_DELAY}s) - logging out user")
                             # Reset all states after timeout
                             self.current_person = None
+                            self.current_confidence = 0
+                            self.recognition_image_path = None
                             self.is_active = False
                             self.face_recognition_attempted = False
                             self.camera_opened = False

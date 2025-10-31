@@ -108,10 +108,15 @@ Module.register("facerecognition", {
 		// Store confidence and recognition image
 		this.currentConfidence = data.confidence || 0;
 		this.recognitionImage = data.recognition_image || null;
-
+		
 		// Fire recognition notification only on first recognition or person change
 		if (this.currentPerson && this.currentPerson !== previousPerson) {
-			console.log("Face recognized:", this.currentPerson);
+			console.log("[FACE RECOGNITION] Status update received:", {
+				person: this.currentPerson,
+				confidence: this.currentConfidence,
+				image: this.recognitionImage,
+				rawData: data
+			});
 			this.sendNotification("FACE_RECOGNIZED", {
 				person: this.currentPerson,
 				distance: this.currentDistance,
@@ -120,7 +125,7 @@ Module.register("facerecognition", {
 			});
 		}
 
-		// Update DOM only when person/active/status actually changes
+		// Update DOM when person/active/status/confidence/image changes
 		if (previousPerson !== this.currentPerson || previousActive !== this.isActive || previousStatus !== this.currentStatus) {
 			this.updateDom(this.config.animationSpeed);
 		}
@@ -226,22 +231,24 @@ Module.register("facerecognition", {
 			if (this.recognitionImage) {
 				const imageElement = document.createElement("img");
 				imageElement.className = "facerecognition-recognition-image";
-				imageElement.src = this.recognitionImage;
+				// Add timestamp to prevent caching
+				const timestamp = new Date().getTime();
+				imageElement.src = this.recognitionImage + "?t=" + timestamp;
 				imageElement.alt = `Recognized: ${this.currentPerson}`;
+				
+				// Add error handler for debugging
+				imageElement.onerror = function() {
+					console.error("Failed to load recognition image:", this.src);
+				};
+				
+				imageElement.onload = function() {
+					console.log("Successfully loaded recognition image:", this.src);
+				};
+				
 				statusContainer.appendChild(imageElement);
 			}
 			
 			wrapper.appendChild(statusContainer);
-		} else if (this.currentStatus === "detecting") {
-			const statusElement = document.createElement("div");
-			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Царай уншиж байна";
-			wrapper.appendChild(statusElement);
-		} else {
-			const statusElement = document.createElement("div");
-			statusElement.className = "facerecognition-status top-left";
-			statusElement.innerHTML = "Ойртож зогсоорой";
-			wrapper.appendChild(statusElement);
 		}
 
 		return wrapper;
