@@ -50,6 +50,7 @@ Module.register("facerecognition", {
 		this.currentConfidence = 0;
 		this.recognitionImage = null;
 		this.isGuest = false;  // Track if current person is a guest
+		this.logMessages = [];  // Store log messages from Python
 		this.startStatusChecking();
 	},
 
@@ -102,6 +103,7 @@ Module.register("facerecognition", {
 		const previousImage = this.recognitionImage;
 		const previousConfidence = this.currentConfidence;
 		const previousGuest = this.isGuest;  // Track previous guest status
+		const previousLogMessages = this.logMessages ? [...this.logMessages] : [];  // Track previous log messages
 
 		// Trust backend status entirely to avoid UI oscillation
 		this.currentDistance = data.distance || 0;
@@ -109,10 +111,11 @@ Module.register("facerecognition", {
 		this.isActive = !!data.active;
 		this.currentStatus = data.status || (this.isActive ? (this.currentPerson ? "recognized" : "detecting") : "waiting");
 		
-		// Store confidence, recognition image, and guest status
+		// Store confidence, recognition image, guest status, and log messages
 		this.currentConfidence = data.confidence || 0;
 		this.recognitionImage = data.recognition_image || null;
 		this.isGuest = data.is_guest || false;
+		this.logMessages = data.log_messages || [];
 		
 		// Fire recognition notification only on first recognition or person change
 		if (this.currentPerson && this.currentPerson !== previousPerson) {
@@ -137,7 +140,8 @@ Module.register("facerecognition", {
 			previousStatus !== this.currentStatus ||
 			previousConfidence !== this.currentConfidence ||
 			previousImage !== this.recognitionImage ||
-			previousGuest !== this.isGuest
+			previousGuest !== this.isGuest ||
+			JSON.stringify(previousLogMessages) !== JSON.stringify(this.logMessages)
 		) {
 			this.updateDom(this.config.animationSpeed);
 		}
@@ -264,6 +268,21 @@ Module.register("facerecognition", {
 				statusContainer.appendChild(imageElement);
 			}
 			
+			// Add log messages display box under the image
+			if (this.logMessages && this.logMessages.length > 0) {
+				const logContainer = document.createElement("div");
+				logContainer.className = "facerecognition-logs-container";
+				
+				this.logMessages.forEach((logMsg, index) => {
+					const logLine = document.createElement("div");
+					logLine.className = "facerecognition-log-line";
+					logLine.innerHTML = logMsg;
+					logContainer.appendChild(logLine);
+				});
+				
+				statusContainer.appendChild(logContainer);
+			}
+			
 			wrapper.appendChild(statusContainer);
 		} else {
 			// Not recognized yet: show waiting/detecting messages prominently
@@ -287,6 +306,21 @@ Module.register("facerecognition", {
 					console.error("Failed to load recognition image:", this.src);
 				};
 				wrapper.appendChild(imageElement);
+			}
+			
+			// Add log messages display box (always show if logs exist)
+			if (this.logMessages && this.logMessages.length > 0) {
+				const logContainer = document.createElement("div");
+				logContainer.className = "facerecognition-logs-container";
+				
+				this.logMessages.forEach((logMsg, index) => {
+					const logLine = document.createElement("div");
+					logLine.className = "facerecognition-log-line";
+					logLine.innerHTML = logMsg;
+					logContainer.appendChild(logLine);
+				});
+				
+				wrapper.appendChild(logContainer);
 			}
 		}
 

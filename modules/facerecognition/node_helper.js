@@ -91,6 +91,7 @@ module.exports = NodeHelper.create({
 				status: status.status || "waiting",
 				confidence: status.confidence || 0,
 				recognition_image: status.recognition_image || null,
+				log_messages: status.log_messages || [],
 				timestamp: status.timestamp || Date.now()
 			};
 			// Throttle duplicate updates to prevent flicker
@@ -113,12 +114,14 @@ module.exports = NodeHelper.create({
 	_maybeSend: function(payload) {
 		const last = this.lastSent;
 		const significantDistanceChange = !last || Math.abs((payload.distance || 0) - (last.distance || 0)) > 5;
+		const logMessagesChanged = !last || JSON.stringify(last.log_messages || []) !== JSON.stringify(payload.log_messages || []);
 		const changed =
 			!last ||
 			last.person !== payload.person ||
 			last.active !== payload.active ||
 			last.status !== payload.status ||
-			significantDistanceChange;
+			significantDistanceChange ||
+			logMessagesChanged;
 		if (changed) {
 			this.lastSent = { ...payload };
 			this.sendSocketNotification("FACE_STATUS_UPDATE", payload);

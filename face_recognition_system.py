@@ -77,6 +77,10 @@ class FaceRecognitionSystem:
         self.last_recognized_name = None  # Sticky identity name
         self.last_recognized_time = 0  # Sticky identity timestamp
         
+        # Log messages for display (Mongolian)
+        self.log_messages = []  # Store last 5 log messages in Mongolian
+        self.max_log_messages = 5  # Maximum number of log messages to keep
+        
         # Relay control variables
         self.lights_on = False  # Track if lights are currently on
         self.relay_available = False  # Track if relay GPIO is available
@@ -152,7 +156,16 @@ class FaceRecognitionSystem:
         
         print("Face Recognition System initialized")
         print(f"Loaded {len(self.label_names)} known faces: {self.label_names}")
+        
+        # Add initial log message
+        self.add_log_message("Хэт авианы мэдрэгч ажиллаж байна...")
 
+    def add_log_message(self, message):
+        """Add a log message in Mongolian (keep only last 5 messages)"""
+        self.log_messages.append(message)
+        if len(self.log_messages) > self.max_log_messages:
+            self.log_messages.pop(0)  # Remove oldest message
+    
     @staticmethod
     def map_lbph_confidence_to_percent(confidence: float) -> float:
         """Map OpenCV LBPH confidence (lower is better) to a user-friendly 0-100%.
@@ -426,6 +439,51 @@ class FaceRecognitionSystem:
             except Exception as e:
                 print(f"[ERROR] Camera initialization failed: {e}")
                 self.camera = None
+
+    def capture_recognition_image_with_rpicam(self, output_path):
+        """Capture recognition image using rpicam-still with natural colors (same as skin photos)"""
+        try:
+            # Check if rpicam-still is available
+            try:
+                result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
+                if result_check.returncode != 0:
+                    print(f"[WARNING] rpicam-still not found")
+                    return False
+            except Exception as e:
+                print(f"[WARNING] rpicam-still check failed: {e}")
+                return False
+            
+            # Use rpicam-still with same settings as skin photos but smaller size
+            cmd = [
+                "rpicam-still",
+                "-o", output_path,
+                "--width", "200",
+                "--height", "200",
+                "-t", "2000",  # 2 second timeout
+                "--immediate",  # Capture immediately
+                "--awb", f"{SKIN_AWB}"
+            ]
+            
+            # Add manual gains if specified (but skip for auto WB)
+            if SKIN_AWB_GAINS and SKIN_AWB_GAINS.strip() and SKIN_AWB != "auto":
+                cmd += ["--awbgains", f"{SKIN_AWB_GAINS}"]
+            
+            # Add desaturation only if requested
+            if SKIN_DESATURATE:
+                cmd += ["--saturation", "0"]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            
+            if result.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                print(f"[DEBUG] Captured recognition image with rpicam-still: {output_path}")
+                return True
+            else:
+                print(f"[WARNING] rpicam-still capture failed: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            print(f"[WARNING] Error capturing recognition image with rpicam-still: {e}")
+            return False
 
     def save_skin_photo(self, person_name):
         """Save high-resolution photo using rpicam after successful face recognition"""
@@ -1028,7 +1086,7 @@ class FaceRecognitionSystem:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
                             print(f"[DEBUG] Known user detected - NOT a guest")
                             
-                            # Save current frame as recognition image under a static-served path
+                            # Save recognition image using rpicam-still (same colors as skin photos)
                             try:
                                 # Ensure static dir exists and save as a fixed name (use project root, not CWD)
                                 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -1036,22 +1094,38 @@ class FaceRecognitionSystem:
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 
-                                # Save RGB frame with natural colors (auto white balance from camera)
-                                # The frame_rgb from Picamera2 is already RGB with auto white balance applied
-                                # OpenCV imwrite expects BGR, so we convert for saving, but the colors are already correct
-                                frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                                # Temporarily stop Picamera2 to free camera for rpicam-still
+                                camera_was_running = False
+                                if self.camera is not None:
+                                    try:
+                                        self.camera.stop()
+                                        camera_was_running = True
+                                        time.sleep(1.0)  # Give camera time to release
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to stop camera: {e}")
                                 
-                                # Use high quality JPEG compression to preserve colors
-                                if cv2.imwrite(file_fs_path, frame_bgr_for_save, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+                                # Capture with rpicam-still (same settings as skin photos)
+                                if self.capture_recognition_image_with_rpicam(file_fs_path):
                                     # URL path for browser (Express serves /modules statically)
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                    print(f"[DEBUG] Saved recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
-                                    print(f"[DEBUG] Saved with natural colors (auto white balance, no blue tint)")
+                                    self.add_log_message("Зураг хадгалж байна...")
+                                    print(f"[DEBUG] Saved recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
+                                    print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
                                 else:
-                                    print(f"[WARNING] cv2.imwrite failed for: {file_fs_path}")
+                                    print(f"[WARNING] rpicam-still capture failed")
                                     self.recognition_image_path = None
+                                
+                                # Restart Picamera2 for face recognition
+                                if camera_was_running and self.camera is not None:
+                                    try:
+                                        self.camera.start()
+                                        time.sleep(0.5)  # Let camera stabilize
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to restart camera: {e}")
+                                        self.initialize_camera()  # Try full reinitialize if restart fails
+                                
                             except Exception as e:
-                                print(f"[WARNING] Failed to save recognition frame: {e}")
+                                print(f"[WARNING] Failed to save recognition image: {e}")
                                 self.recognition_image_path = None
                             
                             # Reset photo flag for this person if it's a new recognition
@@ -1099,26 +1173,43 @@ class FaceRecognitionSystem:
                             print(f"[DEBUG] Guest name generated: {guest_name}")
                             print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
                             
-                            # Save recognition image for guest (same as known users)
+                            # Save recognition image using rpicam-still (same colors as skin photos)
                             try:
                                 project_root = os.path.dirname(os.path.abspath(__file__))
                                 static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 
-                                # Save RGB frame with natural colors (auto white balance from camera)
-                                frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                                # Temporarily stop Picamera2 to free camera for rpicam-still
+                                camera_was_running = False
+                                if self.camera is not None:
+                                    try:
+                                        self.camera.stop()
+                                        camera_was_running = True
+                                        time.sleep(1.0)  # Give camera time to release
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to stop camera: {e}")
                                 
-                                # Use high quality JPEG compression to preserve colors
-                                if cv2.imwrite(file_fs_path, frame_bgr_for_save, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+                                # Capture with rpicam-still (same settings as skin photos)
+                                if self.capture_recognition_image_with_rpicam(file_fs_path):
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                    print(f"[DEBUG] Saved guest recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
-                                    print(f"[DEBUG] Saved with natural colors (auto white balance, no blue tint)")
+                                    print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
+                                    print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
                                 else:
-                                    print(f"[WARNING] cv2.imwrite failed for guest: {file_fs_path}")
+                                    print(f"[WARNING] rpicam-still capture failed for guest")
                                     self.recognition_image_path = None
+                                
+                                # Restart Picamera2 for face recognition
+                                if camera_was_running and self.camera is not None:
+                                    try:
+                                        self.camera.start()
+                                        time.sleep(0.5)  # Let camera stabilize
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to restart camera: {e}")
+                                        self.initialize_camera()  # Try full reinitialize if restart fails
+                                
                             except Exception as e:
-                                print(f"[WARNING] Failed to save guest recognition frame: {e}")
+                                print(f"[WARNING] Failed to save guest recognition image: {e}")
                                 self.recognition_image_path = None
                             
                             # Reset photo flag for guest
@@ -1148,26 +1239,43 @@ class FaceRecognitionSystem:
                             return self.last_recognized_name
                         guest_name = self.handle_unknown_person()
                         
-                        # Save recognition image for guest (same as known users)
+                        # Save recognition image using rpicam-still (same colors as skin photos)
                         try:
                             project_root = os.path.dirname(os.path.abspath(__file__))
                             static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                             os.makedirs(static_dir, exist_ok=True)
                             file_fs_path = os.path.join(static_dir, "recognition.jpg")
                             
-                            # Save RGB frame with natural colors (auto white balance from camera)
-                            frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                            # Temporarily stop Picamera2 to free camera for rpicam-still
+                            camera_was_running = False
+                            if self.camera is not None:
+                                try:
+                                    self.camera.stop()
+                                    camera_was_running = True
+                                    time.sleep(1.0)  # Give camera time to release
+                                except Exception as e:
+                                    print(f"[WARNING] Failed to stop camera: {e}")
                             
-                            # Use high quality JPEG compression to preserve colors
-                            if cv2.imwrite(file_fs_path, frame_bgr_for_save, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+                            # Capture with rpicam-still (same settings as skin photos)
+                            if self.capture_recognition_image_with_rpicam(file_fs_path):
                                 self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                print(f"[DEBUG] Saved guest recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
-                                print(f"[DEBUG] Saved with natural colors (auto white balance, no blue tint)")
+                                print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
+                                print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
                             else:
-                                print(f"[WARNING] cv2.imwrite failed for guest: {file_fs_path}")
+                                print(f"[WARNING] rpicam-still capture failed for guest")
                                 self.recognition_image_path = None
+                            
+                            # Restart Picamera2 for face recognition
+                            if camera_was_running and self.camera is not None:
+                                try:
+                                    self.camera.start()
+                                    time.sleep(0.5)  # Let camera stabilize
+                                except Exception as e:
+                                    print(f"[WARNING] Failed to restart camera: {e}")
+                                    self.initialize_camera()  # Try full reinitialize if restart fails
+                            
                         except Exception as e:
-                            print(f"[WARNING] Failed to save guest recognition frame: {e}")
+                            print(f"[WARNING] Failed to save guest recognition image: {e}")
                             self.recognition_image_path = None
                         
                         # Reset photo flag for guest
@@ -1262,6 +1370,7 @@ class FaceRecognitionSystem:
             "is_guest": is_guest,
             "confidence": self.current_confidence,
             "recognition_image": self.recognition_image_path,
+            "log_messages": self.log_messages[-self.max_log_messages:],  # Last 5 messages
             "timestamp": datetime.now().isoformat()
         }
         
@@ -1291,6 +1400,7 @@ class FaceRecognitionSystem:
             # Turn on relay (LOW = relay ON for normally-closed relay)
             GPIO.output(RELAY_PIN, GPIO.LOW)
             self.lights_on = True
+            self.add_log_message("Гэрэл асаж байна...")
             print("💡 Lights turned ON")
             return True
         except Exception as e:
@@ -1307,6 +1417,7 @@ class FaceRecognitionSystem:
             # Turn off relay (HIGH = relay OFF for normally-closed relay)
             GPIO.output(RELAY_PIN, GPIO.HIGH)
             self.lights_on = False
+            self.add_log_message("Гэрэл унтарч байна...")
             print("🌙 Lights turned OFF")
             return True
         except Exception as e:
@@ -1442,6 +1553,7 @@ class FaceRecognitionSystem:
                     # Only activate if proximity is stable
                     if proximity_stable_count >= PROXIMITY_STABLE_THRESHOLD and not self.is_active:
                         print(f"🎯 Object detected at {smoothed_distance:.1f}cm - activating face recognition")
+                        self.add_log_message(f"Хүн илрэв ({smoothed_distance:.0f}см зайд)")
                         self.last_detection_time = time.time()
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
@@ -1449,6 +1561,7 @@ class FaceRecognitionSystem:
                         self.current_confidence = 0  # Reset confidence
                         self.recognition_image_path = None  # Reset image
                         self.face_recognition_attempted = False
+                        self.recognition_locked = False  # Reset lock on new activation
                         self.camera_opened = False
                         # Don't reset photo_saved_this_session here - only reset when new person detected
                         self.is_active = True
@@ -1464,21 +1577,25 @@ class FaceRecognitionSystem:
                         # Wait only ~0.3 seconds for stable proximity before camera activation
                         if time.time() - self.last_detection_time > 0.3:
                             print("📷 Starting face recognition...")
+                            self.add_log_message("Царай танилт эхэлж байна...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
                             print(f"[DEBUG] Face recognition returned: {person}")
                             if person and person != "Unknown":
                                 print(f"✅ Face recognized: {person}")
+                                self.add_log_message(f"Царай танигдлаа: {person}")
                                 self.current_person = person
                                 self.shutdown_timer = None
                                 # Lock recognition until user leaves and logs out
                                 self.recognition_locked = True
                                 self.update_status_file()
                             else:
-                                print("❌ Face not recognized or cancelled - will retry in 2 seconds")
-                                # Reset recognition attempt to retry
-                                self.face_recognition_attempted = False
-                                self.last_detection_time = time.time() - 0.5  # Allow retry in 0.5 seconds
+                                print("❌ Face not recognized or cancelled - locking recognition until user moves away")
+                                self.add_log_message("Царай танихгүй байна")
+                                # Lock recognition to prevent repeated attempts while user is still present
+                                self.recognition_locked = True
+                                # Keep face_recognition_attempted = True so it doesn't retry immediately
+                                self.update_status_file()
                     
                     # If face already recognized, maintain the state and reset timeout
                     elif self.current_person is not None:
@@ -1507,17 +1624,24 @@ class FaceRecognitionSystem:
                             print(f"👋 User {self.current_person} moved away ({smoothed_distance:.1f}cm) - starting {TIMEOUT_DELAY}s timeout")
                             # Start timeout timer instead of immediate logout
                             if self.shutdown_timer is None:
+                                self.add_log_message(f"{self.current_person} хэт алсав")
                                 self.shutdown_timer = time.time()
                         elif self.is_active and self.shutdown_timer is None:
                             # No person recognized but was active - start timeout
                             self.shutdown_timer = time.time()
                             print(f"⏰ No face recognized, starting {TIMEOUT_DELAY}s timeout")
+                            self.add_log_message("Хүн хэт алсаж байна...")
+                            # Reset recognition lock when user moves away (allows recognition next time)
+                            if self.recognition_locked:
+                                self.recognition_locked = False
+                                print("🔓 Recognition lock reset - will try again when user returns")
                     
                     # Check if timeout has elapsed
                     if self.shutdown_timer is not None:
                         elapsed = time.time() - self.shutdown_timer
                         if elapsed >= TIMEOUT_DELAY:
                             print(f"⏰ Timeout reached ({TIMEOUT_DELAY}s) - logging out user")
+                            self.add_log_message("Систем хүлээж байна...")
                             # Reset all states after timeout
                             self.current_person = None
                             self.current_confidence = 0

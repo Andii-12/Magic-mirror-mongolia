@@ -79,11 +79,11 @@
 
 /* Recognition image styling - smaller size */
 .facerecognition-recognition-image {
-    max-width: 48px;
-    max-height: 48px;
-	width: 48px;
-	height: 48px;
-	border-radius: 6px;
+    max-width: 80px;
+    max-height: 80px;
+	width: 80px;
+	height: 80px;
+	border-radius: 8px;
 	border: 2px solid rgba(255, 255, 255, 0.3);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	object-fit: cover;
@@ -98,6 +98,50 @@
 	to {
 		opacity: 1;
 		transform: scale(1);
+	}
+}
+
+/* Log messages container styling */
+.facerecognition-logs-container {
+	background: rgba(0, 0, 0, 0.75);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 8px;
+	padding: 10px 12px;
+	margin-top: 15px;
+	width: 100%;
+	max-width: 400px;
+	max-height: 150px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.facerecognition-log-line {
+	font-size: 0.9em;
+	color: #ffffff;
+	text-align: left;
+	padding: 4px 0;
+	line-height: 1.4;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+	animation: logSlideIn 0.3s ease-out;
+}
+
+.facerecognition-log-line:last-child {
+	border-bottom: none;
+}
+
+/* Animation for new log entries appearing at bottom */
+@keyframes logSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
 	}
 }
 
