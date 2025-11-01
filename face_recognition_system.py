@@ -1036,15 +1036,17 @@ class FaceRecognitionSystem:
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 
-                                # Save RGB frame directly to preserve natural colors (auto white balance)
-                                # cv2.imwrite expects BGR, so we need to convert RGB to BGR for saving
-                                # But since frame_rgb is already from camera with auto WB, we'll use it directly
+                                # Save RGB frame with natural colors (auto white balance from camera)
+                                # The frame_rgb from Picamera2 is already RGB with auto white balance applied
+                                # OpenCV imwrite expects BGR, so we convert for saving, but the colors are already correct
                                 frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                                if cv2.imwrite(file_fs_path, frame_bgr_for_save):
+                                
+                                # Use high quality JPEG compression to preserve colors
+                                if cv2.imwrite(file_fs_path, frame_bgr_for_save, [cv2.IMWRITE_JPEG_QUALITY, 95]):
                                     # URL path for browser (Express serves /modules statically)
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Saved recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
-                                    print(f"[DEBUG] Saved with natural colors (auto white balance from camera)")
+                                    print(f"[DEBUG] Saved with natural colors (auto white balance, no blue tint)")
                                 else:
                                     print(f"[WARNING] cv2.imwrite failed for: {file_fs_path}")
                                     self.recognition_image_path = None
@@ -1104,12 +1106,14 @@ class FaceRecognitionSystem:
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 
-                                # Save RGB frame directly to preserve natural colors (auto white balance)
+                                # Save RGB frame with natural colors (auto white balance from camera)
                                 frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                                if cv2.imwrite(file_fs_path, frame_bgr_for_save):
+                                
+                                # Use high quality JPEG compression to preserve colors
+                                if cv2.imwrite(file_fs_path, frame_bgr_for_save, [cv2.IMWRITE_JPEG_QUALITY, 95]):
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Saved guest recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
-                                    print(f"[DEBUG] Saved with natural colors (auto white balance from camera)")
+                                    print(f"[DEBUG] Saved with natural colors (auto white balance, no blue tint)")
                                 else:
                                     print(f"[WARNING] cv2.imwrite failed for guest: {file_fs_path}")
                                     self.recognition_image_path = None
@@ -1151,11 +1155,14 @@ class FaceRecognitionSystem:
                             os.makedirs(static_dir, exist_ok=True)
                             file_fs_path = os.path.join(static_dir, "recognition.jpg")
                             
-                            # Save RGB frame directly to preserve natural colors (auto white balance)
+                            # Save RGB frame with natural colors (auto white balance from camera)
                             frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                            if cv2.imwrite(file_fs_path, frame_bgr_for_save):
+                            
+                            # Use high quality JPEG compression to preserve colors
+                            if cv2.imwrite(file_fs_path, frame_bgr_for_save, [cv2.IMWRITE_JPEG_QUALITY, 95]):
                                 self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                 print(f"[DEBUG] Saved guest recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
+                                print(f"[DEBUG] Saved with natural colors (auto white balance, no blue tint)")
                             else:
                                 print(f"[WARNING] cv2.imwrite failed for guest: {file_fs_path}")
                                 self.recognition_image_path = None
@@ -1307,7 +1314,7 @@ class FaceRecognitionSystem:
             return False
 
     def control_lights_based_on_proximity(self, distance):
-        """Control lights based on proximity detection with stability"""
+        """Control lights based on proximity detection - IMMEDIATE response on detection"""
         if not self.relay_available:
             return
         
@@ -1315,17 +1322,17 @@ class FaceRecognitionSystem:
         if distance >= 400 or distance == 999:
             return
         
-        # Stability thresholds and hysteresis - reduced for faster response
-        LIGHTS_ON_STABLE_THRESHOLD = 2  # Only 2 consecutive readings needed (faster response)
-        LIGHTS_OFF_STABLE_THRESHOLD = 3  # 3 readings to turn off (slightly more stable)
-        LIGHTS_OFF_BUFFER = 8  # Smaller buffer for faster response (was 15)
+        # VERY fast response - turn on immediately when detected, minimal delay for turning off
+        LIGHTS_ON_STABLE_THRESHOLD = 1  # Only 1 reading needed for instant response
+        LIGHTS_OFF_STABLE_THRESHOLD = 3  # 3 readings to turn off (prevent flicker when moving)
+        LIGHTS_OFF_BUFFER = 8  # Smaller buffer for faster response
         
-        # Debounce minimum durations - reduced for faster response
-        MIN_ON_SECONDS = 1.5  # Reduced from 8.0 - much faster response
-        MIN_OFF_SECONDS = 1.5  # Reduced from 8.0 - much faster response
+        # Very short debounce - almost immediate response
+        MIN_ON_SECONDS = 0.3  # Very short - almost immediate turn on
+        MIN_OFF_SECONDS = 1.5  # Slightly longer to prevent flicker when turning off
         now = time.time()
 
-        # Global block to avoid re-toggling too soon (reduced delay)
+        # Global block to avoid re-toggling too soon (very short delay)
         if now < self.relay_block_until:
             return
 
@@ -1333,20 +1340,21 @@ class FaceRecognitionSystem:
         threshold_on = PROXIMITY_THRESHOLD
         threshold_off = PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER
         
-        # Check if lights should be ON (within threshold, stable)
+        # IMMEDIATE response: Check if lights should be ON (within threshold)
         if distance <= threshold_on:
             self.lights_stable_count += 1
             self.lights_off_stable_count = 0  # Reset off counter
             
-            # Turn on lights if stable for required readings and not already on
+            # Turn on lights IMMEDIATELY when detected (minimal stability requirement)
             if self.lights_stable_count >= LIGHTS_ON_STABLE_THRESHOLD and not self.lights_on:
-                # Check debounce time - allow immediate turn-on if enough time has passed
+                # Check debounce time - very short for fast response
                 time_since_last_change = now - self.last_light_change_time
-                if time_since_last_change >= MIN_OFF_SECONDS:
+                if time_since_last_change >= MIN_ON_SECONDS:
                     if self.turn_on_lights():
                         self.last_light_change_time = now
-                        self.relay_block_until = now + 1.0  # Reduced from 3.0 - shorter block
+                        self.relay_block_until = now + 0.5  # Very short block - 0.5 seconds
                         self.lights_stable_count = 0  # Reset counter after action
+                        print(f"💡 Lights ON - Proximity detected at {distance:.1f}cm (BEFORE recognition)")
         else:
             # Check if lights should be OFF (beyond threshold + buffer)
             if distance > threshold_off:
@@ -1357,10 +1365,10 @@ class FaceRecognitionSystem:
                 if self.lights_off_stable_count >= LIGHTS_OFF_STABLE_THRESHOLD and self.lights_on:
                     # Check debounce time
                     time_since_last_change = now - self.last_light_change_time
-                    if time_since_last_change >= MIN_ON_SECONDS:
+                    if time_since_last_change >= MIN_OFF_SECONDS:
                         if self.turn_off_lights():
                             self.last_light_change_time = now
-                            self.relay_block_until = now + 1.0  # Reduced from 5.0 - shorter block
+                            self.relay_block_until = now + 1.0  # Shorter block
                             self.lights_off_stable_count = 0  # Reset counter after action
             else:
                 # In the buffer zone (between threshold and threshold+buffer)
@@ -1378,7 +1386,8 @@ class FaceRecognitionSystem:
         print("Starting face recognition system...")
         print(f"Proximity threshold: {PROXIMITY_THRESHOLD}cm")
         print(f"Timeout delay: {TIMEOUT_DELAY}s")
-        print(f"Relay control: ON at <{PROXIMITY_THRESHOLD}cm, OFF at >{PROXIMITY_THRESHOLD + 8}cm (fast response: 1.5s debounce)")
+        print(f"Relay control: ON IMMEDIATELY when detected at <{PROXIMITY_THRESHOLD}cm (BEFORE recognition), OFF at >{PROXIMITY_THRESHOLD + 8}cm")
+        print("   Response time: ~0.3s turn on, ~1.5s turn off")
         print("Press Ctrl+C to stop")
         
         # Add distance smoothing for more stable readings
