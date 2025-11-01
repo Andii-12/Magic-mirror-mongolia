@@ -1035,10 +1035,16 @@ class FaceRecognitionSystem:
                                 static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
-                                if cv2.imwrite(file_fs_path, frame):
+                                
+                                # Save RGB frame directly to preserve natural colors (auto white balance)
+                                # cv2.imwrite expects BGR, so we need to convert RGB to BGR for saving
+                                # But since frame_rgb is already from camera with auto WB, we'll use it directly
+                                frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                                if cv2.imwrite(file_fs_path, frame_bgr_for_save):
                                     # URL path for browser (Express serves /modules statically)
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Saved recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
+                                    print(f"[DEBUG] Saved with natural colors (auto white balance from camera)")
                                 else:
                                     print(f"[WARNING] cv2.imwrite failed for: {file_fs_path}")
                                     self.recognition_image_path = None
@@ -1091,6 +1097,26 @@ class FaceRecognitionSystem:
                             print(f"[DEBUG] Guest name generated: {guest_name}")
                             print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
                             
+                            # Save recognition image for guest (same as known users)
+                            try:
+                                project_root = os.path.dirname(os.path.abspath(__file__))
+                                static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
+                                os.makedirs(static_dir, exist_ok=True)
+                                file_fs_path = os.path.join(static_dir, "recognition.jpg")
+                                
+                                # Save RGB frame directly to preserve natural colors (auto white balance)
+                                frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                                if cv2.imwrite(file_fs_path, frame_bgr_for_save):
+                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    print(f"[DEBUG] Saved guest recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
+                                    print(f"[DEBUG] Saved with natural colors (auto white balance from camera)")
+                                else:
+                                    print(f"[WARNING] cv2.imwrite failed for guest: {file_fs_path}")
+                                    self.recognition_image_path = None
+                            except Exception as e:
+                                print(f"[WARNING] Failed to save guest recognition frame: {e}")
+                                self.recognition_image_path = None
+                            
                             # Reset photo flag for guest
                             if self.current_person != guest_name:
                                 self.photo_saved_this_session = False
@@ -1117,6 +1143,25 @@ class FaceRecognitionSystem:
                             print(f"[INFO] Using sticky identity without recognizer: {self.last_recognized_name}")
                             return self.last_recognized_name
                         guest_name = self.handle_unknown_person()
+                        
+                        # Save recognition image for guest (same as known users)
+                        try:
+                            project_root = os.path.dirname(os.path.abspath(__file__))
+                            static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
+                            os.makedirs(static_dir, exist_ok=True)
+                            file_fs_path = os.path.join(static_dir, "recognition.jpg")
+                            
+                            # Save RGB frame directly to preserve natural colors (auto white balance)
+                            frame_bgr_for_save = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                            if cv2.imwrite(file_fs_path, frame_bgr_for_save):
+                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                print(f"[DEBUG] Saved guest recognition frame to: {file_fs_path} (URL: {self.recognition_image_path})")
+                            else:
+                                print(f"[WARNING] cv2.imwrite failed for guest: {file_fs_path}")
+                                self.recognition_image_path = None
+                        except Exception as e:
+                            print(f"[WARNING] Failed to save guest recognition frame: {e}")
+                            self.recognition_image_path = None
                         
                         # Reset photo flag for guest
                         if self.current_person != guest_name:
@@ -1270,17 +1315,17 @@ class FaceRecognitionSystem:
         if distance >= 400 or distance == 999:
             return
         
-        # Stability thresholds and hysteresis
-        LIGHTS_ON_STABLE_THRESHOLD = 5  # Require more consecutive readings to turn on
-        LIGHTS_OFF_STABLE_THRESHOLD = 5  # Require more consecutive readings to turn off
-        LIGHTS_OFF_BUFFER = 15  # Wider buffer to avoid chatter
+        # Stability thresholds and hysteresis - reduced for faster response
+        LIGHTS_ON_STABLE_THRESHOLD = 2  # Only 2 consecutive readings needed (faster response)
+        LIGHTS_OFF_STABLE_THRESHOLD = 3  # 3 readings to turn off (slightly more stable)
+        LIGHTS_OFF_BUFFER = 8  # Smaller buffer for faster response (was 15)
         
-        # Debounce minimum durations to avoid rapid toggling
-        MIN_ON_SECONDS = 8.0
-        MIN_OFF_SECONDS = 8.0
+        # Debounce minimum durations - reduced for faster response
+        MIN_ON_SECONDS = 1.5  # Reduced from 8.0 - much faster response
+        MIN_OFF_SECONDS = 1.5  # Reduced from 8.0 - much faster response
         now = time.time()
 
-        # Global block to avoid re-toggling too soon (extra safety)
+        # Global block to avoid re-toggling too soon (reduced delay)
         if now < self.relay_block_until:
             return
 
@@ -1295,11 +1340,13 @@ class FaceRecognitionSystem:
             
             # Turn on lights if stable for required readings and not already on
             if self.lights_stable_count >= LIGHTS_ON_STABLE_THRESHOLD and not self.lights_on:
-                # Respect debounce time since last change
-                if now - self.last_light_change_time >= MIN_OFF_SECONDS:
+                # Check debounce time - allow immediate turn-on if enough time has passed
+                time_since_last_change = now - self.last_light_change_time
+                if time_since_last_change >= MIN_OFF_SECONDS:
                     if self.turn_on_lights():
                         self.last_light_change_time = now
-                        self.relay_block_until = now + 3.0
+                        self.relay_block_until = now + 1.0  # Reduced from 3.0 - shorter block
+                        self.lights_stable_count = 0  # Reset counter after action
         else:
             # Check if lights should be OFF (beyond threshold + buffer)
             if distance > threshold_off:
@@ -1308,24 +1355,30 @@ class FaceRecognitionSystem:
                 
                 # Turn off lights if stable for required readings and currently on
                 if self.lights_off_stable_count >= LIGHTS_OFF_STABLE_THRESHOLD and self.lights_on:
-                    # Respect debounce time since last change
-                    if now - self.last_light_change_time >= MIN_ON_SECONDS:
+                    # Check debounce time
+                    time_since_last_change = now - self.last_light_change_time
+                    if time_since_last_change >= MIN_ON_SECONDS:
                         if self.turn_off_lights():
                             self.last_light_change_time = now
-                            self.relay_block_until = now + 5.0
+                            self.relay_block_until = now + 1.0  # Reduced from 5.0 - shorter block
+                            self.lights_off_stable_count = 0  # Reset counter after action
             else:
-                # In the buffer zone - maintain current state strictly
-                self.lights_stable_count = 0
-                # If lights are on and we're in buffer, do not accumulate off counter
+                # In the buffer zone (between threshold and threshold+buffer)
+                # Maintain current state but allow gradual state change
+                # Don't reset counters aggressively - allow accumulation
                 if not self.lights_on:
-                    self.lights_off_stable_count = 0
+                    # Moving away but still in buffer - reset off counter to prevent premature off
+                    self.lights_off_stable_count = max(0, self.lights_off_stable_count - 1)
+                else:
+                    # Moving closer but still in buffer - reset on counter to prevent premature on
+                    self.lights_stable_count = max(0, self.lights_stable_count - 1)
 
     def run(self):
         """Main loop with improved proximity detection and state management"""
         print("Starting face recognition system...")
         print(f"Proximity threshold: {PROXIMITY_THRESHOLD}cm")
         print(f"Timeout delay: {TIMEOUT_DELAY}s")
-        print(f"Relay control: ON at <{PROXIMITY_THRESHOLD}cm, OFF at >{PROXIMITY_THRESHOLD + 8}cm (with stability)")
+        print(f"Relay control: ON at <{PROXIMITY_THRESHOLD}cm, OFF at >{PROXIMITY_THRESHOLD + 8}cm (fast response: 1.5s debounce)")
         print("Press Ctrl+C to stop")
         
         # Add distance smoothing for more stable readings

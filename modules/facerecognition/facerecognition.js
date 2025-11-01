@@ -49,6 +49,7 @@ Module.register("facerecognition", {
 		this.recognitionLocked = false;
 		this.currentConfidence = 0;
 		this.recognitionImage = null;
+		this.isGuest = false;  // Track if current person is a guest
 		this.startStatusChecking();
 	},
 
@@ -100,6 +101,7 @@ Module.register("facerecognition", {
 		const previousStatus = this.currentStatus;
 		const previousImage = this.recognitionImage;
 		const previousConfidence = this.currentConfidence;
+		const previousGuest = this.isGuest;  // Track previous guest status
 
 		// Trust backend status entirely to avoid UI oscillation
 		this.currentDistance = data.distance || 0;
@@ -107,9 +109,10 @@ Module.register("facerecognition", {
 		this.isActive = !!data.active;
 		this.currentStatus = data.status || (this.isActive ? (this.currentPerson ? "recognized" : "detecting") : "waiting");
 		
-		// Store confidence and recognition image
+		// Store confidence, recognition image, and guest status
 		this.currentConfidence = data.confidence || 0;
 		this.recognitionImage = data.recognition_image || null;
+		this.isGuest = data.is_guest || false;
 		
 		// Fire recognition notification only on first recognition or person change
 		if (this.currentPerson && this.currentPerson !== previousPerson) {
@@ -127,13 +130,14 @@ Module.register("facerecognition", {
 			});
 		}
 
-		// Update DOM when person/active/status/confidence/image changes
+		// Update DOM when person/active/status/confidence/image/guest status changes
 		if (
 			previousPerson !== this.currentPerson ||
 			previousActive !== this.isActive ||
 			previousStatus !== this.currentStatus ||
 			previousConfidence !== this.currentConfidence ||
-			previousImage !== this.recognitionImage
+			previousImage !== this.recognitionImage ||
+			previousGuest !== this.isGuest
 		) {
 			this.updateDom(this.config.animationSpeed);
 		}
@@ -221,14 +225,18 @@ Module.register("facerecognition", {
 			const statusContainer = document.createElement("div");
 			statusContainer.className = "facerecognition-recognition-container";
 			
-			// Add greeting text
+			// Add greeting text - different message for guests
 			const greetingElement = document.createElement("div");
 			greetingElement.className = "facerecognition-greeting-text";
-			greetingElement.innerHTML = `Сайн уу, ${this.currentPerson}`;
+			if (this.isGuest) {
+				greetingElement.innerHTML = "Зочин хэрэглэгч танигдлаа";
+			} else {
+				greetingElement.innerHTML = `Сайн уу, ${this.currentPerson}`;
+			}
 			statusContainer.appendChild(greetingElement);
 			
-			// Add confidence percentage
-			if (this.currentConfidence > 0) {
+			// Add confidence percentage (only for known users, not guests)
+			if (this.currentConfidence > 0 && !this.isGuest) {
 				const confidenceElement = document.createElement("div");
 				confidenceElement.className = "facerecognition-confidence";
 				confidenceElement.innerHTML = `${Math.round(this.currentConfidence)}%-ийн магадлалтай танигдлаа`;
