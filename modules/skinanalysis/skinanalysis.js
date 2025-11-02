@@ -326,7 +326,7 @@ Module.register("skinanalysis", {
 			// No person recognized
 			const statusElement = document.createElement("div");
 			statusElement.className = "skinanalysis-status dimmed light small";
-			statusElement.innerHTML = "Хүнийг таних хэрэгтэй";
+			statusElement.innerHTML = "Царай таниулах хэрэгтэй !";
 			wrapper.appendChild(statusElement);
 			return wrapper;
 		}

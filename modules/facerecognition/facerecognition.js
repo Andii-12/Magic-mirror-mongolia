@@ -117,6 +117,16 @@ Module.register("facerecognition", {
 		this.isGuest = data.is_guest || false;
 		this.logMessages = data.log_messages || [];
 		
+		// Debug logging
+		if (this.currentPerson && this.currentPerson !== "Unknown") {
+			console.log("[FACE RECOGNITION] Status update:", {
+				person: this.currentPerson,
+				confidence: this.currentConfidence,
+				image: this.recognitionImage,
+				hasImage: !!this.recognitionImage
+			});
+		}
+		
 		// Fire recognition notification only on first recognition or person change
 		if (this.currentPerson && this.currentPerson !== previousPerson) {
 			console.log("[FACE RECOGNITION] Status update received:", {
@@ -134,15 +144,25 @@ Module.register("facerecognition", {
 		}
 
 		// Update DOM when person/active/status/confidence/image/guest status changes
-		if (
+		// Always update if person is recognized (to catch delayed image updates)
+		const shouldUpdate = (
 			previousPerson !== this.currentPerson ||
 			previousActive !== this.isActive ||
 			previousStatus !== this.currentStatus ||
 			previousConfidence !== this.currentConfidence ||
 			previousImage !== this.recognitionImage ||
 			previousGuest !== this.isGuest ||
-			JSON.stringify(previousLogMessages) !== JSON.stringify(this.logMessages)
-		) {
+			JSON.stringify(previousLogMessages) !== JSON.stringify(this.logMessages) ||
+			(this.currentPerson && this.currentPerson !== "Unknown" && !this.recognitionImage && previousImage !== this.recognitionImage) // Update if image becomes available
+		);
+		
+		if (shouldUpdate) {
+			console.log("[FACE RECOGNITION] DOM update triggered:", {
+				personChanged: previousPerson !== this.currentPerson,
+				imageChanged: previousImage !== this.recognitionImage,
+				hasImage: !!this.recognitionImage,
+				imagePath: this.recognitionImage
+			});
 			this.updateDom(this.config.animationSpeed);
 		}
 	},
@@ -247,41 +267,80 @@ Module.register("facerecognition", {
 				statusContainer.appendChild(confidenceElement);
 			}
 			
-			// Add recognition image if available
-			if (this.recognitionImage) {
+			// Add recognition image - show if available, or wait for it
+			if (this.recognitionImage && this.recognitionImage !== "null" && this.recognitionImage !== "undefined") {
 				const imageElement = document.createElement("img");
 				imageElement.className = "facerecognition-recognition-image";
-				// Add timestamp to prevent caching
-				const timestamp = new Date().getTime();
-				imageElement.src = this.recognitionImage + "?t=" + timestamp;
 				imageElement.alt = `Recognized: ${this.currentPerson}`;
 				
-				// Add error handler for debugging
+				// Add timestamp to prevent caching
+				const timestamp = new Date().getTime();
+				// Ensure path is absolute if it's not already
+				let imageSrc = this.recognitionImage;
+				if (imageSrc && !imageSrc.startsWith("http") && !imageSrc.startsWith("/")) {
+					imageSrc = "/" + imageSrc;
+				}
+				imageElement.src = imageSrc + "?t=" + timestamp;
+				
+				console.log("[FACE RECOGNITION] Creating image element with src:", imageElement.src);
+				console.log("[FACE RECOGNITION] Full image path:", imageSrc);
+				
+				// Add error handler for debugging and retry
 				imageElement.onerror = function() {
-					console.error("Failed to load recognition image:", this.src);
+					console.error("[FACE RECOGNITION] Failed to load recognition image:", this.src);
+					console.error("[FACE RECOGNITION] Attempting to reload with new timestamp...");
+					// Try reloading after a short delay with new timestamp
+					const imgElement = this;
+					const originalSrc = imageSrc;
+					setTimeout(function() {
+						const newTimestamp = new Date().getTime();
+						imgElement.src = originalSrc + "?t=" + newTimestamp;
+						console.log("[FACE RECOGNITION] Retrying image load:", imgElement.src);
+					}, 2000); // Wait 2 seconds for file to be fully written
 				};
 				
 				imageElement.onload = function() {
-					console.log("Successfully loaded recognition image:", this.src);
+					console.log("[FACE RECOGNITION] ✓ Successfully loaded recognition image:", this.src);
 				};
 				
 				statusContainer.appendChild(imageElement);
+			} else {
+				console.warn("[FACE RECOGNITION] ⚠ No recognition image available");
+				console.log("[FACE RECOGNITION] Debug info:", {
+					person: this.currentPerson,
+					confidence: this.currentConfidence,
+					recognitionImage: this.recognitionImage,
+					recognitionImageType: typeof this.recognitionImage
+				});
+				// Optionally show a placeholder or loading indicator
+				const placeholderElement = document.createElement("div");
+				placeholderElement.className = "facerecognition-image-placeholder";
+				placeholderElement.innerHTML = "📷";
+				placeholderElement.style.cssText = "width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 2em; opacity: 0.5; margin: 10px auto;";
+				statusContainer.appendChild(placeholderElement);
 			}
 			
-			// Add log messages display box under the image
+			// Add log messages display box at the bottom - always show container
+			const logContainer = document.createElement("div");
+			logContainer.className = "facerecognition-logs-container";
+			
+			// Add "Logs" header (not translated)
+			const logHeader = document.createElement("div");
+			logHeader.className = "facerecognition-logs-header";
+			logHeader.innerHTML = "Logs";
+			logContainer.appendChild(logHeader);
+			
+			// Add log messages inside the container
 			if (this.logMessages && this.logMessages.length > 0) {
-				const logContainer = document.createElement("div");
-				logContainer.className = "facerecognition-logs-container";
-				
 				this.logMessages.forEach((logMsg, index) => {
 					const logLine = document.createElement("div");
 					logLine.className = "facerecognition-log-line";
 					logLine.innerHTML = logMsg;
 					logContainer.appendChild(logLine);
 				});
-				
-				statusContainer.appendChild(logContainer);
 			}
+			
+			statusContainer.appendChild(logContainer);
 			
 			wrapper.appendChild(statusContainer);
 		} else {
@@ -308,20 +367,27 @@ Module.register("facerecognition", {
 				wrapper.appendChild(imageElement);
 			}
 			
-			// Add log messages display box (always show if logs exist)
+			// Add log messages display box at the bottom - always show container
+			const logContainer = document.createElement("div");
+			logContainer.className = "facerecognition-logs-container";
+			
+			// Add "Logs" header (not translated)
+			const logHeader = document.createElement("div");
+			logHeader.className = "facerecognition-logs-header";
+			logHeader.innerHTML = "Logs";
+			logContainer.appendChild(logHeader);
+			
+			// Add log messages inside the container
 			if (this.logMessages && this.logMessages.length > 0) {
-				const logContainer = document.createElement("div");
-				logContainer.className = "facerecognition-logs-container";
-				
 				this.logMessages.forEach((logMsg, index) => {
 					const logLine = document.createElement("div");
 					logLine.className = "facerecognition-log-line";
 					logLine.innerHTML = logMsg;
 					logContainer.appendChild(logLine);
 				});
-				
-				wrapper.appendChild(logContainer);
 			}
+			
+			wrapper.appendChild(logContainer);
 		}
 
 		return wrapper;

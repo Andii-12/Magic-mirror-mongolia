@@ -371,7 +371,7 @@ Module.register("personaltodo", {
 
 		// Show message when no user is recognized
 		if (!this.currentUser) {
-			wrapper.innerHTML = "Царай танилт хүлээж байна...<br><small>Царай танигдсаны дараа хувийн даалгаварууд харагдана</small>";
+			wrapper.innerHTML = "Царай танилт хүлээгдэж байна !<br><small>Бүртглтэй хэрэглэгчийн календарыг харуулна !</small>";
 			wrapper.className = "personaltodo dimmed light small";
 			return wrapper;
 		}

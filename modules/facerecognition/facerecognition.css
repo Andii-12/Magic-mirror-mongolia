@@ -79,14 +79,19 @@
 
 /* Recognition image styling - smaller size */
 .facerecognition-recognition-image {
-    max-width: 80px;
-    max-height: 80px;
-	width: 80px;
-	height: 80px;
+    max-width: 120px;
+    max-height: 120px;
+	width: auto;
+	height: auto;
+	min-width: 80px;
+	min-height: 80px;
 	border-radius: 8px;
 	border: 2px solid rgba(255, 255, 255, 0.3);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	object-fit: cover;
+	margin: 10px auto;
+	display: block;
+	background: rgba(255, 255, 255, 0.1);
 }
 
 /* Animation for recognition container */
@@ -111,18 +116,33 @@
 	width: 100%;
 	max-width: 400px;
 	max-height: 150px;
-	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.facerecognition-log-line {
-	font-size: 0.9em;
+/* Logs header styling */
+.facerecognition-logs-header {
+	font-size: 0.95em;
+	font-weight: 700;
 	color: #ffffff;
 	text-align: left;
-	padding: 4px 0;
+	padding-bottom: 6px;
+	margin-bottom: 4px;
+	border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.facerecognition-log-line {
+	font-size: 0.85em;
+	color: #e0e0e0;
+	text-align: left;
+	padding: 3px 0;
 	line-height: 1.4;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
