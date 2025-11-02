@@ -598,18 +598,18 @@ class FaceRecognitionSystem:
             # Ensure recognition directory exists
             os.makedirs(recognition_dir, exist_ok=True)
             
-            # Copy and resize the latest image to recognition location (100x100)
+            # Copy and resize the latest image to recognition location (300x300)
             import shutil
             import cv2
             
             # Read the original image
             img = cv2.imread(latest_image_path)
             if img is not None:
-                # Resize to 100x100
-                img_resized = cv2.resize(img, (100, 100), interpolation=cv2.INTER_AREA)
+                # Resize to 300x300
+                img_resized = cv2.resize(img, (300, 300), interpolation=cv2.INTER_AREA)
                 # Save the resized image
                 cv2.imwrite(recognition_file, img_resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                print(f"[DEBUG] Resized image from {img.shape[1]}x{img.shape[0]} to 100x100")
+                print(f"[DEBUG] Resized image from {img.shape[1]}x{img.shape[0]} to 300x300")
             else:
                 # Fallback to copy if cv2 fails
                 print(f"[WARNING] Failed to read image with cv2, using copy instead")

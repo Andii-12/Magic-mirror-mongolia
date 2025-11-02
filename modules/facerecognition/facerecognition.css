@@ -49,7 +49,7 @@
 	align-items: center;
 	gap: 15px;
 	width: 100%;
-	max-width: 250px;
+	max-width: 400px;
 	margin: 0 auto;
 	animation: fadeInScale 0.5s ease-out;
 }
@@ -77,14 +77,14 @@
 	border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
-/* Recognition image styling - 100x100 size */
+/* Recognition image styling - 300x300 size */
 .facerecognition-recognition-image {
-    width: 100px !important;
-    height: 100px !important;
-	max-width: 100px !important;
-	max-height: 100px !important;
-	min-width: 100px !important;
-	min-height: 100px !important;
+    width: 300px !important;
+    height: 300px !important;
+	max-width: 300px !important;
+	max-height: 300px !important;
+	min-width: 300px !important;
+	min-height: 300px !important;
 	border-radius: 8px;
 	border: 2px solid rgba(255, 255, 255, 0.3);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
