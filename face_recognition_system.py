@@ -602,10 +602,22 @@ class FaceRecognitionSystem:
             import shutil
             shutil.copy2(latest_image_path, recognition_file)
             
+            # Verify the copied file exists and is valid
             if os.path.exists(recognition_file) and os.path.getsize(recognition_file) > 0:
                 file_size = os.path.getsize(recognition_file)
-                print(f"[DEBUG] ✓ Copied latest skin photo to recognition image: {recognition_file} ({file_size} bytes)")
-                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                # Verify it's actually a valid image file by checking first few bytes (JPEG magic numbers)
+                try:
+                    with open(recognition_file, 'rb') as f:
+                        header = f.read(3)
+                        if header.startswith(b'\xff\xd8\xff'):  # JPEG magic number
+                            print(f"[DEBUG] ✓ Copied latest skin photo to recognition image: {recognition_file} ({file_size} bytes) - Valid JPEG")
+                        else:
+                            print(f"[WARNING] Copied file exists but may not be a valid JPEG (header: {header.hex()})")
+                except Exception as e:
+                    print(f"[WARNING] Error verifying image file: {e}")
+                
+                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                print(f"[DEBUG] Set recognition_image_path to: {self.recognition_image_path}")
                 return True
             else:
                 print(f"[WARNING] Failed to copy skin photo to recognition location")
@@ -1263,7 +1275,7 @@ class FaceRecognitionSystem:
                                     project_root = os.path.dirname(script_dir)
                                 image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                 if os.path.exists(image_file):
-                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Recovered image path: {self.recognition_image_path}")
                                 else:
                                     print(f"[ERROR] Image file does not exist at: {image_file}")
@@ -1366,7 +1378,7 @@ class FaceRecognitionSystem:
                                 project_root = os.path.dirname(script_dir)
                             image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                             if os.path.exists(image_file):
-                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                 print(f"[DEBUG] Recovered guest image path: {self.recognition_image_path}")
                             else:
                                 print(f"[ERROR] Guest image file does not exist at: {image_file}")
@@ -1708,7 +1720,7 @@ class FaceRecognitionSystem:
                                         project_root = os.path.dirname(script_dir)
                                     image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                     if os.path.exists(image_file):
-                                        self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                         print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
                                 
                                 # Update status file with all recognition data (person, confidence, image)
@@ -1725,7 +1737,7 @@ class FaceRecognitionSystem:
                                         project_root = os.path.dirname(script_dir)
                                     image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                     if os.path.exists(image_file):
-                                        self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                         print(f"[DEBUG] Recovered image path in main loop: {self.recognition_image_path}")
                                 
                                 # Update immediately with all data
@@ -1750,7 +1762,7 @@ class FaceRecognitionSystem:
                                                 project_root = os.path.dirname(script_dir)
                                             image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                             if os.path.exists(image_file):
-                                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                                 print(f"[DEBUG] Recovered image in delayed update #{update_num}")
                                     print(f"[DEBUG] Delayed update #{update_num} - person={self.current_person}, image={self.recognition_image_path}")
                                     self.update_status_file()
@@ -1790,7 +1802,7 @@ class FaceRecognitionSystem:
                                     project_root = os.path.dirname(script_dir)
                                 image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                 if os.path.exists(image_file):
-                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
                             self.update_status_file()
                             last_status_update = current_time

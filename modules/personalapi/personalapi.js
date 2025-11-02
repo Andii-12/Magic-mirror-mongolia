@@ -250,6 +250,37 @@ Module.register("personalapi", {
 			} else {
 				console.log("Personal API: No users in payload or no current user");
 			}
+		} else if (notification === "REQUEST_USER_DATA") {
+			// Handle request for fresh user data from other modules (like personalcalendar)
+			console.log("Personal API: Request for user data:", payload);
+			if (payload.user) {
+				// If we have fresh API data, send it immediately
+				if (this.userData && this.userData.users) {
+					const user = this.userData.users.find(u => 
+						u.name.toLowerCase() === payload.user.toLowerCase()
+					);
+					if (user) {
+						console.log(`Personal API: Sending fresh data for ${payload.user}`);
+						this.sendNotification("USER_DATA_LOADED", {
+							user: user.name,
+							events: user.events || [],
+							lists: user.lists || []
+						});
+					} else {
+						console.log(`Personal API: User ${payload.user} not found in cached data, fetching fresh...`);
+						// Fetch fresh data if user not found in cache
+						if (payload.user === this.currentUser) {
+							this.fetchData();
+						}
+					}
+				} else {
+					// No cached data, fetch fresh
+					console.log("Personal API: No cached data, fetching fresh...");
+					if (payload.user === this.currentUser) {
+						this.fetchData();
+					}
+				}
+			}
 		}
 	},
 

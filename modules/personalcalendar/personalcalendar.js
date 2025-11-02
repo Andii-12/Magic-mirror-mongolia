@@ -63,9 +63,10 @@ Module.register("personalcalendar", {
 	// Start checking for face recognition status
 	startStatusCheck: function() {
 		const self = this;
+		// Check more frequently like personalapi does (every 1 second) for real-time updates
 		this.statusCheckTimer = setInterval(function() {
 			self.checkFaceStatus();
-		}, this.config.updateInterval);
+		}, 1000); // Check every second for real-time updates
 	},
 
 	// Check face recognition status via node helper
@@ -85,6 +86,10 @@ Module.register("personalcalendar", {
 				this.currentUser = payload.person;
 				console.log("Personal Calendar: User changed to", this.currentUser);
 				this.loadUserProfile();
+				// Request fresh data from personalapi module
+				this.sendNotification("REQUEST_USER_DATA", {
+					user: this.currentUser
+				});
 			} else if (!payload.person && this.currentUser) {
 				this.currentUser = null;
 				this.userProfile = null;
@@ -93,7 +98,7 @@ Module.register("personalcalendar", {
 				this.maybeUpdateDom(0);
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
-			// Get events from the API data
+			// Get events from the API data - update immediately in real-time
 			console.log("Personal Calendar: Received API data");
 			console.log("Personal Calendar: Current user:", this.currentUser);
 			console.log("Personal Calendar: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
@@ -103,10 +108,12 @@ Module.register("personalcalendar", {
 					u.name.toLowerCase() === this.currentUser.toLowerCase()
 				);
 				if (user) {
+					const oldEventsCount = this.events.length;
 					this.events = user.events || [];
 					this.sortEventsByDate();
-					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser} (was ${oldEventsCount})`);
 					console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+					// Always update DOM when API data is received for real-time updates
 					this.maybeUpdateDom(0);
 				} else {
 					console.log(`Personal Calendar: User ${this.currentUser} not found in API data`);
@@ -115,13 +122,15 @@ Module.register("personalcalendar", {
 				console.log("Personal Calendar: No users in payload or no current user");
 			}
 		} else if (notification === "USER_DATA_LOADED") {
-			// Handle user data from socket notification
+			// Handle user data from socket notification - real-time update
 			console.log("Personal Calendar: Received user data via socket:", payload);
 			if (payload.user && payload.user === this.currentUser) {
+				const oldEventsCount = this.events.length;
 				this.events = payload.events || [];
 				this.sortEventsByDate();
-				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+				console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser} (was ${oldEventsCount})`);
 				console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+				// Always update DOM when user data is received for real-time updates
 				this.maybeUpdateDom(0);
 			} else if (payload.user && !this.currentUser) {
 				// If we receive data but no current user, ignore it
@@ -168,6 +177,11 @@ Module.register("personalcalendar", {
 				this.currentUser = payload.person;
 				console.log("Personal Calendar: User changed to", this.currentUser);
 				this.loadUserProfile();
+				
+				// Request fresh data from personalapi module
+				this.sendNotification("REQUEST_USER_DATA", {
+					user: this.currentUser
+				});
 			} else if (payload.person === null && this.currentUser && (payload.status === "waiting" || !payload.active)) {
 				// User moved away - clear data only if status indicates logout
 				this.currentUser = null;
@@ -175,9 +189,17 @@ Module.register("personalcalendar", {
 				this.events = [];
 				console.log("Personal Calendar: User cleared");
 				this.maybeUpdateDom(0);
-			} else if (payload.person === this.currentUser) {
-				// Same user, just update status - don't clear data
-				console.log("Personal Calendar: Same user, maintaining data");
+			} else if (payload.person === this.currentUser && payload.active) {
+				// Same user and active - request fresh data periodically to keep it real-time
+				// Request update every 30 seconds to keep data fresh
+				const now = Date.now();
+				if (!this.lastDataRequest || (now - this.lastDataRequest) > 30000) {
+					this.lastDataRequest = now;
+					this.sendNotification("REQUEST_USER_DATA", {
+						user: this.currentUser
+					});
+					console.log("Personal Calendar: Requesting fresh data for current user");
+				}
 			}
 		} else if (notification === "USER_DATA_LOADED") {
 			// Handle user data from personalapi module
@@ -198,7 +220,7 @@ Module.register("personalcalendar", {
 				this.maybeUpdateDom(0);
 			}
 		} else if (notification === "PERSONAL_API_DATA") {
-			// Handle API data from MM notifications
+			// Handle API data from MM notifications - real-time update
 			console.log("Personal Calendar: Received API data via MM notification");
 			console.log("Personal Calendar: Current user:", this.currentUser);
 			console.log("Personal Calendar: Available users:", payload.users ? payload.users.map(u => u.name) : "No users");
@@ -208,10 +230,12 @@ Module.register("personalcalendar", {
 					u.name.toLowerCase() === this.currentUser.toLowerCase()
 				);
 				if (user) {
+					const oldEventsCount = this.events.length;
 					this.events = user.events || [];
 					this.sortEventsByDate();
-					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser}`);
+					console.log(`Personal Calendar: Loaded ${this.events.length} events for ${this.currentUser} (was ${oldEventsCount})`);
 					console.log("Personal Calendar: Events:", this.events.map(e => e.title));
+					// Always update DOM when API data is received for real-time updates
 					this.maybeUpdateDom(0);
 				} else {
 					console.log(`Personal Calendar: User ${this.currentUser} not found in API data`);
@@ -219,6 +243,9 @@ Module.register("personalcalendar", {
 			} else {
 				console.log("Personal Calendar: No users in payload or no current user");
 			}
+		} else if (notification === "REQUEST_USER_DATA") {
+			// Handle request from personalapi module - this shouldn't happen here, but handle gracefully
+			console.log("Personal Calendar: Received REQUEST_USER_DATA (unexpected)");
 		}
 	},
 
