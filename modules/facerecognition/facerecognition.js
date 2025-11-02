@@ -305,6 +305,10 @@ Module.register("facerecognition", {
 				imageElement.style.maxWidth = "300px";
 				imageElement.style.maxHeight = "300px";
 				imageElement.style.objectFit = "cover";
+				imageElement.style.margin = "10px auto";
+				imageElement.style.display = "block";
+				imageElement.style.marginLeft = "auto";
+				imageElement.style.marginRight = "auto";
 				
 				console.log("[FACE RECOGNITION] Creating image element with src:", imageElement.src);
 				console.log("[FACE RECOGNITION] Full image path:", imageSrc);
@@ -337,6 +341,10 @@ Module.register("facerecognition", {
 					this.style.maxWidth = "300px";
 					this.style.maxHeight = "300px";
 					this.style.objectFit = "cover";
+					this.style.margin = "10px auto";
+					this.style.display = "block";
+					this.style.marginLeft = "auto";
+					this.style.marginRight = "auto";
 				};
 			} else {
 				// No image available - hide the element but keep it in DOM for when image arrives
