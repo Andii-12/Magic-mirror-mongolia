@@ -1239,11 +1239,12 @@ class FaceRecognitionSystem:
                         print(f"[DEBUG] Setting current_confidence to: {confidence_percent}%")
                         
                         # Check if face is recognized with good confidence (lower=better)
-                        # Strict threshold: confidence < 75 for strong matches, and confidence_percent > 85% to ensure high quality match
-                        # This prevents false positives (e.g., grandma being recognized as Andii)
-                        if name != "Unknown" and confidence < 75 and confidence_percent > 85:
+                        # Balanced threshold: confidence < 90 for good matches, and confidence_percent > 70% to ensure reasonable quality
+                        # This prevents false positives while still recognizing legitimate users
+                        # Note: For LBPH, confidence < 90 typically means good match, < 75 is excellent, > 90 starts getting uncertain
+                        if name != "Unknown" and confidence < 90 and confidence_percent > 70:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
-                            print(f"[DEBUG] Known user detected - NOT a guest (high confidence match)")
+                            print(f"[DEBUG] Known user detected - NOT a guest (good confidence match)")
                             
                             # Copy latest skin photo to recognition image location (simpler and uses existing high-quality photos)
                             if not self.copy_latest_skin_photo_to_recognition(name):
@@ -1302,11 +1303,12 @@ class FaceRecognitionSystem:
                             # Face detected but not recognized (high confidence = bad match, or name is "Unknown", or low confidence percentage)
                             print(f"[INFO] Face detected but NOT recognized as known user (confidence: {confidence:.2f}, percent: {confidence_percent:.1f}%, name: {name})")
                             print(f"[DEBUG] Confidence threshold check failed - treating as unknown/guest")
-                            print(f"[DEBUG] Reason: confidence >= 75 OR confidence_percent <= 85% OR name is 'Unknown'")
+                            print(f"[DEBUG] Reason: confidence >= 90 OR confidence_percent <= 70% OR name is 'Unknown'")
                             
                             # Reset sticky identity when we detect a bad match - don't keep previous person's identity
-                            if confidence >= 75 or confidence_percent <= 85:
-                                print(f"[INFO] Bad match detected - clearing sticky identity to prevent false positives")
+                            # Only clear sticky identity if confidence is really bad (>= 100) to avoid clearing on borderline cases
+                            if confidence >= 100 or confidence_percent <= 50:
+                                print(f"[INFO] Very bad match detected (confidence >= 100 or percent <= 50%) - clearing sticky identity to prevent false positives")
                                 self.last_recognized_name = None
                                 self.last_recognized_time = 0
                             
