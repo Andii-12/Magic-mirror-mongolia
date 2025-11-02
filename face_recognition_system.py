@@ -556,6 +556,67 @@ class FaceRecognitionSystem:
             traceback.print_exc()
             return False
 
+    def copy_latest_skin_photo_to_recognition(self, person_name):
+        """Copy the latest skin photo from Skin folder to recognition image location"""
+        try:
+            # Get MagicMirror root directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                project_root = script_dir
+            else:
+                project_root = os.path.dirname(script_dir)
+            
+            # Source: Latest image from Skin/{PersonName}/ directory
+            skin_dir = os.path.join(project_root, "Skin", person_name)
+            recognition_dir = os.path.join(project_root, "modules", "facerecognition", "public")
+            recognition_file = os.path.join(recognition_dir, "recognition.jpg")
+            
+            # Check if skin directory exists
+            if not os.path.exists(skin_dir):
+                print(f"[DEBUG] Skin directory does not exist yet: {skin_dir}")
+                return False
+            
+            # Find latest image in Skin directory
+            image_files = []
+            for file in os.listdir(skin_dir):
+                if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    file_path = os.path.join(skin_dir, file)
+                    if os.path.isfile(file_path):
+                        mtime = os.path.getmtime(file_path)
+                        image_files.append((mtime, file_path))
+            
+            if not image_files:
+                print(f"[DEBUG] No images found in {skin_dir}")
+                return False
+            
+            # Sort by modification time (newest first)
+            image_files.sort(reverse=True)
+            latest_image_path = image_files[0][1]
+            
+            print(f"[DEBUG] Found latest skin photo: {latest_image_path}")
+            
+            # Ensure recognition directory exists
+            os.makedirs(recognition_dir, exist_ok=True)
+            
+            # Copy the latest image to recognition location
+            import shutil
+            shutil.copy2(latest_image_path, recognition_file)
+            
+            if os.path.exists(recognition_file) and os.path.getsize(recognition_file) > 0:
+                file_size = os.path.getsize(recognition_file)
+                print(f"[DEBUG] ✓ Copied latest skin photo to recognition image: {recognition_file} ({file_size} bytes)")
+                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                return True
+            else:
+                print(f"[WARNING] Failed to copy skin photo to recognition location")
+                return False
+                
+        except Exception as e:
+            print(f"[WARNING] Error copying latest skin photo: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def save_skin_photo(self, person_name):
         """Save high-resolution photo using rpicam after successful face recognition"""
         try:
@@ -1158,81 +1219,9 @@ class FaceRecognitionSystem:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
                             print(f"[DEBUG] Known user detected - NOT a guest")
                             
-                            # Save recognition image using rpicam-still (same colors as skin photos)
-                            try:
-                                # Ensure static dir exists and save as a fixed name
-                                # Get MagicMirror root directory (parent of this script's directory)
-                                script_dir = os.path.dirname(os.path.abspath(__file__))
-                                # If script is in root, use it; otherwise go up one level
-                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                    project_root = script_dir
-                                else:
-                                    # Go up one level to find MagicMirror root
-                                    project_root = os.path.dirname(script_dir)
-                                static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
-                                os.makedirs(static_dir, exist_ok=True)
-                                file_fs_path = os.path.join(static_dir, "recognition.jpg")
-                                print(f"[DEBUG] Recognition image will be saved to: {file_fs_path}")
-                                print(f"[DEBUG] Recognition image URL will be: /facerecognition/public/recognition.jpg")
-                                
-                                # Try to capture with rpicam-still first (better quality)
-                                # Only stop camera if rpicam-still is available and we're on Linux
-                                camera_was_running = False
-                                use_rpicam = False
-                                
-                                # Check if we should try rpicam-still
-                                if platform.system() != "Windows":
-                                    try:
-                                        result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True, timeout=2)
-                                        if result_check.returncode == 0:
-                                            use_rpicam = True
-                                    except:
-                                        pass
-                                
-                                if use_rpicam:
-                                    # Temporarily stop Picamera2 to free camera for rpicam-still
-                                    if self.camera is not None:
-                                        try:
-                                            self.camera.stop()
-                                            camera_was_running = True
-                                            time.sleep(1.0)  # Give camera time to release
-                                            print(f"[DEBUG] Camera stopped for rpicam-still")
-                                        except Exception as e:
-                                            print(f"[WARNING] Failed to stop camera: {e}")
-                                            camera_was_running = False
-                                
-                                # Capture with rpicam-still or fallback to Picamera2
-                                if use_rpicam:
-                                    capture_success = self.capture_recognition_image_with_rpicam(file_fs_path)
-                                else:
-                                    # Use Picamera2 directly (no need to stop camera)
-                                    capture_success = self.capture_recognition_image_with_picamera2(file_fs_path)
-                                
-                                if capture_success and os.path.exists(file_fs_path):
-                                    # URL path for browser (MagicMirror node_helper registers /facerecognition/public route)
-                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
-                                    self.add_log_message("Зураг хадгалж байна...")
-                                    file_size = os.path.getsize(file_fs_path)
-                                    print(f"[DEBUG] ✓ Saved recognition image: {file_fs_path} ({file_size} bytes)")
-                                    print(f"[DEBUG] Recognition image path set to: {self.recognition_image_path}")
-                                else:
-                                    print(f"[ERROR] Recognition image capture failed completely")
-                                    self.recognition_image_path = None
-                                
-                                # Restart Picamera2 if we stopped it for rpicam-still
-                                if camera_was_running and self.camera is not None:
-                                    try:
-                                        self.camera.start()
-                                        time.sleep(0.5)  # Let camera stabilize
-                                        print(f"[DEBUG] Camera restarted after recognition image capture")
-                                    except Exception as e:
-                                        print(f"[WARNING] Failed to restart camera: {e}")
-                                        self.initialize_camera()  # Try full reinitialize if restart fails
-                                
-                            except Exception as e:
-                                print(f"[WARNING] Failed to save recognition image: {e}")
-                                import traceback
-                                traceback.print_exc()
+                            # Copy latest skin photo to recognition image location (simpler and uses existing high-quality photos)
+                            if not self.copy_latest_skin_photo_to_recognition(name):
+                                print(f"[DEBUG] No skin photo available yet, will use skin photo after it's saved")
                                 self.recognition_image_path = None
                             
                             # Reset photo flag for this person if it's a new recognition
@@ -1247,8 +1236,12 @@ class FaceRecognitionSystem:
                             # Save high-resolution skin photo after successful recognition
                             photo_saved = self.save_skin_photo(name)
                             
-                            # Trigger skin analysis if photo was saved
+                            # After skin photo is saved, copy it to recognition location
                             if photo_saved:
+                                # Copy the newly saved skin photo to recognition image location
+                                if self.copy_latest_skin_photo_to_recognition(name):
+                                    print(f"[DEBUG] Recognition image updated with latest skin photo")
+                                
                                 # Get the photo path for the trigger
                                 current_date = datetime.now().strftime("%Y-%m-%d")
                                 photo_path = os.path.join(os.getcwd(), "Skin", name, f"{current_date}.jpg")
@@ -1300,73 +1293,9 @@ class FaceRecognitionSystem:
                             print(f"[DEBUG] Guest name generated: {guest_name}")
                             print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
                             
-                            # Save recognition image for guest
-                            try:
-                                # Get MagicMirror root directory
-                                script_dir = os.path.dirname(os.path.abspath(__file__))
-                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                    project_root = script_dir
-                                else:
-                                    project_root = os.path.dirname(script_dir)
-                                static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
-                                os.makedirs(static_dir, exist_ok=True)
-                                file_fs_path = os.path.join(static_dir, "recognition.jpg")
-                                
-                                # Try to capture with rpicam-still first (better quality)
-                                camera_was_running = False
-                                use_rpicam = False
-                                
-                                # Check if we should try rpicam-still
-                                if platform.system() != "Windows":
-                                    try:
-                                        result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True, timeout=2)
-                                        if result_check.returncode == 0:
-                                            use_rpicam = True
-                                    except:
-                                        pass
-                                
-                                if use_rpicam:
-                                    # Temporarily stop Picamera2 to free camera for rpicam-still
-                                    if self.camera is not None:
-                                        try:
-                                            self.camera.stop()
-                                            camera_was_running = True
-                                            time.sleep(1.0)  # Give camera time to release
-                                            print(f"[DEBUG] Camera stopped for rpicam-still (guest)")
-                                        except Exception as e:
-                                            print(f"[WARNING] Failed to stop camera: {e}")
-                                            camera_was_running = False
-                                
-                                # Capture with rpicam-still or fallback to Picamera2
-                                if use_rpicam:
-                                    capture_success = self.capture_recognition_image_with_rpicam(file_fs_path)
-                                else:
-                                    # Use Picamera2 directly (no need to stop camera)
-                                    capture_success = self.capture_recognition_image_with_picamera2(file_fs_path)
-                                
-                                if capture_success and os.path.exists(file_fs_path):
-                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
-                                    file_size = os.path.getsize(file_fs_path)
-                                    print(f"[DEBUG] ✓ Saved guest recognition image: {file_fs_path} ({file_size} bytes)")
-                                    print(f"[DEBUG] Recognition image path: {self.recognition_image_path}")
-                                else:
-                                    print(f"[ERROR] Guest recognition image capture failed completely")
-                                    self.recognition_image_path = None
-                                
-                                # Restart Picamera2 if we stopped it for rpicam-still
-                                if camera_was_running and self.camera is not None:
-                                    try:
-                                        self.camera.start()
-                                        time.sleep(0.5)  # Let camera stabilize
-                                        print(f"[DEBUG] Camera restarted after guest recognition image capture")
-                                    except Exception as e:
-                                        print(f"[WARNING] Failed to restart camera: {e}")
-                                        self.initialize_camera()  # Try full reinitialize if restart fails
-                                
-                            except Exception as e:
-                                print(f"[WARNING] Failed to save guest recognition image: {e}")
-                                import traceback
-                                traceback.print_exc()
+                            # Copy latest skin photo to recognition image location for guest
+                            if not self.copy_latest_skin_photo_to_recognition(guest_name):
+                                print(f"[DEBUG] No skin photo available yet for guest, will use skin photo after it's saved")
                                 self.recognition_image_path = None
                             
                             # Reset photo flag for guest
@@ -1377,6 +1306,10 @@ class FaceRecognitionSystem:
                             # Save photo for guest
                             photo_saved = self.save_skin_photo(guest_name)
                             if photo_saved:
+                                # Copy the newly saved skin photo to recognition image location
+                                if self.copy_latest_skin_photo_to_recognition(guest_name):
+                                    print(f"[DEBUG] Guest recognition image updated with latest skin photo")
+                                
                                 # Get the photo path for the trigger
                                 current_date = datetime.now().strftime("%Y-%m-%d")
                                 photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
@@ -1388,6 +1321,10 @@ class FaceRecognitionSystem:
                         # No recognizer available - treat as unknown face (guest)
                         print("[INFO] No recognizer available - treating as unknown face (guest)")
                         
+                        # Process the largest face for image capture
+                        largest_face = max(faces, key=lambda face: face[2] * face[3])
+                        x, y, w, h = largest_face
+                        
                         # Handle unknown person as guest
                         # Prefer sticky identity if very recent
                         now_ts = time.time()
@@ -1396,73 +1333,9 @@ class FaceRecognitionSystem:
                             return self.last_recognized_name
                         guest_name = self.handle_unknown_person()
                         
-                        # Save recognition image for guest (no recognizer case)
-                        try:
-                            # Get MagicMirror root directory
-                            script_dir = os.path.dirname(os.path.abspath(__file__))
-                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                project_root = script_dir
-                            else:
-                                project_root = os.path.dirname(script_dir)
-                            static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
-                            os.makedirs(static_dir, exist_ok=True)
-                            file_fs_path = os.path.join(static_dir, "recognition.jpg")
-                            
-                            # Try to capture with rpicam-still first (better quality)
-                            camera_was_running = False
-                            use_rpicam = False
-                            
-                            # Check if we should try rpicam-still
-                            if platform.system() != "Windows":
-                                try:
-                                    result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True, timeout=2)
-                                    if result_check.returncode == 0:
-                                        use_rpicam = True
-                                except:
-                                    pass
-                            
-                            if use_rpicam:
-                                # Temporarily stop Picamera2 to free camera for rpicam-still
-                                if self.camera is not None:
-                                    try:
-                                        self.camera.stop()
-                                        camera_was_running = True
-                                        time.sleep(1.0)  # Give camera time to release
-                                        print(f"[DEBUG] Camera stopped for rpicam-still (guest, no recognizer)")
-                                    except Exception as e:
-                                        print(f"[WARNING] Failed to stop camera: {e}")
-                                        camera_was_running = False
-                            
-                            # Capture with rpicam-still or fallback to Picamera2
-                            if use_rpicam:
-                                capture_success = self.capture_recognition_image_with_rpicam(file_fs_path)
-                            else:
-                                # Use Picamera2 directly (no need to stop camera)
-                                capture_success = self.capture_recognition_image_with_picamera2(file_fs_path)
-                            
-                            if capture_success and os.path.exists(file_fs_path):
-                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
-                                file_size = os.path.getsize(file_fs_path)
-                                print(f"[DEBUG] ✓ Saved guest recognition image (no recognizer): {file_fs_path} ({file_size} bytes)")
-                                print(f"[DEBUG] Recognition image path: {self.recognition_image_path}")
-                            else:
-                                print(f"[ERROR] Guest recognition image capture failed completely (no recognizer)")
-                                self.recognition_image_path = None
-                            
-                            # Restart Picamera2 if we stopped it for rpicam-still
-                            if camera_was_running and self.camera is not None:
-                                try:
-                                    self.camera.start()
-                                    time.sleep(0.5)  # Let camera stabilize
-                                    print(f"[DEBUG] Camera restarted after guest recognition image capture (no recognizer)")
-                                except Exception as e:
-                                    print(f"[WARNING] Failed to restart camera: {e}")
-                                    self.initialize_camera()  # Try full reinitialize if restart fails
-                            
-                        except Exception as e:
-                            print(f"[WARNING] Failed to save guest recognition image (no recognizer): {e}")
-                            import traceback
-                            traceback.print_exc()
+                        # Copy latest skin photo to recognition image location for guest (no recognizer case)
+                        if not self.copy_latest_skin_photo_to_recognition(guest_name):
+                            print(f"[DEBUG] No skin photo available yet for guest (no recognizer), will use skin photo after it's saved")
                             self.recognition_image_path = None
                         
                         # Reset photo flag for guest
@@ -1473,6 +1346,10 @@ class FaceRecognitionSystem:
                         # Save photo for guest
                         photo_saved = self.save_skin_photo(guest_name)
                         if photo_saved:
+                            # Copy the newly saved skin photo to recognition image location
+                            if self.copy_latest_skin_photo_to_recognition(guest_name):
+                                print(f"[DEBUG] Guest recognition image updated with latest skin photo (no recognizer)")
+                            
                             # Get the photo path for the trigger
                             current_date = datetime.now().strftime("%Y-%m-%d")
                             photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
@@ -1859,17 +1736,22 @@ class FaceRecognitionSystem:
                                 import threading
                                 def delayed_update(delay, update_num):
                                     time.sleep(delay)
-                                    # Re-check image file exists before updating
-                                    if not self.recognition_image_path:
-                                        script_dir = os.path.dirname(os.path.abspath(__file__))
-                                        if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                            project_root = script_dir
+                                    # Re-check image file exists before updating - try to copy latest skin photo if not set
+                                    if not self.recognition_image_path and self.current_person:
+                                        # Try to copy latest skin photo from Skin folder
+                                        if self.copy_latest_skin_photo_to_recognition(self.current_person):
+                                            print(f"[DEBUG] Update #{update_num}: Successfully copied latest skin photo")
                                         else:
-                                            project_root = os.path.dirname(script_dir)
-                                        image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
-                                        if os.path.exists(image_file):
-                                            self.recognition_image_path = "/facerecognition/public/recognition.jpg"
-                                            print(f"[DEBUG] Recovered image in delayed update #{update_num}")
+                                            # Fallback: check if file exists in recognition location
+                                            script_dir = os.path.dirname(os.path.abspath(__file__))
+                                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                                project_root = script_dir
+                                            else:
+                                                project_root = os.path.dirname(script_dir)
+                                            image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                            if os.path.exists(image_file):
+                                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                                print(f"[DEBUG] Recovered image in delayed update #{update_num}")
                                     print(f"[DEBUG] Delayed update #{update_num} - person={self.current_person}, image={self.recognition_image_path}")
                                     self.update_status_file()
                                 
