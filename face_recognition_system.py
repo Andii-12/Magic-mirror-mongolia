@@ -1164,7 +1164,25 @@ class FaceRecognitionSystem:
                             self.last_recognized_name = name
                             self.last_recognized_time = time.time()
                             self.unknown_attempts = 0
-                            # Ensure image path is preserved before returning
+                            
+                            # CRITICAL: Verify image path is set before returning
+                            if not self.recognition_image_path:
+                                print(f"[WARNING] Image path is NOT set after recognition! Attempting to recover...")
+                                # Try to recover - check if file exists
+                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                    project_root = script_dir
+                                else:
+                                    project_root = os.path.dirname(script_dir)
+                                image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                if os.path.exists(image_file):
+                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    print(f"[DEBUG] Recovered image path: {self.recognition_image_path}")
+                                else:
+                                    print(f"[ERROR] Image file does not exist at: {image_file}")
+                            else:
+                                print(f"[DEBUG] Image path is correctly set: {self.recognition_image_path}")
+                            
                             print(f"[DEBUG] Returning from recognize_face_with_camera: name={name}, image_path={self.recognition_image_path}")
                             return name
                         else:
@@ -1320,6 +1338,25 @@ class FaceRecognitionSystem:
                             photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
                             self.trigger_skin_analysis(guest_name, photo_path)
                         
+                        # CRITICAL: Verify image path is set for guest before returning
+                        if not self.recognition_image_path:
+                            print(f"[WARNING] Guest image path is NOT set! Attempting to recover...")
+                            # Try to recover - check if file exists
+                            script_dir = os.path.dirname(os.path.abspath(__file__))
+                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                project_root = script_dir
+                            else:
+                                project_root = os.path.dirname(script_dir)
+                            image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                            if os.path.exists(image_file):
+                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                print(f"[DEBUG] Recovered guest image path: {self.recognition_image_path}")
+                            else:
+                                print(f"[ERROR] Guest image file does not exist at: {image_file}")
+                        else:
+                            print(f"[DEBUG] Guest image path is correctly set: {self.recognition_image_path}")
+                        
+                        print(f"[DEBUG] Returning guest name: {guest_name}, image_path={self.recognition_image_path}")
                         return guest_name
                 else:
                     print("[INFO] No face detected in frame")
@@ -1394,13 +1431,17 @@ class FaceRecognitionSystem:
             "status": status_type,
             "is_guest": is_guest,
             "confidence": self.current_confidence,
-            "recognition_image": self.recognition_image_path,
+            "recognition_image": self.recognition_image_path if self.recognition_image_path else None,
             "log_messages": self.log_messages[-self.max_log_messages:],  # Last 5 messages
             "timestamp": datetime.now().isoformat()
         }
         
+        # Debug: Always log when person is recognized and image should be present
+        if self.current_person and self.current_person != "Unknown":
+            print(f"[DEBUG] Status file write - person={self.current_person}, recognition_image={status['recognition_image']}, self.recognition_image_path={self.recognition_image_path}")
+        
         # Only log debug status when it actually changes significantly
-        status_key = (self.current_person, status_type, self.current_distance <= PROXIMITY_THRESHOLD)
+        status_key = (self.current_person, status_type, self.current_distance <= PROXIMITY_THRESHOLD, self.recognition_image_path)
         if not hasattr(self, 'last_status_key') or self.last_status_key != status_key:
             print(f"[DEBUG] Final status: person={self.current_person}, is_guest={is_guest}, status={status_type}, confidence={self.current_confidence}%, image={self.recognition_image_path}, distance={self.current_distance:.1f}cm")
             self.last_status_key = status_key
@@ -1657,7 +1698,21 @@ class FaceRecognitionSystem:
                                 print(f"[DEBUG] Updating status file with person={person}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
                                 print(f"[DEBUG] Image path before update: {self.recognition_image_path}")
                                 
-                                # Update immediately
+                                # CRITICAL: Double-check image path is still set before updating status
+                                if not self.recognition_image_path:
+                                    print(f"[ERROR] Image path lost after setting current_person! Recovering...")
+                                    script_dir = os.path.dirname(os.path.abspath(__file__))
+                                    if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                        project_root = script_dir
+                                    else:
+                                        project_root = os.path.dirname(script_dir)
+                                    image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                    if os.path.exists(image_file):
+                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                        print(f"[DEBUG] Recovered image path in main loop: {self.recognition_image_path}")
+                                
+                                # Update immediately with all data
+                                print(f"[DEBUG] Calling update_status_file() with person={self.current_person}, image={self.recognition_image_path}")
                                 self.update_status_file()
                                 
                                 # Force multiple updates after delays to ensure frontend receives image
@@ -1674,13 +1729,15 @@ class FaceRecognitionSystem:
                                         image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                         if os.path.exists(image_file):
                                             self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                            print(f"[DEBUG] Recovered image in delayed update #{update_num}")
                                     print(f"[DEBUG] Delayed update #{update_num} - person={self.current_person}, image={self.recognition_image_path}")
                                     self.update_status_file()
                                 
-                                # Send updates at 0.5s, 1.0s, and 2.0s to ensure frontend gets it
-                                threading.Thread(target=lambda: delayed_update(0.5, 1), daemon=True).start()
-                                threading.Thread(target=lambda: delayed_update(1.0, 2), daemon=True).start()
-                                threading.Thread(target=lambda: delayed_update(2.0, 3), daemon=True).start()
+                                # Send updates at 0.3s, 0.8s, 1.5s, and 3.0s to ensure frontend gets it
+                                threading.Thread(target=lambda: delayed_update(0.3, 1), daemon=True).start()
+                                threading.Thread(target=lambda: delayed_update(0.8, 2), daemon=True).start()
+                                threading.Thread(target=lambda: delayed_update(1.5, 3), daemon=True).start()
+                                threading.Thread(target=lambda: delayed_update(3.0, 4), daemon=True).start()
                             else:
                                 print("❌ Face not recognized or cancelled - locking recognition until user moves away")
                                 self.add_log_message("Царай танихгүй байна")

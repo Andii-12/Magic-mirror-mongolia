@@ -66,34 +66,39 @@ module.exports = NodeHelper.create({
 			const data = fs.readFileSync(this.statusFile, 'utf8');
 			const status = JSON.parse(data);
 			
-			// Only log when status changes significantly or every 10 reads
-			if (!this.lastStatus || 
-				this.lastStatus.person !== status.person || 
-				this.lastStatus.active !== status.active ||
-				(this.readCount && this.readCount % 10 === 0)) {
-				console.log("Face Recognition Node Helper: Status update:", {
-					distance: status.distance,
-					person: status.person,
-					active: status.active,
-					status: status.status
-				});
-				this.lastStatus = { ...status };
-			}
-			
-			// Increment read count
-			this.readCount = (this.readCount || 0) + 1;
-			
-			// Build payload (pass through additional fields if present)
-			const payload = {
-				distance: status.distance || 999,
-				person: status.person || null,
-				active: status.active || false,
-				status: status.status || "waiting",
-				confidence: status.confidence || 0,
-				recognition_image: status.recognition_image || null,
-				log_messages: status.log_messages || [],
-				timestamp: status.timestamp || Date.now()
-			};
+		// Only log when status changes significantly or every 10 reads
+		if (!this.lastStatus || 
+			this.lastStatus.person !== status.person || 
+			this.lastStatus.active !== status.active ||
+			this.lastStatus.recognition_image !== status.recognition_image ||
+			(this.readCount && this.readCount % 10 === 0)) {
+			console.log("Face Recognition Node Helper: Status update:", {
+				distance: status.distance,
+				person: status.person,
+				active: status.active,
+				status: status.status,
+				confidence: status.confidence,
+				recognition_image: status.recognition_image,
+				is_guest: status.is_guest
+			});
+			this.lastStatus = { ...status };
+		}
+		
+		// Increment read count
+		this.readCount = (this.readCount || 0) + 1;
+		
+		// Build payload (pass through additional fields if present)
+		const payload = {
+			distance: status.distance || 999,
+			person: status.person || null,
+			active: status.active || false,
+			status: status.status || "waiting",
+			confidence: status.confidence || 0,
+			recognition_image: status.recognition_image || null,
+			is_guest: status.is_guest || false,
+			log_messages: status.log_messages || [],
+			timestamp: status.timestamp || Date.now()
+		};
 			// Throttle duplicate updates to prevent flicker
 			this._maybeSend(payload);
 		} catch (error) {
