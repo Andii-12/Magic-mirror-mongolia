@@ -11,6 +11,13 @@ module.exports = NodeHelper.create({
 		this.statusFile = null;
 		this.watchTimer = null;
 		this.lastSent = null; // throttle duplicate updates
+		
+		// Ensure public directory exists for recognition images
+		const publicDir = path.join(this.path, "public");
+		if (!fs.existsSync(publicDir)) {
+			fs.mkdirSync(publicDir, { recursive: true });
+			console.log(`Created public directory: ${publicDir}`);
+		}
 	},
 
 	// Override socketNotificationReceived method.

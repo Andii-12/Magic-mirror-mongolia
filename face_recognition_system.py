@@ -1102,7 +1102,7 @@ class FaceRecognitionSystem:
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 print(f"[DEBUG] Recognition image will be saved to: {file_fs_path}")
-                                print(f"[DEBUG] Recognition image URL will be: /modules/facerecognition/public/recognition.jpg")
+                                print(f"[DEBUG] Recognition image URL will be: /facerecognition/public/recognition.jpg")
                                 
                                 # Temporarily stop Picamera2 to free camera for rpicam-still
                                 camera_was_running = False
@@ -1116,12 +1116,18 @@ class FaceRecognitionSystem:
                                 
                                 # Capture with rpicam-still (same settings as skin photos)
                                 if self.capture_recognition_image_with_rpicam(file_fs_path):
-                                    # URL path for browser (Express serves /modules statically)
-                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    # URL path for browser (MagicMirror node_helper registers /facerecognition/public route)
+                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                     self.add_log_message("Зураг хадгалж байна...")
                                     print(f"[DEBUG] Saved recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                     print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
                                     print(f"[DEBUG] Recognition image path set to: {self.recognition_image_path}")
+                                    # Verify file exists
+                                    if os.path.exists(file_fs_path):
+                                        file_size = os.path.getsize(file_fs_path)
+                                        print(f"[DEBUG] Image file verified: {file_size} bytes")
+                                    else:
+                                        print(f"[ERROR] Image file not found after capture: {file_fs_path}")
                                     # Don't update status file here - wait until current_person is set
                                 else:
                                     print(f"[WARNING] rpicam-still capture failed")
@@ -1176,7 +1182,7 @@ class FaceRecognitionSystem:
                                     project_root = os.path.dirname(script_dir)
                                 image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                 if os.path.exists(image_file):
-                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Recovered image path: {self.recognition_image_path}")
                                 else:
                                     print(f"[ERROR] Image file does not exist at: {image_file}")
@@ -1230,9 +1236,13 @@ class FaceRecognitionSystem:
                                 
                                 # Capture with rpicam-still (same settings as skin photos)
                                 if self.capture_recognition_image_with_rpicam(file_fs_path):
-                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                     print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
+                                    # Verify file exists
+                                    if os.path.exists(file_fs_path):
+                                        file_size = os.path.getsize(file_fs_path)
+                                        print(f"[DEBUG] Guest image file verified: {file_size} bytes")
                                     # Don't update status file here - wait until current_person is set
                                 else:
                                     print(f"[WARNING] rpicam-still capture failed for guest")
@@ -1303,9 +1313,13 @@ class FaceRecognitionSystem:
                             
                             # Capture with rpicam-still (same settings as skin photos)
                             if self.capture_recognition_image_with_rpicam(file_fs_path):
-                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                 print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                 print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
+                                # Verify file exists
+                                if os.path.exists(file_fs_path):
+                                    file_size = os.path.getsize(file_fs_path)
+                                    print(f"[DEBUG] Guest image file verified: {file_size} bytes")
                                 # Don't update status file here - wait until current_person is set
                             else:
                                 print(f"[WARNING] rpicam-still capture failed for guest")
@@ -1349,7 +1363,7 @@ class FaceRecognitionSystem:
                                 project_root = os.path.dirname(script_dir)
                             image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                             if os.path.exists(image_file):
-                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                 print(f"[DEBUG] Recovered guest image path: {self.recognition_image_path}")
                             else:
                                 print(f"[ERROR] Guest image file does not exist at: {image_file}")
@@ -1691,7 +1705,7 @@ class FaceRecognitionSystem:
                                         project_root = os.path.dirname(script_dir)
                                     image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                     if os.path.exists(image_file):
-                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                        self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                         print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
                                 
                                 # Update status file with all recognition data (person, confidence, image)
@@ -1708,7 +1722,7 @@ class FaceRecognitionSystem:
                                         project_root = os.path.dirname(script_dir)
                                     image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                     if os.path.exists(image_file):
-                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                        self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                         print(f"[DEBUG] Recovered image path in main loop: {self.recognition_image_path}")
                                 
                                 # Update immediately with all data
@@ -1728,7 +1742,7 @@ class FaceRecognitionSystem:
                                             project_root = os.path.dirname(script_dir)
                                         image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                         if os.path.exists(image_file):
-                                            self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                            self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                             print(f"[DEBUG] Recovered image in delayed update #{update_num}")
                                     print(f"[DEBUG] Delayed update #{update_num} - person={self.current_person}, image={self.recognition_image_path}")
                                     self.update_status_file()
@@ -1768,7 +1782,7 @@ class FaceRecognitionSystem:
                                     project_root = os.path.dirname(script_dir)
                                 image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                 if os.path.exists(image_file):
-                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
                             self.update_status_file()
                             last_status_update = current_time
