@@ -113,7 +113,13 @@ Module.register("facerecognition", {
 		
 		// Store confidence, recognition image, guest status, and log messages
 		this.currentConfidence = data.confidence || 0;
-		this.recognitionImage = data.recognition_image || null;
+		// Handle recognition_image - could be null, undefined, string, or empty string
+		const rawImage = data.recognition_image;
+		if (rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined') {
+			this.recognitionImage = rawImage.trim();
+		} else {
+			this.recognitionImage = null;
+		}
 		this.isGuest = data.is_guest || false;
 		this.logMessages = data.log_messages || [];
 		
@@ -123,7 +129,9 @@ Module.register("facerecognition", {
 				person: this.currentPerson,
 				confidence: this.currentConfidence,
 				image: this.recognitionImage,
-				hasImage: !!this.recognitionImage
+				rawImage: rawImage,
+				hasImage: !!this.recognitionImage,
+				imageType: typeof this.recognitionImage
 			});
 		}
 		
@@ -153,7 +161,8 @@ Module.register("facerecognition", {
 			previousImage !== this.recognitionImage ||
 			previousGuest !== this.isGuest ||
 			JSON.stringify(previousLogMessages) !== JSON.stringify(this.logMessages) ||
-			(this.currentPerson && this.currentPerson !== "Unknown" && !this.recognitionImage && previousImage !== this.recognitionImage) // Update if image becomes available
+			// Force update if person is recognized and image is now available
+			(this.currentPerson && this.currentPerson !== "Unknown" && !previousImage && this.recognitionImage)
 		);
 		
 		if (shouldUpdate) {
@@ -273,11 +282,13 @@ Module.register("facerecognition", {
 			imageElement.alt = `Recognized: ${this.currentPerson}`;
 			
 			// Check if we have an image path
-			if (this.recognitionImage && 
+			const hasValidImage = this.recognitionImage && 
+			    typeof this.recognitionImage === 'string' &&
 			    this.recognitionImage !== "null" && 
 			    this.recognitionImage !== "undefined" &&
-			    this.recognitionImage !== null &&
-			    this.recognitionImage.trim() !== "") {
+			    this.recognitionImage.trim() !== "";
+			
+			if (hasValidImage) {
 				
 				// Add timestamp to prevent caching
 				const timestamp = new Date().getTime();

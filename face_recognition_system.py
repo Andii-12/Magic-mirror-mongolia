@@ -1639,18 +1639,48 @@ class FaceRecognitionSystem:
                                 self.shutdown_timer = None
                                 # Lock recognition until user leaves and logs out
                                 self.recognition_locked = True
+                                
+                                # Ensure image path is still set (it should be from recognize_face_with_camera)
+                                if not self.recognition_image_path:
+                                    # If image path is missing, try to find the file
+                                    script_dir = os.path.dirname(os.path.abspath(__file__))
+                                    if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                        project_root = script_dir
+                                    else:
+                                        project_root = os.path.dirname(script_dir)
+                                    image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                    if os.path.exists(image_file):
+                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                        print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
+                                
                                 # Update status file with all recognition data (person, confidence, image)
                                 print(f"[DEBUG] Updating status file with person={person}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
                                 print(f"[DEBUG] Image path before update: {self.recognition_image_path}")
-                                # Ensure status file is updated with all data including image
+                                
+                                # Update immediately
                                 self.update_status_file()
-                                # Force another update after a short delay to ensure image path is included
+                                
+                                # Force multiple updates after delays to ensure frontend receives image
                                 import threading
-                                def delayed_update():
-                                    time.sleep(0.5)
-                                    print(f"[DEBUG] Delayed update - person={self.current_person}, image={self.recognition_image_path}")
+                                def delayed_update(delay, update_num):
+                                    time.sleep(delay)
+                                    # Re-check image file exists before updating
+                                    if not self.recognition_image_path:
+                                        script_dir = os.path.dirname(os.path.abspath(__file__))
+                                        if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                            project_root = script_dir
+                                        else:
+                                            project_root = os.path.dirname(script_dir)
+                                        image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                        if os.path.exists(image_file):
+                                            self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    print(f"[DEBUG] Delayed update #{update_num} - person={self.current_person}, image={self.recognition_image_path}")
                                     self.update_status_file()
-                                threading.Thread(target=delayed_update, daemon=True).start()
+                                
+                                # Send updates at 0.5s, 1.0s, and 2.0s to ensure frontend gets it
+                                threading.Thread(target=lambda: delayed_update(0.5, 1), daemon=True).start()
+                                threading.Thread(target=lambda: delayed_update(1.0, 2), daemon=True).start()
+                                threading.Thread(target=lambda: delayed_update(2.0, 3), daemon=True).start()
                             else:
                                 print("❌ Face not recognized or cancelled - locking recognition until user moves away")
                                 self.add_log_message("Царай танихгүй байна")

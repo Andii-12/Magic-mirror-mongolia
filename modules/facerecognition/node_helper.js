@@ -115,9 +115,12 @@ module.exports = NodeHelper.create({
 		const last = this.lastSent;
 		const significantDistanceChange = !last || Math.abs((payload.distance || 0) - (last.distance || 0)) > 5;
 		const logMessagesChanged = !last || JSON.stringify(last.log_messages || []) !== JSON.stringify(payload.log_messages || []);
-		const imageChanged = !last || last.recognition_image !== payload.recognition_image;
+		// Check if image changed (handle null/undefined/string comparisons)
+		const lastImage = last ? last.recognition_image : null;
+		const currentImage = payload.recognition_image || null;
+		const imageChanged = lastImage !== currentImage;
 		const confidenceChanged = !last || Math.abs((last.confidence || 0) - (payload.confidence || 0)) > 1;
-		const changed =
+		let changed =
 			!last ||
 			last.person !== payload.person ||
 			last.active !== payload.active ||
@@ -126,6 +129,13 @@ module.exports = NodeHelper.create({
 			logMessagesChanged ||
 			imageChanged ||
 			confidenceChanged;
+		
+		// Always send if person is recognized and image is available
+		if (payload.person && payload.person !== "Unknown" && currentImage) {
+			if (!last || !last.recognition_image) {
+				changed = true; // Force send if person recognized but image wasn't sent before
+			}
+		}
 		if (changed) {
 			this.lastSent = { ...payload };
 			this.sendSocketNotification("FACE_STATUS_UPDATE", payload);
