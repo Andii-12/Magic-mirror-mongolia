@@ -299,6 +299,12 @@ Module.register("facerecognition", {
 				}
 				imageElement.src = imageSrc + "?t=" + timestamp;
 				imageElement.style.display = "block"; // Make sure it's visible
+				// Force image size with inline styles
+				imageElement.style.width = "100px";
+				imageElement.style.height = "100px";
+				imageElement.style.maxWidth = "100px";
+				imageElement.style.maxHeight = "100px";
+				imageElement.style.objectFit = "cover";
 				
 				console.log("[FACE RECOGNITION] Creating image element with src:", imageElement.src);
 				console.log("[FACE RECOGNITION] Full image path:", imageSrc);
@@ -325,6 +331,12 @@ Module.register("facerecognition", {
 				imageElement.onload = function() {
 					console.log("[FACE RECOGNITION] ✓ Successfully loaded recognition image:", this.src);
 					this.style.display = "block"; // Ensure visible after load
+					// Re-apply size constraints after image loads to ensure they're respected
+					this.style.width = "100px";
+					this.style.height = "100px";
+					this.style.maxWidth = "100px";
+					this.style.maxHeight = "100px";
+					this.style.objectFit = "cover";
 				};
 			} else {
 				// No image available - hide the element but keep it in DOM for when image arrives

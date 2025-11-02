@@ -77,14 +77,14 @@
 	border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
-/* Recognition image styling - 50x50 size */
+/* Recognition image styling - 100x100 size */
 .facerecognition-recognition-image {
-    width: 50px;
-    height: 50px;
-	max-width: 50px;
-	max-height: 50px;
-	min-width: 50px;
-	min-height: 50px;
+    width: 100px !important;
+    height: 100px !important;
+	max-width: 100px !important;
+	max-height: 100px !important;
+	min-width: 100px !important;
+	min-height: 100px !important;
 	border-radius: 8px;
 	border: 2px solid rgba(255, 255, 255, 0.3);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
