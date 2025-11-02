@@ -443,15 +443,25 @@ class FaceRecognitionSystem:
     def capture_recognition_image_with_rpicam(self, output_path):
         """Capture recognition image using rpicam-still with natural colors (same as skin photos)"""
         try:
+            # Check platform - skip on Windows
+            if platform.system() == "Windows":
+                print(f"[INFO] Windows detected - using Picamera2 fallback for recognition image")
+                return self.capture_recognition_image_with_picamera2(output_path)
+            
             # Check if rpicam-still is available
             try:
                 result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True)
                 if result_check.returncode != 0:
-                    print(f"[WARNING] rpicam-still not found")
-                    return False
+                    print(f"[WARNING] rpicam-still not found, using Picamera2 fallback")
+                    return self.capture_recognition_image_with_picamera2(output_path)
             except Exception as e:
-                print(f"[WARNING] rpicam-still check failed: {e}")
-                return False
+                print(f"[WARNING] rpicam-still check failed: {e}, using Picamera2 fallback")
+                return self.capture_recognition_image_with_picamera2(output_path)
+            
+            # Ensure output directory exists
+            output_dir = os.path.dirname(output_path)
+            os.makedirs(output_dir, exist_ok=True)
+            print(f"[DEBUG] Output directory ensured: {output_dir}")
             
             # Use rpicam-still with same settings as skin photos but smaller size
             cmd = [
@@ -472,17 +482,78 @@ class FaceRecognitionSystem:
             if SKIN_DESATURATE:
                 cmd += ["--saturation", "0"]
             
+            print(f"[DEBUG] Running rpicam-still command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             
+            print(f"[DEBUG] rpicam-still return code: {result.returncode}")
+            print(f"[DEBUG] rpicam-still stdout: {result.stdout}")
+            if result.stderr:
+                print(f"[DEBUG] rpicam-still stderr: {result.stderr}")
+            
             if result.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                print(f"[DEBUG] Captured recognition image with rpicam-still: {output_path}")
+                file_size = os.path.getsize(output_path)
+                print(f"[DEBUG] ✓ Captured recognition image with rpicam-still: {output_path} ({file_size} bytes)")
                 return True
             else:
-                print(f"[WARNING] rpicam-still capture failed: {result.stderr}")
-                return False
+                print(f"[WARNING] rpicam-still capture failed (code: {result.returncode}), trying Picamera2 fallback")
+                print(f"[DEBUG] File exists: {os.path.exists(output_path)}, Size: {os.path.getsize(output_path) if os.path.exists(output_path) else 0}")
+                return self.capture_recognition_image_with_picamera2(output_path)
                 
         except Exception as e:
             print(f"[WARNING] Error capturing recognition image with rpicam-still: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"[INFO] Trying Picamera2 fallback...")
+            return self.capture_recognition_image_with_picamera2(output_path)
+    
+    def capture_recognition_image_with_picamera2(self, output_path):
+        """Fallback: Capture recognition image using Picamera2 directly"""
+        try:
+            print(f"[DEBUG] Attempting to capture recognition image with Picamera2: {output_path}")
+            
+            # Ensure output directory exists
+            output_dir = os.path.dirname(output_path)
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Check if camera is available
+            if self.camera is None:
+                print(f"[WARNING] Camera not initialized, trying to initialize...")
+                self.initialize_camera()
+                if self.camera is None:
+                    print(f"[ERROR] Cannot capture image - camera not available")
+                    return False
+            
+            # Capture frame from existing camera
+            try:
+                frame_rgb = self.camera.capture_array()
+                # Convert RGB to BGR for OpenCV
+                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                
+                # Resize to 200x200 for recognition image
+                frame_resized = cv2.resize(frame_bgr, (200, 200))
+                
+                # Save image
+                cv2.imwrite(output_path, frame_resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                
+                # Verify file was saved
+                if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                    file_size = os.path.getsize(output_path)
+                    print(f"[DEBUG] ✓ Captured recognition image with Picamera2: {output_path} ({file_size} bytes)")
+                    return True
+                else:
+                    print(f"[ERROR] Picamera2 capture failed - file not created or empty")
+                    return False
+                    
+            except Exception as e:
+                print(f"[ERROR] Failed to capture frame from Picamera2: {e}")
+                import traceback
+                traceback.print_exc()
+                return False
+                
+        except Exception as e:
+            print(f"[ERROR] Error in capture_recognition_image_with_picamera2: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def save_skin_photo(self, person_name):
@@ -1104,47 +1175,64 @@ class FaceRecognitionSystem:
                                 print(f"[DEBUG] Recognition image will be saved to: {file_fs_path}")
                                 print(f"[DEBUG] Recognition image URL will be: /facerecognition/public/recognition.jpg")
                                 
-                                # Temporarily stop Picamera2 to free camera for rpicam-still
+                                # Try to capture with rpicam-still first (better quality)
+                                # Only stop camera if rpicam-still is available and we're on Linux
                                 camera_was_running = False
-                                if self.camera is not None:
-                                    try:
-                                        self.camera.stop()
-                                        camera_was_running = True
-                                        time.sleep(1.0)  # Give camera time to release
-                                    except Exception as e:
-                                        print(f"[WARNING] Failed to stop camera: {e}")
+                                use_rpicam = False
                                 
-                                # Capture with rpicam-still (same settings as skin photos)
-                                if self.capture_recognition_image_with_rpicam(file_fs_path):
+                                # Check if we should try rpicam-still
+                                if platform.system() != "Windows":
+                                    try:
+                                        result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True, timeout=2)
+                                        if result_check.returncode == 0:
+                                            use_rpicam = True
+                                    except:
+                                        pass
+                                
+                                if use_rpicam:
+                                    # Temporarily stop Picamera2 to free camera for rpicam-still
+                                    if self.camera is not None:
+                                        try:
+                                            self.camera.stop()
+                                            camera_was_running = True
+                                            time.sleep(1.0)  # Give camera time to release
+                                            print(f"[DEBUG] Camera stopped for rpicam-still")
+                                        except Exception as e:
+                                            print(f"[WARNING] Failed to stop camera: {e}")
+                                            camera_was_running = False
+                                
+                                # Capture with rpicam-still or fallback to Picamera2
+                                if use_rpicam:
+                                    capture_success = self.capture_recognition_image_with_rpicam(file_fs_path)
+                                else:
+                                    # Use Picamera2 directly (no need to stop camera)
+                                    capture_success = self.capture_recognition_image_with_picamera2(file_fs_path)
+                                
+                                if capture_success and os.path.exists(file_fs_path):
                                     # URL path for browser (MagicMirror node_helper registers /facerecognition/public route)
                                     self.recognition_image_path = "/facerecognition/public/recognition.jpg"
                                     self.add_log_message("Зураг хадгалж байна...")
-                                    print(f"[DEBUG] Saved recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
-                                    print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
+                                    file_size = os.path.getsize(file_fs_path)
+                                    print(f"[DEBUG] ✓ Saved recognition image: {file_fs_path} ({file_size} bytes)")
                                     print(f"[DEBUG] Recognition image path set to: {self.recognition_image_path}")
-                                    # Verify file exists
-                                    if os.path.exists(file_fs_path):
-                                        file_size = os.path.getsize(file_fs_path)
-                                        print(f"[DEBUG] Image file verified: {file_size} bytes")
-                                    else:
-                                        print(f"[ERROR] Image file not found after capture: {file_fs_path}")
-                                    # Don't update status file here - wait until current_person is set
                                 else:
-                                    print(f"[WARNING] rpicam-still capture failed")
+                                    print(f"[ERROR] Recognition image capture failed completely")
                                     self.recognition_image_path = None
-                                    # Don't update status file here - wait until current_person is set
                                 
-                                # Restart Picamera2 for face recognition
+                                # Restart Picamera2 if we stopped it for rpicam-still
                                 if camera_was_running and self.camera is not None:
                                     try:
                                         self.camera.start()
                                         time.sleep(0.5)  # Let camera stabilize
+                                        print(f"[DEBUG] Camera restarted after recognition image capture")
                                     except Exception as e:
                                         print(f"[WARNING] Failed to restart camera: {e}")
                                         self.initialize_camera()  # Try full reinitialize if restart fails
                                 
                             except Exception as e:
                                 print(f"[WARNING] Failed to save recognition image: {e}")
+                                import traceback
+                                traceback.print_exc()
                                 self.recognition_image_path = None
                             
                             # Reset photo flag for this person if it's a new recognition
@@ -1212,7 +1300,7 @@ class FaceRecognitionSystem:
                             print(f"[DEBUG] Guest name generated: {guest_name}")
                             print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
                             
-                            # Save recognition image using rpicam-still (same colors as skin photos)
+                            # Save recognition image for guest
                             try:
                                 # Get MagicMirror root directory
                                 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1224,42 +1312,61 @@ class FaceRecognitionSystem:
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
                                 
-                                # Temporarily stop Picamera2 to free camera for rpicam-still
+                                # Try to capture with rpicam-still first (better quality)
                                 camera_was_running = False
-                                if self.camera is not None:
+                                use_rpicam = False
+                                
+                                # Check if we should try rpicam-still
+                                if platform.system() != "Windows":
                                     try:
-                                        self.camera.stop()
-                                        camera_was_running = True
-                                        time.sleep(1.0)  # Give camera time to release
-                                    except Exception as e:
-                                        print(f"[WARNING] Failed to stop camera: {e}")
+                                        result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True, timeout=2)
+                                        if result_check.returncode == 0:
+                                            use_rpicam = True
+                                    except:
+                                        pass
                                 
-                                # Capture with rpicam-still (same settings as skin photos)
-                                if self.capture_recognition_image_with_rpicam(file_fs_path):
-                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
-                                    print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
-                                    print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
-                                    # Verify file exists
-                                    if os.path.exists(file_fs_path):
-                                        file_size = os.path.getsize(file_fs_path)
-                                        print(f"[DEBUG] Guest image file verified: {file_size} bytes")
-                                    # Don't update status file here - wait until current_person is set
+                                if use_rpicam:
+                                    # Temporarily stop Picamera2 to free camera for rpicam-still
+                                    if self.camera is not None:
+                                        try:
+                                            self.camera.stop()
+                                            camera_was_running = True
+                                            time.sleep(1.0)  # Give camera time to release
+                                            print(f"[DEBUG] Camera stopped for rpicam-still (guest)")
+                                        except Exception as e:
+                                            print(f"[WARNING] Failed to stop camera: {e}")
+                                            camera_was_running = False
+                                
+                                # Capture with rpicam-still or fallback to Picamera2
+                                if use_rpicam:
+                                    capture_success = self.capture_recognition_image_with_rpicam(file_fs_path)
                                 else:
-                                    print(f"[WARNING] rpicam-still capture failed for guest")
-                                    self.recognition_image_path = None
-                                    # Don't update status file here - wait until current_person is set
+                                    # Use Picamera2 directly (no need to stop camera)
+                                    capture_success = self.capture_recognition_image_with_picamera2(file_fs_path)
                                 
-                                # Restart Picamera2 for face recognition
+                                if capture_success and os.path.exists(file_fs_path):
+                                    self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                    file_size = os.path.getsize(file_fs_path)
+                                    print(f"[DEBUG] ✓ Saved guest recognition image: {file_fs_path} ({file_size} bytes)")
+                                    print(f"[DEBUG] Recognition image path: {self.recognition_image_path}")
+                                else:
+                                    print(f"[ERROR] Guest recognition image capture failed completely")
+                                    self.recognition_image_path = None
+                                
+                                # Restart Picamera2 if we stopped it for rpicam-still
                                 if camera_was_running and self.camera is not None:
                                     try:
                                         self.camera.start()
                                         time.sleep(0.5)  # Let camera stabilize
+                                        print(f"[DEBUG] Camera restarted after guest recognition image capture")
                                     except Exception as e:
                                         print(f"[WARNING] Failed to restart camera: {e}")
                                         self.initialize_camera()  # Try full reinitialize if restart fails
                                 
                             except Exception as e:
                                 print(f"[WARNING] Failed to save guest recognition image: {e}")
+                                import traceback
+                                traceback.print_exc()
                                 self.recognition_image_path = None
                             
                             # Reset photo flag for guest
@@ -1289,7 +1396,7 @@ class FaceRecognitionSystem:
                             return self.last_recognized_name
                         guest_name = self.handle_unknown_person()
                         
-                        # Save recognition image using rpicam-still (same colors as skin photos)
+                        # Save recognition image for guest (no recognizer case)
                         try:
                             # Get MagicMirror root directory
                             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1301,42 +1408,61 @@ class FaceRecognitionSystem:
                             os.makedirs(static_dir, exist_ok=True)
                             file_fs_path = os.path.join(static_dir, "recognition.jpg")
                             
-                            # Temporarily stop Picamera2 to free camera for rpicam-still
+                            # Try to capture with rpicam-still first (better quality)
                             camera_was_running = False
-                            if self.camera is not None:
+                            use_rpicam = False
+                            
+                            # Check if we should try rpicam-still
+                            if platform.system() != "Windows":
                                 try:
-                                    self.camera.stop()
-                                    camera_was_running = True
-                                    time.sleep(1.0)  # Give camera time to release
-                                except Exception as e:
-                                    print(f"[WARNING] Failed to stop camera: {e}")
+                                    result_check = subprocess.run(["which", "rpicam-still"], capture_output=True, text=True, timeout=2)
+                                    if result_check.returncode == 0:
+                                        use_rpicam = True
+                                except:
+                                    pass
                             
-                            # Capture with rpicam-still (same settings as skin photos)
-                            if self.capture_recognition_image_with_rpicam(file_fs_path):
-                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
-                                print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
-                                print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
-                                # Verify file exists
-                                if os.path.exists(file_fs_path):
-                                    file_size = os.path.getsize(file_fs_path)
-                                    print(f"[DEBUG] Guest image file verified: {file_size} bytes")
-                                # Don't update status file here - wait until current_person is set
+                            if use_rpicam:
+                                # Temporarily stop Picamera2 to free camera for rpicam-still
+                                if self.camera is not None:
+                                    try:
+                                        self.camera.stop()
+                                        camera_was_running = True
+                                        time.sleep(1.0)  # Give camera time to release
+                                        print(f"[DEBUG] Camera stopped for rpicam-still (guest, no recognizer)")
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to stop camera: {e}")
+                                        camera_was_running = False
+                            
+                            # Capture with rpicam-still or fallback to Picamera2
+                            if use_rpicam:
+                                capture_success = self.capture_recognition_image_with_rpicam(file_fs_path)
                             else:
-                                print(f"[WARNING] rpicam-still capture failed for guest")
-                                self.recognition_image_path = None
-                                # Don't update status file here - wait until current_person is set
+                                # Use Picamera2 directly (no need to stop camera)
+                                capture_success = self.capture_recognition_image_with_picamera2(file_fs_path)
                             
-                            # Restart Picamera2 for face recognition
+                            if capture_success and os.path.exists(file_fs_path):
+                                self.recognition_image_path = "/facerecognition/public/recognition.jpg"
+                                file_size = os.path.getsize(file_fs_path)
+                                print(f"[DEBUG] ✓ Saved guest recognition image (no recognizer): {file_fs_path} ({file_size} bytes)")
+                                print(f"[DEBUG] Recognition image path: {self.recognition_image_path}")
+                            else:
+                                print(f"[ERROR] Guest recognition image capture failed completely (no recognizer)")
+                                self.recognition_image_path = None
+                            
+                            # Restart Picamera2 if we stopped it for rpicam-still
                             if camera_was_running and self.camera is not None:
                                 try:
                                     self.camera.start()
                                     time.sleep(0.5)  # Let camera stabilize
+                                    print(f"[DEBUG] Camera restarted after guest recognition image capture (no recognizer)")
                                 except Exception as e:
                                     print(f"[WARNING] Failed to restart camera: {e}")
                                     self.initialize_camera()  # Try full reinitialize if restart fails
                             
                         except Exception as e:
-                            print(f"[WARNING] Failed to save guest recognition image: {e}")
+                            print(f"[WARNING] Failed to save guest recognition image (no recognizer): {e}")
+                            import traceback
+                            traceback.print_exc()
                             self.recognition_image_path = None
                         
                         # Reset photo flag for guest
