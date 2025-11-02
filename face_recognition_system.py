@@ -1239,10 +1239,11 @@ class FaceRecognitionSystem:
                         print(f"[DEBUG] Setting current_confidence to: {confidence_percent}%")
                         
                         # Check if face is recognized with good confidence (lower=better)
-                        # Threshold tuned to align with ~90%+ mapping for strong matches
-                        if name != "Unknown" and confidence < 110:
+                        # Strict threshold: confidence < 75 for strong matches, and confidence_percent > 85% to ensure high quality match
+                        # This prevents false positives (e.g., grandma being recognized as Andii)
+                        if name != "Unknown" and confidence < 75 and confidence_percent > 85:
                             print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
-                            print(f"[DEBUG] Known user detected - NOT a guest")
+                            print(f"[DEBUG] Known user detected - NOT a guest (high confidence match)")
                             
                             # Copy latest skin photo to recognition image location (simpler and uses existing high-quality photos)
                             if not self.copy_latest_skin_photo_to_recognition(name):
@@ -1298,16 +1299,19 @@ class FaceRecognitionSystem:
                             print(f"[DEBUG] Returning from recognize_face_with_camera: name={name}, image_path={self.recognition_image_path}")
                             return name
                         else:
-                            # Face detected but not recognized (high confidence = bad match, or name is "Unknown")
-                            print(f"[INFO] Face detected but not recognized (confidence: {confidence:.2f}, name: {name})")
-                            print(f"[DEBUG] Confidence threshold check: name != 'Unknown' = {name != 'Unknown'}, confidence < 80 = {confidence < 80}")
-                            # If we recently recognized someone, prefer sticky identity for a short window
-                            now_ts = time.time()
-                            if self.last_recognized_name and (now_ts - self.last_recognized_time) < 8.0:
-                                print(f"[INFO] Using sticky identity: {self.last_recognized_name}")
-                                return self.last_recognized_name
-
-                            # Increment unknown attempts and only assign a guest after 2 consecutive failures
+                            # Face detected but not recognized (high confidence = bad match, or name is "Unknown", or low confidence percentage)
+                            print(f"[INFO] Face detected but NOT recognized as known user (confidence: {confidence:.2f}, percent: {confidence_percent:.1f}%, name: {name})")
+                            print(f"[DEBUG] Confidence threshold check failed - treating as unknown/guest")
+                            print(f"[DEBUG] Reason: confidence >= 75 OR confidence_percent <= 85% OR name is 'Unknown'")
+                            
+                            # Reset sticky identity when we detect a bad match - don't keep previous person's identity
+                            if confidence >= 75 or confidence_percent <= 85:
+                                print(f"[INFO] Bad match detected - clearing sticky identity to prevent false positives")
+                                self.last_recognized_name = None
+                                self.last_recognized_time = 0
+                            
+                            # Don't use sticky identity for bad matches - immediately treat as unknown/guest
+                            # Only increment unknown attempts and only assign a guest after 2 consecutive failures
                             self.unknown_attempts += 1
                             if self.unknown_attempts < 2:
                                 print(f"[INFO] Unknown attempt {self.unknown_attempts}/2 - will retry before assigning guest")
