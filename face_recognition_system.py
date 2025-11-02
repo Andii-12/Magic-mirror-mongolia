@@ -1121,13 +1121,12 @@ class FaceRecognitionSystem:
                                     self.add_log_message("Зураг хадгалж байна...")
                                     print(f"[DEBUG] Saved recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                     print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
-                                    # Immediately update status file with confidence and image
-                                    self.update_status_file()
+                                    print(f"[DEBUG] Recognition image path set to: {self.recognition_image_path}")
+                                    # Don't update status file here - wait until current_person is set
                                 else:
                                     print(f"[WARNING] rpicam-still capture failed")
                                     self.recognition_image_path = None
-                                    # Still update status file even if image failed
-                                    self.update_status_file()
+                                    # Don't update status file here - wait until current_person is set
                                 
                                 # Restart Picamera2 for face recognition
                                 if camera_was_running and self.camera is not None:
@@ -1165,6 +1164,8 @@ class FaceRecognitionSystem:
                             self.last_recognized_name = name
                             self.last_recognized_time = time.time()
                             self.unknown_attempts = 0
+                            # Ensure image path is preserved before returning
+                            print(f"[DEBUG] Returning from recognize_face_with_camera: name={name}, image_path={self.recognition_image_path}")
                             return name
                         else:
                             # Face detected but not recognized (high confidence = bad match, or name is "Unknown")
@@ -1336,7 +1337,25 @@ class FaceRecognitionSystem:
     def update_status_file(self):
         """Update the status file for MagicMirror²"""
         # Determine current status based on distance and recognition state
-        if self.current_distance > PROXIMITY_THRESHOLD:
+        # IMPORTANT: Check if close first, even if timeout is active (person might have returned)
+        if self.current_distance <= PROXIMITY_THRESHOLD:
+            # Close to sensor - check recognition state
+            if self.current_person and self.current_person != "Unknown":
+                # Face recognized - show personal data
+                status_type = "recognized"
+                self.is_active = True
+            elif not self.face_recognition_attempted:
+                # Close to sensor but haven't tried face recognition yet - show "scanning face"
+                status_type = "detecting"
+                self.is_active = True
+            elif self.face_recognition_attempted and not self.current_person:
+                # Close to sensor but face recognition failed - show "scanning face" again
+                status_type = "detecting"
+                self.is_active = True
+            else:
+                # Default: detecting if active, otherwise waiting
+                status_type = "detecting" if self.is_active else "waiting"
+        elif self.current_distance > PROXIMITY_THRESHOLD:
             # Far from sensor
             if self.shutdown_timer is not None:
                 # In timeout countdown: keep user and active state
@@ -1346,48 +1365,26 @@ class FaceRecognitionSystem:
                 # Just stepped away but no timeout started yet: keep current state
                 # If user is recognized, keep showing their data
                 status_type = "recognized" if self.current_person else "waiting"
-        elif self.current_person and self.current_person != "Unknown":
-            # Face recognized - show personal data
-            status_type = "recognized"
-            self.is_active = True
-        elif self.current_distance <= PROXIMITY_THRESHOLD and not self.face_recognition_attempted:
-            # Close to sensor but haven't tried face recognition yet - show "scanning face"
-            status_type = "detecting"
-            self.is_active = True
-        elif self.current_distance <= PROXIMITY_THRESHOLD and self.face_recognition_attempted and not self.current_person:
-            # Close to sensor but face recognition failed - show "scanning face" again
-            status_type = "detecting"
-            self.is_active = True
-        else:
-            # Default state - maintain current state
-            if self.current_person:
-                status_type = "recognized"
-            elif self.is_active:
-                status_type = "detecting"
-            else:
-                status_type = "waiting"
         
         # Check if current person is a guest
         is_guest = False
         if self.current_person:
-            print(f"[DEBUG] Checking guest status for: {self.current_person}")
-            print(f"[DEBUG] Known guests: {list(self.known_guests.keys())}")
-            print(f"[DEBUG] Label names (trained faces): {self.label_names}")
+            # Only log guest checking when person changes
+            current_person_key = self.current_person
+            if not hasattr(self, 'last_checked_person') or self.last_checked_person != current_person_key:
+                print(f"[DEBUG] Checking guest status for: {self.current_person}")
+                self.last_checked_person = current_person_key
             
             # Check if person is in known_guests dictionary (proper guest detection)
             if self.current_person in self.known_guests and self.known_guests[self.current_person].get('is_guest', False):
                 is_guest = True
-                print(f"[DEBUG] Person {self.current_person} is in known_guests with is_guest=True")
             # Also check if name starts with "Зочин" as fallback
             elif self.current_person.startswith("Зочин"):
                 is_guest = True
-                print(f"[DEBUG] Person {self.current_person} starts with 'Зочин' - marking as guest")
             # If person is in label_names (trained faces), they are NOT a guest
             elif self.current_person in self.label_names:
                 is_guest = False
-                print(f"[DEBUG] Person {self.current_person} is in label_names (trained) - NOT a guest")
             else:
-                print(f"[DEBUG] Person {self.current_person} not found in known_guests or label_names - defaulting to NOT guest")
                 is_guest = False
         
         status = {
@@ -1402,7 +1399,11 @@ class FaceRecognitionSystem:
             "timestamp": datetime.now().isoformat()
         }
         
-        print(f"[DEBUG] Final status: person={self.current_person}, is_guest={is_guest}, status={status_type}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
+        # Only log debug status when it actually changes significantly
+        status_key = (self.current_person, status_type, self.current_distance <= PROXIMITY_THRESHOLD)
+        if not hasattr(self, 'last_status_key') or self.last_status_key != status_key:
+            print(f"[DEBUG] Final status: person={self.current_person}, is_guest={is_guest}, status={status_type}, confidence={self.current_confidence}%, image={self.recognition_image_path}, distance={self.current_distance:.1f}cm")
+            self.last_status_key = status_key
         
         try:
             # Write to temporary file first, then rename to avoid corruption
@@ -1411,10 +1412,16 @@ class FaceRecognitionSystem:
                 json.dump(status, f, separators=(",", ":"))  # compact for faster writes
             # Atomic rename to avoid partial reads
             os.rename(temp_file, STATUS_FILE)
-            # Only print status updates when they change significantly
-            if not hasattr(self, 'last_printed_status') or self.last_printed_status != status:
-                print(f"Status updated: {status}")
-                self.last_printed_status = status.copy()
+            # Only print status updates when they change significantly (key fields only)
+            status_hash_key = (
+                status.get("person"),
+                status.get("status"),
+                status.get("active"),
+                round(status.get("distance", 0))  # Round distance to reduce noise
+            )
+            if not hasattr(self, 'last_printed_status_hash') or self.last_printed_status_hash != status_hash_key:
+                print(f"Status updated: person={status['person']}, status={status['status']}, active={status['active']}, distance={status['distance']:.1f}cm")
+                self.last_printed_status_hash = status_hash_key
         except Exception as e:
             print(f"Error writing status file: {e}")
 
@@ -1453,7 +1460,7 @@ class FaceRecognitionSystem:
             return False
 
     def control_lights_based_on_proximity(self, distance):
-        """Control lights based on proximity detection - IMMEDIATE response on detection"""
+        """Control lights based on proximity detection - stable control to prevent flickering"""
         if not self.relay_available:
             return
         
@@ -1461,39 +1468,48 @@ class FaceRecognitionSystem:
         if distance >= 400 or distance == 999:
             return
         
-        # VERY fast response - turn on immediately when detected, minimal delay for turning off
-        LIGHTS_ON_STABLE_THRESHOLD = 1  # Only 1 reading needed for instant response
-        LIGHTS_OFF_STABLE_THRESHOLD = 3  # 3 readings to turn off (prevent flicker when moving)
-        LIGHTS_OFF_BUFFER = 8  # Smaller buffer for faster response
+        # Stable relay control constants - prevent flickering
+        LIGHTS_ON_STABLE_THRESHOLD = 2  # Require 2 consecutive readings to turn on
+        LIGHTS_OFF_STABLE_THRESHOLD = 5  # Require 5 consecutive readings to turn off (prevent flicker)
+        LIGHTS_OFF_BUFFER = 10  # Larger buffer to prevent rapid toggling
         
-        # Very short debounce - almost immediate response
-        MIN_ON_SECONDS = 0.3  # Very short - almost immediate turn on
-        MIN_OFF_SECONDS = 1.5  # Slightly longer to prevent flicker when turning off
+        # Longer debounce to prevent rapid toggling
+        MIN_ON_SECONDS = 0.5  # Minimum time between turning on
+        MIN_OFF_SECONDS = 2.0  # Minimum time between turning off (prevent flicker)
         now = time.time()
 
-        # Global block to avoid re-toggling too soon (very short delay)
+        # Global block to avoid re-toggling too soon - increased delay
         if now < self.relay_block_until:
             return
+        
+        # IMPORTANT: If person is close (within threshold) and lights are already on, keep them on
+        # This prevents flickering when status changes but person is still present
+        if distance <= PROXIMITY_THRESHOLD and self.lights_on:
+            # Person is close and lights are on - keep them on, reset counters to maintain state
+            self.lights_stable_count = LIGHTS_ON_STABLE_THRESHOLD
+            self.lights_off_stable_count = 0
+            return  # Skip further processing to prevent any toggling
 
         # Schmitt-trigger style control with maintain-on buffer zone
         threshold_on = PROXIMITY_THRESHOLD
         threshold_off = PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER
         
-        # IMMEDIATE response: Check if lights should be ON (within threshold)
+        # Check if lights should be ON (within threshold)
         if distance <= threshold_on:
+            # Person is close - increment stable count to turn on lights
             self.lights_stable_count += 1
             self.lights_off_stable_count = 0  # Reset off counter
             
-            # Turn on lights IMMEDIATELY when detected (minimal stability requirement)
+            # Turn on lights when detected (with stability requirement)
             if self.lights_stable_count >= LIGHTS_ON_STABLE_THRESHOLD and not self.lights_on:
-                # Check debounce time - very short for fast response
+                # Check debounce time
                 time_since_last_change = now - self.last_light_change_time
                 if time_since_last_change >= MIN_ON_SECONDS:
                     if self.turn_on_lights():
                         self.last_light_change_time = now
-                        self.relay_block_until = now + 0.5  # Very short block - 0.5 seconds
+                        self.relay_block_until = now + 2.0  # Block for 2 seconds to prevent rapid toggling
                         self.lights_stable_count = 0  # Reset counter after action
-                        print(f"💡 Lights ON - Proximity detected at {distance:.1f}cm (BEFORE recognition)")
+                        print(f"💡 Lights ON - Proximity detected at {distance:.1f}cm")
         else:
             # Check if lights should be OFF (beyond threshold + buffer)
             if distance > threshold_off:
@@ -1507,7 +1523,7 @@ class FaceRecognitionSystem:
                     if time_since_last_change >= MIN_OFF_SECONDS:
                         if self.turn_off_lights():
                             self.last_light_change_time = now
-                            self.relay_block_until = now + 1.0  # Shorter block
+                            self.relay_block_until = now + 2.0  # Block for 2 seconds to prevent rapid toggling
                             self.lights_off_stable_count = 0  # Reset counter after action
             else:
                 # In the buffer zone (between threshold and threshold+buffer)
@@ -1531,9 +1547,9 @@ class FaceRecognitionSystem:
         
         # Add distance smoothing for more stable readings
         distance_history = []
-        HISTORY_SIZE = 4  # Larger window for smoother response
+        HISTORY_SIZE = 5  # Larger window for smoother response, filter out noise
         last_status_update = 0
-        STATUS_UPDATE_INTERVAL = 0.2  # Update up to 5x/sec for snappier UI
+        STATUS_UPDATE_INTERVAL = 0.5  # Update 2x/sec - reduces file I/O and relay flicker
         
         # State tracking variables
         proximity_stable_count = 0
@@ -1551,8 +1567,15 @@ class FaceRecognitionSystem:
                 if len(distance_history) > HISTORY_SIZE:
                     distance_history.pop(0)
                 
-                # Calculate smoothed distance (average of last few readings)
-                smoothed_distance = sum(distance_history) / len(distance_history)
+                # Calculate smoothed distance (median for better noise rejection, then average)
+                valid_distances = [d for d in distance_history if d < 400 and d != 999]  # Filter out invalid readings
+                if len(valid_distances) > 0:
+                    valid_distances.sort()
+                    median_distance = valid_distances[len(valid_distances) // 2]
+                    # Use median as base, average only for fine-tuning
+                    smoothed_distance = (median_distance * 0.7 + sum(valid_distances) / len(valid_distances) * 0.3)
+                else:
+                    smoothed_distance = distance if distance < 400 else 999
                 self.current_distance = smoothed_distance
                 
                 # Control lights based on proximity
@@ -1618,7 +1641,16 @@ class FaceRecognitionSystem:
                                 self.recognition_locked = True
                                 # Update status file with all recognition data (person, confidence, image)
                                 print(f"[DEBUG] Updating status file with person={person}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
+                                print(f"[DEBUG] Image path before update: {self.recognition_image_path}")
+                                # Ensure status file is updated with all data including image
                                 self.update_status_file()
+                                # Force another update after a short delay to ensure image path is included
+                                import threading
+                                def delayed_update():
+                                    time.sleep(0.5)
+                                    print(f"[DEBUG] Delayed update - person={self.current_person}, image={self.recognition_image_path}")
+                                    self.update_status_file()
+                                threading.Thread(target=delayed_update, daemon=True).start()
                             else:
                                 print("❌ Face not recognized or cancelled - locking recognition until user moves away")
                                 self.add_log_message("Царай танихгүй байна")
@@ -1633,10 +1665,28 @@ class FaceRecognitionSystem:
                         self.shutdown_timer = None
                         # Only log every 10 seconds to reduce spam
                         if time.time() - self.last_detection_time > 10:
-                            print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm")
+                            print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm, image={self.recognition_image_path}")
                             self.last_detection_time = time.time()
+                        # Periodically update status to ensure image path is included
+                        current_time = time.time()
+                        if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
+                            # Ensure image path is still set if person is recognized
+                            if self.recognition_image_path is None and self.current_person:
+                                print(f"[DEBUG] Image path is None for recognized person {self.current_person}, checking file...")
+                                # Try to verify if image file exists
+                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                    project_root = script_dir
+                                else:
+                                    project_root = os.path.dirname(script_dir)
+                                image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                if os.path.exists(image_file):
+                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                                    print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
+                            self.update_status_file()
+                            last_status_update = current_time
                     
-                    # Update status file regularly when active
+                    # Update status file regularly when active (if not already updated above)
                     current_time = time.time()
                     if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
                         self.update_status_file()
@@ -1654,7 +1704,7 @@ class FaceRecognitionSystem:
                             print(f"👋 User {self.current_person} moved away ({smoothed_distance:.1f}cm) - starting {TIMEOUT_DELAY}s timeout")
                             # Start timeout timer instead of immediate logout
                             if self.shutdown_timer is None:
-                                self.add_log_message(f"{self.current_person} хэт алсав")
+                                self.add_log_message("Мэдрэгчээс хүн холдсон")
                                 self.shutdown_timer = time.time()
                         elif self.is_active and self.shutdown_timer is None:
                             # No person recognized but was active - start timeout

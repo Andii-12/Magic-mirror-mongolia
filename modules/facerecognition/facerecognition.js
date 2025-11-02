@@ -267,23 +267,35 @@ Module.register("facerecognition", {
 				statusContainer.appendChild(confidenceElement);
 			}
 			
-			// Add recognition image - show if available, or wait for it
-			if (this.recognitionImage && this.recognitionImage !== "null" && this.recognitionImage !== "undefined") {
-				const imageElement = document.createElement("img");
-				imageElement.className = "facerecognition-recognition-image";
-				imageElement.alt = `Recognized: ${this.currentPerson}`;
+			// Add recognition image - always create element to show image when available
+			const imageElement = document.createElement("img");
+			imageElement.className = "facerecognition-recognition-image";
+			imageElement.alt = `Recognized: ${this.currentPerson}`;
+			
+			// Check if we have an image path
+			if (this.recognitionImage && 
+			    this.recognitionImage !== "null" && 
+			    this.recognitionImage !== "undefined" &&
+			    this.recognitionImage !== null &&
+			    this.recognitionImage.trim() !== "") {
 				
 				// Add timestamp to prevent caching
 				const timestamp = new Date().getTime();
 				// Ensure path is absolute if it's not already
-				let imageSrc = this.recognitionImage;
-				if (imageSrc && !imageSrc.startsWith("http") && !imageSrc.startsWith("/")) {
+				let imageSrc = this.recognitionImage.trim();
+				if (!imageSrc.startsWith("http") && !imageSrc.startsWith("/")) {
 					imageSrc = "/" + imageSrc;
 				}
 				imageElement.src = imageSrc + "?t=" + timestamp;
+				imageElement.style.display = "block"; // Make sure it's visible
 				
 				console.log("[FACE RECOGNITION] Creating image element with src:", imageElement.src);
 				console.log("[FACE RECOGNITION] Full image path:", imageSrc);
+				console.log("[FACE RECOGNITION] Current data:", {
+					person: this.currentPerson,
+					confidence: this.currentConfidence,
+					image: this.recognitionImage
+				});
 				
 				// Add error handler for debugging and retry
 				imageElement.onerror = function() {
@@ -301,24 +313,22 @@ Module.register("facerecognition", {
 				
 				imageElement.onload = function() {
 					console.log("[FACE RECOGNITION] ✓ Successfully loaded recognition image:", this.src);
+					this.style.display = "block"; // Ensure visible after load
 				};
-				
-				statusContainer.appendChild(imageElement);
 			} else {
-				console.warn("[FACE RECOGNITION] ⚠ No recognition image available");
+				// No image available - hide the element but keep it in DOM for when image arrives
+				imageElement.style.display = "none";
+				console.warn("[FACE RECOGNITION] ⚠ No recognition image available yet");
 				console.log("[FACE RECOGNITION] Debug info:", {
 					person: this.currentPerson,
 					confidence: this.currentConfidence,
 					recognitionImage: this.recognitionImage,
 					recognitionImageType: typeof this.recognitionImage
 				});
-				// Optionally show a placeholder or loading indicator
-				const placeholderElement = document.createElement("div");
-				placeholderElement.className = "facerecognition-image-placeholder";
-				placeholderElement.innerHTML = "📷";
-				placeholderElement.style.cssText = "width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 2em; opacity: 0.5; margin: 10px auto;";
-				statusContainer.appendChild(placeholderElement);
 			}
+			
+			// Always append image element (will be shown/hidden based on availability)
+			statusContainer.appendChild(imageElement);
 			
 			// Add log messages display box at the bottom - always show container
 			const logContainer = document.createElement("div");

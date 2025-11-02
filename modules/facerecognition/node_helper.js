@@ -115,13 +115,17 @@ module.exports = NodeHelper.create({
 		const last = this.lastSent;
 		const significantDistanceChange = !last || Math.abs((payload.distance || 0) - (last.distance || 0)) > 5;
 		const logMessagesChanged = !last || JSON.stringify(last.log_messages || []) !== JSON.stringify(payload.log_messages || []);
+		const imageChanged = !last || last.recognition_image !== payload.recognition_image;
+		const confidenceChanged = !last || Math.abs((last.confidence || 0) - (payload.confidence || 0)) > 1;
 		const changed =
 			!last ||
 			last.person !== payload.person ||
 			last.active !== payload.active ||
 			last.status !== payload.status ||
 			significantDistanceChange ||
-			logMessagesChanged;
+			logMessagesChanged ||
+			imageChanged ||
+			confidenceChanged;
 		if (changed) {
 			this.lastSent = { ...payload };
 			this.sendSocketNotification("FACE_STATUS_UPDATE", payload);
