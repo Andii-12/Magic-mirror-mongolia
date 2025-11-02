@@ -1079,6 +1079,7 @@ class FaceRecognitionSystem:
                         
                         print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f}, Percent: {confidence_percent:.1f}%)")
                         print(f"[DEBUG] Label: {label}, Label map: {self.label_map}")
+                        print(f"[DEBUG] Setting current_confidence to: {confidence_percent}%")
                         
                         # Check if face is recognized with good confidence (lower=better)
                         # Threshold tuned to align with ~90%+ mapping for strong matches
@@ -1088,11 +1089,20 @@ class FaceRecognitionSystem:
                             
                             # Save recognition image using rpicam-still (same colors as skin photos)
                             try:
-                                # Ensure static dir exists and save as a fixed name (use project root, not CWD)
-                                project_root = os.path.dirname(os.path.abspath(__file__))
+                                # Ensure static dir exists and save as a fixed name
+                                # Get MagicMirror root directory (parent of this script's directory)
+                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                # If script is in root, use it; otherwise go up one level
+                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                    project_root = script_dir
+                                else:
+                                    # Go up one level to find MagicMirror root
+                                    project_root = os.path.dirname(script_dir)
                                 static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
+                                print(f"[DEBUG] Recognition image will be saved to: {file_fs_path}")
+                                print(f"[DEBUG] Recognition image URL will be: /modules/facerecognition/public/recognition.jpg")
                                 
                                 # Temporarily stop Picamera2 to free camera for rpicam-still
                                 camera_was_running = False
@@ -1111,9 +1121,13 @@ class FaceRecognitionSystem:
                                     self.add_log_message("Зураг хадгалж байна...")
                                     print(f"[DEBUG] Saved recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                     print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
+                                    # Immediately update status file with confidence and image
+                                    self.update_status_file()
                                 else:
                                     print(f"[WARNING] rpicam-still capture failed")
                                     self.recognition_image_path = None
+                                    # Still update status file even if image failed
+                                    self.update_status_file()
                                 
                                 # Restart Picamera2 for face recognition
                                 if camera_was_running and self.camera is not None:
@@ -1175,7 +1189,12 @@ class FaceRecognitionSystem:
                             
                             # Save recognition image using rpicam-still (same colors as skin photos)
                             try:
-                                project_root = os.path.dirname(os.path.abspath(__file__))
+                                # Get MagicMirror root directory
+                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                    project_root = script_dir
+                                else:
+                                    project_root = os.path.dirname(script_dir)
                                 static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                                 os.makedirs(static_dir, exist_ok=True)
                                 file_fs_path = os.path.join(static_dir, "recognition.jpg")
@@ -1195,9 +1214,11 @@ class FaceRecognitionSystem:
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                     print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                     print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
+                                    # Don't update status file here - wait until current_person is set
                                 else:
                                     print(f"[WARNING] rpicam-still capture failed for guest")
                                     self.recognition_image_path = None
+                                    # Don't update status file here - wait until current_person is set
                                 
                                 # Restart Picamera2 for face recognition
                                 if camera_was_running and self.camera is not None:
@@ -1241,7 +1262,12 @@ class FaceRecognitionSystem:
                         
                         # Save recognition image using rpicam-still (same colors as skin photos)
                         try:
-                            project_root = os.path.dirname(os.path.abspath(__file__))
+                            # Get MagicMirror root directory
+                            script_dir = os.path.dirname(os.path.abspath(__file__))
+                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                project_root = script_dir
+                            else:
+                                project_root = os.path.dirname(script_dir)
                             static_dir = os.path.join(project_root, "modules", "facerecognition", "public")
                             os.makedirs(static_dir, exist_ok=True)
                             file_fs_path = os.path.join(static_dir, "recognition.jpg")
@@ -1261,9 +1287,11 @@ class FaceRecognitionSystem:
                                 self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                 print(f"[DEBUG] Saved guest recognition image with rpicam-still: {file_fs_path} (URL: {self.recognition_image_path})")
                                 print(f"[DEBUG] Colors match skin photos (natural rpicam-still)")
+                                # Don't update status file here - wait until current_person is set
                             else:
                                 print(f"[WARNING] rpicam-still capture failed for guest")
                                 self.recognition_image_path = None
+                                # Don't update status file here - wait until current_person is set
                             
                             # Restart Picamera2 for face recognition
                             if camera_was_running and self.camera is not None:
@@ -1374,7 +1402,7 @@ class FaceRecognitionSystem:
             "timestamp": datetime.now().isoformat()
         }
         
-        print(f"[DEBUG] Final status: person={self.current_person}, is_guest={is_guest}, status={status_type}")
+        print(f"[DEBUG] Final status: person={self.current_person}, is_guest={is_guest}, status={status_type}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
         
         try:
             # Write to temporary file first, then rename to avoid corruption
@@ -1588,6 +1616,8 @@ class FaceRecognitionSystem:
                                 self.shutdown_timer = None
                                 # Lock recognition until user leaves and logs out
                                 self.recognition_locked = True
+                                # Update status file with all recognition data (person, confidence, image)
+                                print(f"[DEBUG] Updating status file with person={person}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
                                 self.update_status_file()
                             else:
                                 print("❌ Face not recognized or cancelled - locking recognition until user moves away")

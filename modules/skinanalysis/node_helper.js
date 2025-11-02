@@ -218,6 +218,11 @@ module.exports = NodeHelper.create({
 			const base64Image = imageBuffer.toString('base64');
 			const mimeType = this.getMimeType(path.basename(photoPath));
 
+			Log.log(`Skin Analysis: Sending image to OpenAI Vision API for ${config.person}`);
+			Log.log(`Skin Analysis: Image path: ${photoPath}`);
+			Log.log(`Skin Analysis: Image size: ${(imageBuffer.length / 1024).toFixed(2)} KB`);
+			Log.log(`Skin Analysis: Using model: ${config.model}`);
+
 			// Prepare OpenAI Vision API request: produce two sections (analysis + advice), each 3 full sentences
 		const requestBody = {
 			model: config.model,
