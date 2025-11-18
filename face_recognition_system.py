@@ -1163,6 +1163,11 @@ class FaceRecognitionSystem:
                         photo_path = os.path.join(os.getcwd(), "Skin", known_user, f"{current_date}.jpg")
                         self.trigger_skin_analysis(known_user, photo_path)
                     
+                    # Turn on lights when a trained face is recognized (Windows simulation)
+                    if self.relay_available and not self.lights_on:
+                        print(f"💡 [Windows Simulation] Turning on lights for recognized user: {known_user}")
+                        self.turn_on_lights()
+                    
                     return known_user  # Return known user name for Windows simulation
                 else:
                     # No known users - simulate unknown face as guest
@@ -1296,6 +1301,11 @@ class FaceRecognitionSystem:
                                     print(f"[ERROR] Image file does not exist at: {image_file}")
                             else:
                                 print(f"[DEBUG] Image path is correctly set: {self.recognition_image_path}")
+                            
+                            # Turn on lights when a trained face is recognized
+                            if self.relay_available and not self.lights_on:
+                                print(f"💡 Turning on lights for recognized user: {name}")
+                                self.turn_on_lights()
                             
                             print(f"[DEBUG] Returning from recognize_face_with_camera: name={name}, image_path={self.recognition_image_path}")
                             return name
@@ -1441,15 +1451,17 @@ class FaceRecognitionSystem:
                 # Default: detecting if active, otherwise waiting
                 status_type = "detecting" if self.is_active else "waiting"
         elif self.current_distance > PROXIMITY_THRESHOLD:
-            # Far from sensor
+            # Far from sensor - person has moved away
+            # Always set active to False when away (regardless of timeout)
+            # Note: Don't modify self.current_person here - it's cleared in main loop
+            self.is_active = False
+            
             if self.shutdown_timer is not None:
-                # In timeout countdown: keep user and active state
-                status_type = "timeout"
-                self.is_active = True
+                # In timeout countdown: show waiting status
+                status_type = "waiting"
             else:
-                # Just stepped away but no timeout started yet: keep current state
-                # If user is recognized, keep showing their data
-                status_type = "recognized" if self.current_person else "waiting"
+                # Just stepped away: show waiting status
+                status_type = "waiting"
         
         # Check if current person is a guest
         is_guest = False
@@ -1729,6 +1741,11 @@ class FaceRecognitionSystem:
                                 # Lock recognition until user leaves and logs out
                                 self.recognition_locked = True
                                 
+                                # Ensure lights are on for recognized trained face
+                                if self.relay_available and not self.lights_on:
+                                    print(f"💡 Ensuring lights are ON for recognized user: {person}")
+                                    self.turn_on_lights()
+                                
                                 # Ensure image path is still set (it should be from recognize_face_with_camera)
                                 if not self.recognition_image_path:
                                     # If image path is missing, try to find the file
@@ -1840,13 +1857,37 @@ class FaceRecognitionSystem:
                     
                     # Only deactivate if away for stable period
                     if away_stable_count >= AWAY_STABLE_THRESHOLD:
-                        if self.current_person is not None:
-                            print(f"👋 User {self.current_person} moved away ({smoothed_distance:.1f}cm) - starting {TIMEOUT_DELAY}s timeout")
-                            # Start timeout timer instead of immediate logout
-                            if self.shutdown_timer is None:
+                        # Immediately clear active state and turn off lights when person moves away
+                        if self.is_active or self.current_person is not None:
+                            # Clear active state
+                            if self.is_active:
+                                self.is_active = False
+                                print(f"🔴 Deactivated - person moved away ({smoothed_distance:.1f}cm)")
+                            
+                            # Turn off lights immediately when person moves away
+                            if self.lights_on and self.relay_available:
+                                print(f"🌙 Turning off lights - person moved away")
+                                self.turn_off_lights()
+                            
+                            # Clear recognition state immediately (don't wait for timeout)
+                            if self.current_person is not None:
+                                print(f"👋 User {self.current_person} moved away - clearing state")
                                 self.add_log_message("Мэдрэгчээс хүн холдсон")
+                                # Clear person immediately - UI should show "waiting" instead of "recognizing"
+                                self.current_person = None
+                                self.current_confidence = 0
+                                self.recognition_image_path = None
+                                self.face_recognition_attempted = False
+                                self.recognition_locked = False
+                            
+                            # Start timeout timer for final cleanup
+                            if self.shutdown_timer is None:
                                 self.shutdown_timer = time.time()
-                        elif self.is_active and self.shutdown_timer is None:
+                                print(f"⏰ Starting {TIMEOUT_DELAY}s timeout for final cleanup")
+                            
+                            # Immediately update status file to reflect cleared state
+                            self.update_status_file()
+                        elif self.shutdown_timer is None:
                             # No person recognized but was active - start timeout
                             self.shutdown_timer = time.time()
                             print(f"⏰ No face recognized, starting {TIMEOUT_DELAY}s timeout")
@@ -1855,14 +1896,20 @@ class FaceRecognitionSystem:
                             if self.recognition_locked:
                                 self.recognition_locked = False
                                 print("🔓 Recognition lock reset - will try again when user returns")
+                            # Turn off lights if still on
+                            if self.lights_on and self.relay_available:
+                                print(f"🌙 Turning off lights - no person detected")
+                                self.turn_off_lights()
+                            # Update status immediately
+                            self.update_status_file()
                     
                     # Check if timeout has elapsed
                     if self.shutdown_timer is not None:
                         elapsed = time.time() - self.shutdown_timer
                         if elapsed >= TIMEOUT_DELAY:
-                            print(f"⏰ Timeout reached ({TIMEOUT_DELAY}s) - logging out user")
+                            print(f"⏰ Timeout reached ({TIMEOUT_DELAY}s) - final cleanup")
                             self.add_log_message("Систем хүлээж байна...")
-                            # Reset all states after timeout
+                            # Final cleanup - ensure all states are cleared
                             self.current_person = None
                             self.current_confidence = 0
                             self.recognition_image_path = None
@@ -1871,8 +1918,8 @@ class FaceRecognitionSystem:
                             self.camera_opened = False
                             self.shutdown_timer = None
                             self.recognition_locked = False  # Allow recognition next time
-                            # Ensure lights are turned off on timeout
-                            if self.lights_on:
+                            # Ensure lights are turned off on timeout (should already be off, but double-check)
+                            if self.lights_on and self.relay_available:
                                 try:
                                     self.turn_off_lights()
                                 except Exception as e:
