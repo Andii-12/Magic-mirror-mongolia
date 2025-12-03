@@ -76,6 +76,11 @@ class FaceRecognitionSystem:
         self.unknown_attempts = 0  # Count consecutive unknown recognitions before assigning guest
         self.last_recognized_name = None  # Sticky identity name
         self.last_recognized_time = 0  # Sticky identity timestamp
+        # Baseline distance calibration (to avoid false triggers when nobody is there)
+        self.baseline_distance = None
+        self._baseline_samples = []
+        self.baseline_ready = False
+        self.effective_proximity_threshold = PROXIMITY_THRESHOLD
         
         # Log messages for display (Mongolian)
         self.log_messages = []  # Store last 5 log messages in Mongolian
@@ -1617,15 +1622,15 @@ class FaceRecognitionSystem:
         
         # IMPORTANT: If person is close (within threshold) and lights are already on, keep them on
         # This prevents flickering when status changes but person is still present
-        if distance <= PROXIMITY_THRESHOLD and self.lights_on:
+        if distance <= self.effective_proximity_threshold and self.lights_on:
             # Person is close and lights are on - keep them on, reset counters to maintain state
             self.lights_stable_count = LIGHTS_ON_STABLE_THRESHOLD
             self.lights_off_stable_count = 0
             return  # Skip further processing to prevent any toggling
 
         # Schmitt-trigger style control with maintain-on buffer zone
-        threshold_on = PROXIMITY_THRESHOLD
-        threshold_off = PROXIMITY_THRESHOLD + LIGHTS_OFF_BUFFER
+        threshold_on = self.effective_proximity_threshold
+        threshold_off = self.effective_proximity_threshold + LIGHTS_OFF_BUFFER
         
         # Check if lights should be ON (within threshold)
         if distance <= threshold_on:
@@ -1689,6 +1694,7 @@ class FaceRecognitionSystem:
         PROXIMITY_STABLE_THRESHOLD = 3  # Require more stable proximity before activation
         away_stable_count = 0
         AWAY_STABLE_THRESHOLD = 4  # Require more stability before starting timeout
+        previous_smoothed_distance = None
         
         try:
             while True:
@@ -1710,6 +1716,48 @@ class FaceRecognitionSystem:
                 else:
                     smoothed_distance = distance if distance < 400 else 999
                 self.current_distance = smoothed_distance
+
+                # --- Baseline calibration phase (avoid triggering when nobody is near) ---
+                # Collect a number of initial readings and treat them as "no person" baseline.
+                # We will only start reacting when distance becomes clearly closer than this baseline.
+                if not self.baseline_ready:
+                    if smoothed_distance < 400 and smoothed_distance != 999:
+                        self._baseline_samples.append(smoothed_distance)
+                    # Use about ~20 samples for baseline (≈ 4–6 seconds depending on branch sleeps)
+                    if len(self._baseline_samples) >= 20:
+                        self._baseline_samples.sort()
+                        mid = len(self._baseline_samples) // 2
+                        self.baseline_distance = self._baseline_samples[mid]
+                        # If mirror or frame is already close to the sensor, lower the effective threshold
+                        # so that we only trigger when a person comes significantly closer (≈40% closer).
+                        if self.baseline_distance <= PROXIMITY_THRESHOLD * 2:
+                            self.effective_proximity_threshold = max(
+                                5, self.baseline_distance * 0.6
+                            )
+                        else:
+                            self.effective_proximity_threshold = PROXIMITY_THRESHOLD
+                        self.baseline_ready = True
+                        print(
+                            f"[INFO] Baseline distance calibrated at {self.baseline_distance:.1f}cm, "
+                            f"effective proximity threshold set to {self.effective_proximity_threshold:.1f}cm"
+                        )
+
+                    # During baseline calibration, keep lights off and do not start recognition
+                    if not self.baseline_ready:
+                        if self.lights_on and self.relay_available:
+                            self.turn_off_lights()
+                        # Slow down a bit during calibration
+                        time.sleep(0.3)
+                        continue
+
+                # Keep an updated effective threshold even after baseline (in case env changes)
+                if self.baseline_ready and self.baseline_distance is not None:
+                    if self.baseline_distance <= PROXIMITY_THRESHOLD * 2:
+                        self.effective_proximity_threshold = max(
+                            5, self.baseline_distance * 0.6
+                        )
+                    else:
+                        self.effective_proximity_threshold = PROXIMITY_THRESHOLD
                 
                 # Control lights based on proximity
                 self.control_lights_based_on_proximity(smoothed_distance)
@@ -1718,8 +1766,8 @@ class FaceRecognitionSystem:
                 if len(distance_history) % 10 == 0:
                     print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'} (on_stable: {self.lights_stable_count}, off_stable: {self.lights_off_stable_count})")
                 
-                # Check proximity with smoothed distance
-                if smoothed_distance <= PROXIMITY_THRESHOLD:
+                # Check proximity with smoothed distance and calibrated threshold
+                if smoothed_distance <= self.effective_proximity_threshold:
                     # Object detected within threshold
                     proximity_stable_count += 1
                     away_stable_count = 0  # Reset away counter

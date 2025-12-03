@@ -8,12 +8,51 @@ import cv2
 import os
 import numpy as np
 import time
-from picamera2 import Picamera2
+import platform
+
+# Check platform
+IS_WINDOWS = platform.system() == "Windows"
+
+if not IS_WINDOWS:
+    try:
+        from picamera2 import Picamera2
+    except ImportError:
+        print("⚠️  Warning: picamera2 not available - camera features will be limited")
+        Picamera2 = None
+else:
+    print("⚠️  Running on Windows - camera features will be simulated")
+    Picamera2 = None
 
 # Paths
 IMAGE_BASE = "Images"
 TRAINER_FILE = "trainer.yml"
 CASCADE_PATH = "/home/andii/haarcascades/haarcascade_frontalface_default.xml"
+
+def load_face_cascade():
+    """Load face cascade with fallback to OpenCV default"""
+    cascade_paths = []
+    if CASCADE_PATH:
+        cascade_paths.append(CASCADE_PATH)
+    # Add relative path option
+    cascade_paths.append("haarcascades/haarcascade_frontalface_default.xml")
+    # Add OpenCV default as final fallback
+    cascade_paths.append(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    
+    for cascade_path in cascade_paths:
+        if os.path.exists(cascade_path) or cascade_path == cascade_paths[-1]:  # Always try OpenCV default
+            try:
+                face_cascade = cv2.CascadeClassifier(cascade_path)
+                if not face_cascade.empty():
+                    print(f"✅ Loaded face cascade from: {cascade_path}")
+                    return face_cascade
+            except Exception as e:
+                print(f"⚠️  Failed to load cascade from {cascade_path}: {e}")
+                if cascade_path != cascade_paths[-1]:
+                    continue
+                else:
+                    raise SystemError("Cannot load face cascade classifier")
+    
+    raise SystemError("Cannot load face cascade classifier - no valid cascade found")
 
 def capture_photos(person_name, num_photos=40):
     """Capture photos for a person using camera"""
@@ -25,6 +64,10 @@ def capture_photos(person_name, num_photos=40):
     
     # Initialize camera
     try:
+        if IS_WINDOWS or Picamera2 is None:
+            print("❌ Camera not available on this platform")
+            return False
+        
         picam2 = Picamera2()
         config = picam2.create_preview_configuration(main={"size": (640, 480)})
         picam2.configure(config)
@@ -32,9 +75,11 @@ def capture_photos(person_name, num_photos=40):
         time.sleep(2)  # Let camera initialize
         
         # Load face cascade
-        face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
-        if face_cascade.empty():
-            print(f"❌ Error: Could not load face cascade from {CASCADE_PATH}")
+        try:
+            face_cascade = load_face_cascade()
+        except SystemError as e:
+            print(f"❌ Error: {e}")
+            picam2.close()
             return False
         
         print("📷 Camera ready! You can see yourself in the preview window.")
@@ -56,30 +101,31 @@ def capture_photos(person_name, num_photos=40):
         
         # Show preview until user presses Enter
         while True:
-            # Capture frame
-            frame = picam2.capture_array()
+            # Capture frame (Picamera2 returns RGB)
+            frame_rgb = picam2.capture_array()
             
-            # Convert to RGB for display
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Convert RGB to BGR for OpenCV processing
+            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
             
             # Detect faces and draw rectangle
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             
-            # Draw face rectangles
+            # Draw face rectangles (use BGR frame for drawing, then convert to RGB for display)
+            display_frame = frame_bgr.copy()
             for (x, y, w, h) in faces:
-                cv2.rectangle(rgb_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                cv2.putText(rgb_frame, "Face Detected", (x, y-10), 
+                cv2.rectangle(display_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                cv2.putText(display_frame, "Face Detected", (x, y-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
             # Add instructions on frame
-            cv2.putText(rgb_frame, "Press ENTER to start capturing", (10, 30), 
+            cv2.putText(display_frame, "Press ENTER to start capturing", (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            cv2.putText(rgb_frame, "Press 'q' to quit", (10, 60), 
+            cv2.putText(display_frame, "Press 'q' to quit", (10, 60), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             
-            # Show frame
-            cv2.imshow(preview_window, rgb_frame)
+            # Show frame (OpenCV expects BGR for display)
+            cv2.imshow(preview_window, display_frame)
             
             # Check for key press
             key = cv2.waitKey(1) & 0xFF
@@ -102,9 +148,11 @@ def capture_photos(person_name, num_photos=40):
         while captured_count < num_photos and attempt < max_attempts:
             attempt += 1
             
-            # Capture frame
-            frame = picam2.capture_array()
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Capture frame (Picamera2 returns RGB)
+            frame_rgb = picam2.capture_array()
+            # Convert RGB to BGR for OpenCV processing
+            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
             
             # Detect faces with optimized parameters (same as recognition)
             faces = face_cascade.detectMultiScale(
@@ -176,9 +224,10 @@ def get_images_and_labels():
     print(f"📁 Found {len(person_dirs)} person directories: {person_dirs}")
     
     # Load face cascade
-    face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
-    if face_cascade.empty():
-        print(f"❌ Error: Could not load face cascade from {CASCADE_PATH}")
+    try:
+        face_cascade = load_face_cascade()
+    except SystemError as e:
+        print(f"❌ Error: {e}")
         return [], [], []
     
     # Process each person directory
