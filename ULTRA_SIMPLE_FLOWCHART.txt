@@ -1,0 +1,105 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ULTRA SIMPLE FLOWCHART                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+                    START
+                      │
+                      ▼
+              ┌───────────────┐
+              │ Setup System  │
+              └───────┬───────┘
+                      │
+                      ▼
+              ┌───────────────┐
+              │ Check Distance│
+              └───────┬───────┘
+                      │
+            ┌─────────┴─────────┐
+            │                   │
+      Close? (<20cm)      Far? (>20cm)
+            │                   │
+            ▼                   ▼
+    ┌───────────────┐   ┌───────────────┐
+    │ Turn ON Lights│   │ Turn OFF Lights│
+    └───────┬───────┘   └───────┬───────┘
+            │                   │
+            ▼                   │
+    ┌───────────────┐           │
+    │ Take Photo    │           │
+    └───────┬───────┘           │
+            │                   │
+            ▼                   │
+    ┌───────────────┐           │
+    │ Find Face?    │           │
+    └───┬───────┬───┘           │
+        │       │               │
+    YES │       │ NO            │
+        │       │               │
+        ▼       │               │
+┌───────────────┐│               │
+│ Who is it?    ││               │
+└───┬───────┬───┘│               │
+    │       │    │               │
+Known│       │Unknown            │
+    │       │    │               │
+    ▼       ▼    ▼               │
+┌───────┐ ┌───────┐             │
+│ Show  │ │ Show  │             │
+│ Name  │ │ Guest │             │
+└───┬───┘ └───┬───┘             │
+    │         │                 │
+    └────┬────┘                 │
+         │                      │
+         ▼                      │
+    ┌───────────────┐           │
+    │ Update Display│           │
+    └───────┬───────┘           │
+            │                   │
+            └───────────┬───────┘
+                        │
+                        ▼
+              ┌───────────────┐
+              │ Check Distance│ ◄─── LOOP FOREVER
+              └───────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          WHAT HAPPENS WHEN                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PERSON CLOSE (< 20cm):
+  → Turn ON lights
+  → Take photo
+  → Find face
+  → Recognize person
+  → Show name on screen
+
+PERSON FAR (> 20cm):
+  → Turn OFF lights
+  → Wait 5 seconds
+  → Reset system
+
+NO FACE FOUND:
+  → Show "detecting" message
+  → Keep trying
+
+UNKNOWN PERSON:
+  → Show "Guest" message
+  → Still save photo
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          STEP BY STEP                                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. System starts
+2. Checks: Is someone close? (every 0.2 seconds)
+3. If YES:
+   a. Turn on lights
+   b. Take photo
+   c. Look for face
+   d. If face found: Who is it?
+   e. Show result on screen
+4. If NO:
+   a. Turn off lights
+   b. Wait
+5. Repeat forever
+

@@ -108,11 +108,43 @@ class FaceRecognitionSystem:
             self.relay_available = False
         
         # Load face recognition components (matching your working code)
-        if CASCADE_PATH and os.path.exists(CASCADE_PATH):
-            self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
-        else:
-            print("⚠️  Face cascade not found - using default")
-            self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        # Try multiple cascade locations in order of preference
+        cascade_paths = []
+        if CASCADE_PATH:
+            cascade_paths.append(CASCADE_PATH)
+        # Add relative path option
+        cascade_paths.append("haarcascades/haarcascade_frontalface_default.xml")
+        # Add OpenCV default as final fallback
+        cascade_paths.append(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        
+        cascade_loaded = False
+        for cascade_path in cascade_paths:
+            if os.path.exists(cascade_path) or cascade_path == cascade_paths[-1]:  # Always try OpenCV default
+                try:
+                    self.face_cascade = cv2.CascadeClassifier(cascade_path)
+                    # Verify the cascade was loaded correctly by checking if it's empty
+                    if self.face_cascade.empty():
+                        print(f"⚠️  Cascade file at {cascade_path} is empty or invalid - trying next")
+                        continue
+                    else:
+                        print(f"✅ Loaded face cascade from: {cascade_path}")
+                        cascade_loaded = True
+                        break
+                except Exception as e:
+                    print(f"⚠️  Failed to load cascade from {cascade_path}: {e}")
+                    if cascade_path != cascade_paths[-1]:
+                        print("⚠️  Trying next cascade location...")
+                        continue
+                    else:
+                        # This was the last option (OpenCV default)
+                        print(f"❌ CRITICAL: Failed to load default cascade: {e}")
+                        print("❌ Face recognition will not work without a valid cascade file")
+                        raise SystemError("Cannot initialize face cascade classifier - face recognition disabled")
+        
+        if not cascade_loaded:
+            print(f"❌ CRITICAL: Could not load any cascade file")
+            print("❌ Face recognition will not work without a valid cascade file")
+            raise SystemError("Cannot initialize face cascade classifier - face recognition disabled")
         
         self.recognizer = cv2.face.LBPHFaceRecognizer_create()
         

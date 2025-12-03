@@ -1,0 +1,183 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         SIMPLE FLOWCHART                                     ║
+║                    Face Recognition System                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────┐
+│   START         │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Setup Hardware  │──► Camera, Ultrasonic Sensor, Relay
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Load Models     │──► Face Cascade, Trainer, Labels
+└────────┬────────┘
+         │
+         ▼
+    ┌─────────┐
+    │ MAIN    │
+    │ LOOP    │◄──────────────────────┐
+    └────┬────┘                        │
+         │                             │
+         ▼                             │
+┌─────────────────┐                    │
+│ Read Distance   │──► From Ultrasonic  │
+│ from Sensor     │    Sensor          │
+└────────┬────────┘                    │
+         │                             │
+         ▼                             │
+    ┌──────────────┐                   │
+    │ Distance <=  │                   │
+    │   20cm?      │                   │
+    └───┬───────┬──┘                   │
+        │       │                      │
+    YES │       │ NO                   │
+        │       │                      │
+        ▼       ▼                      │
+┌───────────┐  ┌───────────┐          │
+│ PERSON    │  │ PERSON    │          │
+│ CLOSE     │  │ AWAY      │          │
+└─────┬─────┘  └─────┬─────┘          │
+      │              │                 │
+      │              ▼                 │
+      │      ┌──────────────┐          │
+      │      │ Turn OFF     │          │
+      │      │ Lights       │          │
+      │      └──────┬───────┘          │
+      │             │                  │
+      │             ▼                  │
+      │      ┌──────────────┐          │
+      │      │ Wait 5s      │          │
+      │      │ Timeout      │          │
+      │      └──────┬───────┘          │
+      │             │                  │
+      │             └──────────────────┘
+      │
+      ▼
+┌─────────────────┐
+│ Person Close    │
+│ for 3 times?    │──► Stability Check
+└───┬───────┬────┘
+    │       │
+YES │       │ NO ───────────────────┐
+    │       │                        │
+    ▼       │                        │
+┌─────────────────┐                  │
+│ Activate Face   │                  │
+│ Recognition     │                  │
+└────────┬────────┘                  │
+         │                           │
+         ▼                           │
+┌─────────────────┐                  │
+│ Capture Photo   │                  │
+│ from Camera     │                  │
+└────────┬────────┘                  │
+         │                           │
+         ▼                           │
+┌─────────────────┐                  │
+│ Detect Face?    │                  │
+└───┬───────┬─────┘                  │
+    │       │                        │
+YES │       │ NO                     │
+    │       │                        │
+    ▼       ▼                        │
+┌──────────┐  ┌──────────┐           │
+│ Process │  │ No Face  │           │
+│ Face    │  │ Found    │           │
+└────┬────┘  └────┬─────┘           │
+     │            │                  │
+     │            ▼                  │
+     │    ┌──────────────┐           │
+     │    │ Update       │           │
+     │    │ Status       │           │
+     │    └──────┬───────┘           │
+     │           │                   │
+     │           └───────────────────┘
+     │
+     ▼
+┌─────────────────┐
+│ Recognize Face  │──► Compare with trained faces
+└────────┬────────┘
+         │
+         ▼
+    ┌──────────────┐
+    │ Face         │
+    │ Recognized?  │
+    └───┬───────┬──┘
+        │       │
+    YES │       │ NO
+        │       │
+        ▼       ▼
+┌───────────┐  ┌───────────┐
+│ Known     │  │ Unknown  │
+│ Person    │  │ (Guest)  │
+└─────┬─────┘  └─────┬────┘
+      │              │
+      │              ▼
+      │      ┌──────────────┐
+      │      │ Assign Guest │
+      │      │ Name         │
+      │      └──────┬───────┘
+      │             │
+      │             │
+      ▼             ▼
+┌─────────────────┐
+│ Save Skin Photo │──► High resolution photo
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Turn ON Lights  │──► Relay Control
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Update Status   │──► Write to JSON file
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Show on Display │──► MagicMirror UI
+└────────┬────────┘
+         │
+         └──────────────────┐
+                             │
+                             ▼
+                        ┌─────────┐
+                        │ MAIN    │
+                        │ LOOP    │
+                        └─────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              KEY POINTS                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. System continuously checks distance from sensor
+2. When person is close (≤20cm) for 3 times → Start recognition
+3. Camera captures photo → Detects face → Recognizes person
+4. If recognized → Save photo, turn on lights, show on display
+5. If not recognized → Treat as guest
+6. When person moves away → Turn off lights, wait 5s, reset
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          SIMPLE STATE FLOW                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    WAITING
+      │
+      │ Person close
+      ▼
+    DETECTING
+      │
+      │ Face found
+      ▼
+    RECOGNIZED
+      │
+      │ Person away
+      ▼
+    WAITING
+
