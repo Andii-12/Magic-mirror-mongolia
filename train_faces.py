@@ -13,6 +13,64 @@ import platform
 # Check platform
 IS_WINDOWS = platform.system() == "Windows"
 
+# GPIO setup for relay control (lights)
+RELAY_PIN = 18  # GPIO pin for relay control (same as face_recognition_system.py)
+relay_available = False
+
+# Initialize GPIO for relay control
+if not IS_WINDOWS:
+    try:
+        import RPi.GPIO as GPIO
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(RELAY_PIN, GPIO.OUT)
+        GPIO.output(RELAY_PIN, GPIO.HIGH)  # Initialize to OFF (HIGH = relay OFF for normally-closed relay)
+        relay_available = True
+        print("✅ Relay control initialized - lights can be controlled")
+    except Exception as e:
+        print(f"⚠️  Relay control not available: {e}")
+        print("   Continuing without light control...")
+        relay_available = False
+else:
+    print("⚠️  Running on Windows - relay control disabled")
+    relay_available = False
+
+def turn_on_lights():
+    """Turn on the relay-controlled lights"""
+    global relay_available
+    if not relay_available:
+        return False
+    try:
+        GPIO.output(RELAY_PIN, GPIO.LOW)  # LOW = relay ON for normally-closed relay
+        print("💡 Lights turned ON")
+        return True
+    except Exception as e:
+        print(f"❌ Error turning on lights: {e}")
+        return False
+
+def turn_off_lights():
+    """Turn off the relay-controlled lights"""
+    global relay_available
+    if not relay_available:
+        return False
+    try:
+        GPIO.output(RELAY_PIN, GPIO.HIGH)  # HIGH = relay OFF for normally-closed relay
+        print("🌙 Lights turned OFF")
+        return True
+    except Exception as e:
+        print(f"❌ Error turning off lights: {e}")
+        return False
+
+def cleanup_lights():
+    """Clean up GPIO and turn off lights"""
+    global relay_available
+    if relay_available:
+        try:
+            turn_off_lights()
+            GPIO.cleanup()
+            print("✅ Lights cleaned up")
+        except Exception as e:
+            print(f"⚠️  Error during cleanup: {e}")
+
 if not IS_WINDOWS:
     try:
         from picamera2 import Picamera2
@@ -58,6 +116,9 @@ def capture_photos(person_name, num_photos=40):
     """Capture photos for a person using camera"""
     print(f"📸 Capturing {num_photos} photos for {person_name}...")
     
+    # Turn on lights for better photo quality
+    turn_on_lights()
+    
     # Create person directory
     person_path = os.path.join(IMAGE_BASE, person_name)
     os.makedirs(person_path, exist_ok=True)
@@ -66,6 +127,7 @@ def capture_photos(person_name, num_photos=40):
     try:
         if IS_WINDOWS or Picamera2 is None:
             print("❌ Camera not available on this platform")
+            turn_off_lights()  # Turn off lights if camera not available
             return False
         
         picam2 = Picamera2()
@@ -80,6 +142,7 @@ def capture_photos(person_name, num_photos=40):
         except SystemError as e:
             print(f"❌ Error: {e}")
             picam2.close()
+            turn_off_lights()  # Turn off lights if cascade loading fails
             return False
         
         print("📷 Camera ready! You can see yourself in the preview window.")
@@ -134,6 +197,7 @@ def capture_photos(person_name, num_photos=40):
             elif key == ord('q'):
                 cv2.destroyAllWindows()
                 picam2.close()
+                turn_off_lights()  # Turn off lights if cancelled
                 print("❌ Photo capture cancelled")
                 return False
         
@@ -191,6 +255,9 @@ def capture_photos(person_name, num_photos=40):
         
         picam2.close()
         
+        # Turn off lights after photo capture
+        turn_off_lights()
+        
         if captured_count >= num_photos:
             print(f"✅ Successfully captured {captured_count} photos for {person_name}")
             return True
@@ -200,6 +267,8 @@ def capture_photos(person_name, num_photos=40):
             
     except Exception as e:
         print(f"❌ Error capturing photos: {e}")
+        # Make sure to turn off lights even on error
+        turn_off_lights()
         return False
 
 def get_images_and_labels():
@@ -365,7 +434,8 @@ if __name__ == "__main__":
         os.makedirs(IMAGE_BASE)
         print(f"✅ Created {IMAGE_BASE} directory")
     
-    while True:
+    try:
+        while True:
         print("\n📋 What would you like to do?")
         print("1. Add a new person (capture photos)")
         print("2. Train the system with existing photos")
@@ -408,3 +478,11 @@ if __name__ == "__main__":
         
         else:
             print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
+    
+    except KeyboardInterrupt:
+        print("\n\n🛑 Interrupted by user")
+    except Exception as e:
+        print(f"\n\n❌ Unexpected error: {e}")
+    finally:
+        # Always clean up lights when exiting
+        cleanup_lights()
