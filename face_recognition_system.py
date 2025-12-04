@@ -460,10 +460,9 @@ class FaceRecognitionSystem:
             return 999
 
     def initialize_camera(self):
-        """Initialize camera once and reuse it"""
+        """Initialize camera once and reuse it - OPTIMIZED"""
         if self.camera is None and platform.system() != "Windows":
             try:
-                print("[INFO] Initializing camera...")
                 self.camera = Picamera2()
                 config = self.camera.create_preview_configuration(
                     main={"size": (640, 480), "format": "RGB888"},
@@ -471,11 +470,49 @@ class FaceRecognitionSystem:
                 )
                 self.camera.configure(config)
                 self.camera.start()
-                time.sleep(1)  # Let camera stabilize
-                print("[INFO] Camera initialized successfully")
+                time.sleep(0.3)  # Reduced from 1s to 0.3s for faster startup
             except Exception as e:
                 print(f"[ERROR] Camera initialization failed: {e}")
                 self.camera = None
+    
+    def _save_recognition_image_from_frame(self, frame, x, y, w, h, person_name):
+        """FAST: Save recognition image from current frame (no separate capture)"""
+        try:
+            # Extract face region and resize
+            face_roi = frame[y:y+h, x:x+w]
+            face_resized = cv2.resize(face_roi, (300, 300), interpolation=cv2.INTER_AREA)
+            
+            # Save to recognition location
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                project_root = script_dir
+            else:
+                project_root = os.path.dirname(script_dir)
+            
+            recognition_dir = os.path.join(project_root, "modules", "facerecognition", "public")
+            os.makedirs(recognition_dir, exist_ok=True)
+            recognition_file = os.path.join(recognition_dir, "recognition.jpg")
+            
+            cv2.imwrite(recognition_file, face_resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+        except Exception as e:
+            print(f"[WARNING] Failed to save recognition image: {e}")
+            self.recognition_image_path = None
+    
+    def _async_save_skin_photo_and_trigger(self, person_name):
+        """ASYNC: Save skin photo and trigger analysis in background thread"""
+        try:
+            photo_saved = self.save_skin_photo(person_name)
+            if photo_saved:
+                # Copy the newly saved skin photo to recognition location
+                self.copy_latest_skin_photo_to_recognition(person_name)
+                
+                # Get the photo path for the trigger
+                current_date = datetime.now().strftime("%Y-%m-%d")
+                photo_path = os.path.join(os.getcwd(), "Skin", person_name, f"{current_date}.jpg")
+                self.trigger_skin_analysis(person_name, photo_path)
+        except Exception as e:
+            print(f"[WARNING] Async skin photo save failed: {e}")
 
     def capture_recognition_image_with_rpicam(self, output_path):
         """Capture recognition image using rpicam-still with natural colors (same as skin photos)"""
@@ -1171,60 +1208,28 @@ class FaceRecognitionSystem:
             print(f"[WARNING] Failed to trigger skin analysis: {e}")
 
     def recognize_face_with_camera(self):
-        """Ultra-fast face recognition with camera reuse"""
+        """Ultra-fast face recognition with camera reuse - OPTIMIZED FOR SPEED"""
         try:
-            print(f"[INFO] Object detected at {self.current_distance}cm. Starting recognition...")
-            
             # Check if we're on Windows (simulation mode)
             if platform.system() == "Windows":
-                print("[INFO] Windows detected - simulating face recognition")
-                time.sleep(0.5)  # Reduced simulation delay
-                
-                # For Windows simulation, first check if we have known users
+                import random
                 if self.label_names and len(self.label_names) > 0 and self.label_names[0] != "Unknown":
-                    # We have known users - simulate recognizing one of them
-                    import random
                     known_user = random.choice(self.label_names)
-                    print(f"[INFO] Windows simulation: Simulating recognition of known user: {known_user}")
-                    
-                    # Reset photo flag for Windows simulation
+                    # Async photo save for Windows
                     if self.current_person != known_user:
                         self.photo_saved_this_session = False
-                        print(f"[INFO] Windows simulation mode, resetting photo flag for {known_user}")
-                    
-                    # Save photo even in Windows simulation mode
-                    photo_saved = self.save_skin_photo(known_user)
-                    if photo_saved:
-                        # Get the photo path for the trigger
-                        current_date = datetime.now().strftime("%Y-%m-%d")
-                        photo_path = os.path.join(os.getcwd(), "Skin", known_user, f"{current_date}.jpg")
-                        self.trigger_skin_analysis(known_user, photo_path)
-                    
-                    # Turn on lights when a trained face is recognized (Windows simulation)
+                    import threading
+                    threading.Thread(target=lambda: self.save_skin_photo(known_user), daemon=True).start()
                     if self.relay_available and not self.lights_on:
-                        print(f"💡 [Windows Simulation] Turning on lights for recognized user: {known_user}")
                         self.turn_on_lights()
-                    
-                    return known_user  # Return known user name for Windows simulation
+                    return known_user
                 else:
-                    # No known users - simulate unknown face as guest
-                    print("[INFO] Windows simulation: No known users found, simulating guest")
                     guest_name = self.handle_unknown_person()
-                    
-                    # Reset photo flag for Windows simulation
                     if self.current_person != guest_name:
                         self.photo_saved_this_session = False
-                        print(f"[INFO] Windows simulation mode, resetting photo flag for {guest_name}")
-                    
-                    # Save photo even in Windows simulation mode
-                    photo_saved = self.save_skin_photo(guest_name)
-                    if photo_saved:
-                        # Get the photo path for the trigger
-                        current_date = datetime.now().strftime("%Y-%m-%d")
-                        photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
-                        self.trigger_skin_analysis(guest_name, photo_path)
-                    
-                    return guest_name  # Return guest name for Windows simulation
+                    import threading
+                    threading.Thread(target=lambda: self.save_skin_photo(guest_name), daemon=True).start()
+                    return guest_name
             
             # Initialize camera if not already done
             if self.camera is None:
@@ -1237,224 +1242,126 @@ class FaceRecognitionSystem:
                 # Instant cancel if user moved away
                 live_distance = self.get_distance()
                 if live_distance > PROXIMITY_THRESHOLD:
-                    print(f"[INFO] Recognition cancelled - user moved away ({live_distance:.1f}cm)")
                     return None
 
-                # Capture frame
+                # Capture frame - FAST
                 frame_rgb = self.camera.capture_array()
                 # Convert RGB to BGR for OpenCV processing
                 frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 
-                # Optimized face detection - faster parameters
+                # ULTRA-OPTIMIZED face detection - maximum speed
                 faces = self.face_cascade.detectMultiScale(
                     gray, 
-                    scaleFactor=1.05,  # Faster than 1.1
-                    minNeighbors=3,    # Faster than 4
-                    minSize=(60, 60),  # Slightly larger minimum size
-                    flags=cv2.CASCADE_SCALE_IMAGE
+                    scaleFactor=1.1,      # Balanced for speed/accuracy
+                    minNeighbors=2,       # Reduced from 3 for speed
+                    minSize=(80, 80),     # Larger minimum = faster (less faces to check)
+                    maxSize=(300, 300),   # Limit max size for speed
+                    flags=cv2.CASCADE_SCALE_IMAGE | cv2.CASCADE_DO_CANNY_PRUNING  # Additional speed optimization
                 )
 
                 if len(faces) > 0:
-                    print(f"[INFO] {len(faces)} face(s) detected")
                     if self.recognizer:
-                        print(f"[DEBUG] Recognizer available, known faces: {self.label_names}")
                         # Process the largest face (most likely to be the person)
                         largest_face = max(faces, key=lambda face: face[2] * face[3])
                         x, y, w, h = largest_face
                         
-                        face_img = gray[y:y+h, x:x+w]
-                        face_img = cv2.resize(face_img, (100, 100))
-                        
-                        # Apply histogram equalization for better recognition
+                        # FAST face processing - resize and equalize in one go
+                        face_img = cv2.resize(gray[y:y+h, x:x+w], (100, 100))
                         face_img = cv2.equalizeHist(face_img)
                         
+                        # Recognition - FAST
                         label, confidence = self.recognizer.predict(face_img)
                         name = self.label_map.get(label, "Unknown")
-                        
-                        # Calculate confidence percentage (for LBPH: lower = better)
                         confidence_percent = self.map_lbph_confidence_to_percent(confidence)
                         self.current_confidence = confidence_percent
                         
-                        print(f"[INFO] Recognized: {name} (Confidence: {confidence:.2f}, Percent: {confidence_percent:.1f}%)")
-                        print(f"[DEBUG] Label: {label}, Label map: {self.label_map}")
-                        print(f"[DEBUG] Setting current_confidence to: {confidence_percent}%")
-                        
-                        # Check if face is recognized with good confidence (lower=better)
-                        # Balanced threshold: confidence < 90 for good matches, and confidence_percent > 70% to ensure reasonable quality
-                        # This prevents false positives while still recognizing legitimate users
-                        # Note: For LBPH, confidence < 90 typically means good match, < 75 is excellent, > 90 starts getting uncertain
+                        # Check if face is recognized with good confidence
                         if name != "Unknown" and confidence < 90 and confidence_percent > 70:
-                            print(f"✅ Face recognition successful: {name} (confidence: {confidence:.2f}, {confidence_percent:.1f}%)")
-                            print(f"[DEBUG] Known user detected - NOT a guest (good confidence match)")
+                            print(f"✅ Recognized: {name} ({confidence_percent:.0f}%)")
                             
-                            # Copy latest skin photo to recognition image location (simpler and uses existing high-quality photos)
-                            if not self.copy_latest_skin_photo_to_recognition(name):
-                                print(f"[DEBUG] No skin photo available yet, will use skin photo after it's saved")
-                                self.recognition_image_path = None
+                            # FAST: Save recognition image from current frame (no separate capture needed)
+                            self._save_recognition_image_from_frame(frame, x, y, w, h, name)
                             
                             # Reset photo flag for this person if it's a new recognition
-                            print(f"[DEBUG] Current person: {self.current_person}, Recognized person: {name}")
                             if self.current_person != name:
                                 self.photo_saved_this_session = False
-                                print(f"[INFO] New person detected in recognition, resetting photo flag")
-                                print(f"[DEBUG] Photo flag reset to: {self.photo_saved_this_session}")
-                            else:
-                                print(f"[INFO] Same person recognized, checking photo flag: {self.photo_saved_this_session}")
                             
-                            # Save high-resolution skin photo after successful recognition
-                            photo_saved = self.save_skin_photo(name)
-                            
-                            # After skin photo is saved, copy it to recognition location
-                            if photo_saved:
-                                # Copy the newly saved skin photo to recognition image location
-                                if self.copy_latest_skin_photo_to_recognition(name):
-                                    print(f"[DEBUG] Recognition image updated with latest skin photo")
-                                
-                                # Get the photo path for the trigger
-                                current_date = datetime.now().strftime("%Y-%m-%d")
-                                photo_path = os.path.join(os.getcwd(), "Skin", name, f"{current_date}.jpg")
-                                self.trigger_skin_analysis(name, photo_path)
+                            # ASYNC: Save high-resolution skin photo in background (DON'T BLOCK!)
+                            import threading
+                            threading.Thread(
+                                target=self._async_save_skin_photo_and_trigger,
+                                args=(name,),
+                                daemon=True
+                            ).start()
                             
                             # Sticky identity
                             self.last_recognized_name = name
                             self.last_recognized_time = time.time()
                             self.unknown_attempts = 0
                             
-                            # CRITICAL: Verify image path is set before returning
-                            if not self.recognition_image_path:
-                                print(f"[WARNING] Image path is NOT set after recognition! Attempting to recover...")
-                                # Try to recover - check if file exists
-                                script_dir = os.path.dirname(os.path.abspath(__file__))
-                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                    project_root = script_dir
-                                else:
-                                    project_root = os.path.dirname(script_dir)
-                                image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
-                                if os.path.exists(image_file):
-                                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                    print(f"[DEBUG] Recovered image path: {self.recognition_image_path}")
-                                else:
-                                    print(f"[ERROR] Image file does not exist at: {image_file}")
-                            else:
-                                print(f"[DEBUG] Image path is correctly set: {self.recognition_image_path}")
-                            
                             # Turn on lights when a trained face is recognized
                             if self.relay_available and not self.lights_on:
-                                print(f"💡 Turning on lights for recognized user: {name}")
                                 self.turn_on_lights()
                             
-                            print(f"[DEBUG] Returning from recognize_face_with_camera: name={name}, image_path={self.recognition_image_path}")
                             return name
                         else:
-                            # Face detected but not recognized (high confidence = bad match, or name is "Unknown", or low confidence percentage)
-                            print(f"[INFO] Face detected but NOT recognized as known user (confidence: {confidence:.2f}, percent: {confidence_percent:.1f}%, name: {name})")
-                            print(f"[DEBUG] Confidence threshold check failed - treating as unknown/guest")
-                            print(f"[DEBUG] Reason: confidence >= 90 OR confidence_percent <= 70% OR name is 'Unknown'")
-                            
-                            # Reset sticky identity when we detect a bad match - don't keep previous person's identity
-                            # Only clear sticky identity if confidence is really bad (>= 100) to avoid clearing on borderline cases
+                            # Face detected but not recognized - treat as guest
                             if confidence >= 100 or confidence_percent <= 50:
-                                print(f"[INFO] Very bad match detected (confidence >= 100 or percent <= 50%) - clearing sticky identity to prevent false positives")
                                 self.last_recognized_name = None
                                 self.last_recognized_time = 0
                             
-                            # Don't use sticky identity for bad matches - immediately treat as unknown/guest
-                            # Only increment unknown attempts and only assign a guest after 2 consecutive failures
                             self.unknown_attempts += 1
                             if self.unknown_attempts < 2:
-                                print(f"[INFO] Unknown attempt {self.unknown_attempts}/2 - will retry before assigning guest")
                                 return None
 
-                            # Handle unknown person as guest after consecutive failures
+                            # Handle unknown person as guest
                             guest_name = self.handle_unknown_person()
-                            print(f"[DEBUG] Guest name generated: {guest_name}")
-                            print(f"[DEBUG] This person will be marked as guest (is_guest=True)")
                             
-                            # Copy latest skin photo to recognition image location for guest
-                            if not self.copy_latest_skin_photo_to_recognition(guest_name):
-                                print(f"[DEBUG] No skin photo available yet for guest, will use skin photo after it's saved")
-                                self.recognition_image_path = None
+                            # FAST: Save recognition image from current frame
+                            self._save_recognition_image_from_frame(frame, x, y, w, h, guest_name)
                             
                             # Reset photo flag for guest
                             if self.current_person != guest_name:
                                 self.photo_saved_this_session = False
-                                print(f"[INFO] Guest mode, resetting photo flag")
                             
-                            # Save photo for guest
-                            photo_saved = self.save_skin_photo(guest_name)
-                            if photo_saved:
-                                # Copy the newly saved skin photo to recognition image location
-                                if self.copy_latest_skin_photo_to_recognition(guest_name):
-                                    print(f"[DEBUG] Guest recognition image updated with latest skin photo")
-                                
-                                # Get the photo path for the trigger
-                                current_date = datetime.now().strftime("%Y-%m-%d")
-                                photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
-                                self.trigger_skin_analysis(guest_name, photo_path)
+                            # ASYNC: Save photo for guest in background
+                            import threading
+                            threading.Thread(
+                                target=self._async_save_skin_photo_and_trigger,
+                                args=(guest_name,),
+                                daemon=True
+                            ).start()
                             
-                            print(f"[DEBUG] Returning guest name: {guest_name}")
                             return guest_name
                     else:
                         # No recognizer available - treat as unknown face (guest)
-                        print("[INFO] No recognizer available - treating as unknown face (guest)")
-                        
-                        # Process the largest face for image capture
                         largest_face = max(faces, key=lambda face: face[2] * face[3])
                         x, y, w, h = largest_face
                         
-                        # Handle unknown person as guest
                         # Prefer sticky identity if very recent
                         now_ts = time.time()
                         if self.last_recognized_name and (now_ts - self.last_recognized_time) < 8.0:
-                            print(f"[INFO] Using sticky identity without recognizer: {self.last_recognized_name}")
                             return self.last_recognized_name
+                        
                         guest_name = self.handle_unknown_person()
                         
-                        # Copy latest skin photo to recognition image location for guest (no recognizer case)
-                        if not self.copy_latest_skin_photo_to_recognition(guest_name):
-                            print(f"[DEBUG] No skin photo available yet for guest (no recognizer), will use skin photo after it's saved")
-                            self.recognition_image_path = None
+                        # FAST: Save recognition image from current frame
+                        self._save_recognition_image_from_frame(frame, x, y, w, h, guest_name)
                         
                         # Reset photo flag for guest
                         if self.current_person != guest_name:
                             self.photo_saved_this_session = False
-                            print(f"[INFO] Guest mode, resetting photo flag")
                         
-                        # Save photo for guest
-                        photo_saved = self.save_skin_photo(guest_name)
-                        if photo_saved:
-                            # Copy the newly saved skin photo to recognition image location
-                            if self.copy_latest_skin_photo_to_recognition(guest_name):
-                                print(f"[DEBUG] Guest recognition image updated with latest skin photo (no recognizer)")
-                            
-                            # Get the photo path for the trigger
-                            current_date = datetime.now().strftime("%Y-%m-%d")
-                            photo_path = os.path.join(os.getcwd(), "Skin", guest_name, f"{current_date}.jpg")
-                            self.trigger_skin_analysis(guest_name, photo_path)
+                        # ASYNC: Save photo for guest in background
+                        import threading
+                        threading.Thread(
+                            target=self._async_save_skin_photo_and_trigger,
+                            args=(guest_name,),
+                            daemon=True
+                        ).start()
                         
-                        # CRITICAL: Verify image path is set for guest before returning
-                        if not self.recognition_image_path:
-                            print(f"[WARNING] Guest image path is NOT set! Attempting to recover...")
-                            # Try to recover - check if file exists
-                            script_dir = os.path.dirname(os.path.abspath(__file__))
-                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                project_root = script_dir
-                            else:
-                                project_root = os.path.dirname(script_dir)
-                            image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
-                            if os.path.exists(image_file):
-                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                print(f"[DEBUG] Recovered guest image path: {self.recognition_image_path}")
-                            else:
-                                print(f"[ERROR] Guest image file does not exist at: {image_file}")
-                        else:
-                            print(f"[DEBUG] Guest image path is correctly set: {self.recognition_image_path}")
-                        
-                        print(f"[DEBUG] Returning guest name: {guest_name}, image_path={self.recognition_image_path}")
                         return guest_name
-                else:
-                    print("[INFO] No face detected in frame")
                     
             except Exception as e:
                 print(f"[WARNING] Camera capture failed: {e}")
@@ -1691,9 +1598,9 @@ class FaceRecognitionSystem:
         
         # State tracking variables
         proximity_stable_count = 0
-        PROXIMITY_STABLE_THRESHOLD = 3  # Require more stable proximity before activation
+        PROXIMITY_STABLE_THRESHOLD = 2  # Reduced from 3 for faster activation
         away_stable_count = 0
-        AWAY_STABLE_THRESHOLD = 4  # Require more stability before starting timeout
+        AWAY_STABLE_THRESHOLD = 3  # Reduced from 4 for faster response
         previous_smoothed_distance = None
         
         try:
@@ -1762,9 +1669,9 @@ class FaceRecognitionSystem:
                 # Control lights based on proximity
                 self.control_lights_based_on_proximity(smoothed_distance)
                 
-                # Debug output every 10 iterations
-                if len(distance_history) % 10 == 0:
-                    print(f"[DEBUG] Distance: {distance}cm (smoothed: {smoothed_distance:.1f}cm), Active: {self.is_active}, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'} (on_stable: {self.lights_stable_count}, off_stable: {self.lights_off_stable_count})")
+                # Debug output every 50 iterations (reduced frequency for speed)
+                if len(distance_history) % 50 == 0:
+                    print(f"Distance: {smoothed_distance:.1f}cm, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'}")
                 
                 # Check proximity with smoothed distance and calibrated threshold
                 if smoothed_distance <= self.effective_proximity_threshold:
@@ -1806,15 +1713,12 @@ class FaceRecognitionSystem:
                         # Ensure detection time is set
                         if self.last_detection_time is None:
                             self.last_detection_time = time.time()
-                        # Wait only ~0.3 seconds for stable proximity before camera activation
-                        if time.time() - self.last_detection_time > 0.3:
-                            print("📷 Starting face recognition...")
+                        # Wait only ~0.2 seconds for stable proximity before camera activation (reduced from 0.3s)
+                        if time.time() - self.last_detection_time > 0.2:
                             self.add_log_message("Царай танилт эхэлж байна...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
-                            print(f"[DEBUG] Face recognition returned: {person}")
                             if person and person != "Unknown":
-                                print(f"✅ Face recognized: {person}")
                                 self.add_log_message(f"Царай танигдлаа: {person}")
                                 self.current_person = person
                                 self.shutdown_timer = None
@@ -1839,78 +1743,32 @@ class FaceRecognitionSystem:
                                         self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                                         print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
                                 
-                                # Update status file with all recognition data (person, confidence, image)
-                                print(f"[DEBUG] Updating status file with person={person}, confidence={self.current_confidence}%, image={self.recognition_image_path}")
-                                print(f"[DEBUG] Image path before update: {self.recognition_image_path}")
-                                
-                                # CRITICAL: Double-check image path is still set before updating status
-                                if not self.recognition_image_path:
-                                    print(f"[ERROR] Image path lost after setting current_person! Recovering...")
-                                    script_dir = os.path.dirname(os.path.abspath(__file__))
-                                    if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                        project_root = script_dir
-                                    else:
-                                        project_root = os.path.dirname(script_dir)
-                                    image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
-                                    if os.path.exists(image_file):
-                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                        print(f"[DEBUG] Recovered image path in main loop: {self.recognition_image_path}")
-                                
                                 # Update immediately with all data
-                                print(f"[DEBUG] Calling update_status_file() with person={self.current_person}, image={self.recognition_image_path}")
                                 self.update_status_file()
                                 
-                                # Force multiple updates after delays to ensure frontend receives image
+                                # Single delayed update to refresh image after async save completes
                                 import threading
-                                def delayed_update(delay, update_num):
-                                    time.sleep(delay)
-                                    # Re-check image file exists before updating - try to copy latest skin photo if not set
-                                    if not self.recognition_image_path and self.current_person:
-                                        # Try to copy latest skin photo from Skin folder
-                                        if self.copy_latest_skin_photo_to_recognition(self.current_person):
-                                            print(f"[DEBUG] Update #{update_num}: Successfully copied latest skin photo")
-                                        else:
-                                            # Fallback: check if file exists in recognition location
-                                            script_dir = os.path.dirname(os.path.abspath(__file__))
-                                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                                project_root = script_dir
-                                            else:
-                                                project_root = os.path.dirname(script_dir)
-                                            image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
-                                            if os.path.exists(image_file):
-                                                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                                print(f"[DEBUG] Recovered image in delayed update #{update_num}")
-                                    print(f"[DEBUG] Delayed update #{update_num} - person={self.current_person}, image={self.recognition_image_path}")
-                                    self.update_status_file()
-                                
-                                # Send updates at 0.3s, 0.8s, 1.5s, and 3.0s to ensure frontend gets it
-                                threading.Thread(target=lambda: delayed_update(0.3, 1), daemon=True).start()
-                                threading.Thread(target=lambda: delayed_update(0.8, 2), daemon=True).start()
-                                threading.Thread(target=lambda: delayed_update(1.5, 3), daemon=True).start()
-                                threading.Thread(target=lambda: delayed_update(3.0, 4), daemon=True).start()
+                                def delayed_update():
+                                    time.sleep(2.0)  # Wait for async skin photo to complete
+                                    if self.current_person == person:
+                                        self.copy_latest_skin_photo_to_recognition(person)
+                                        self.update_status_file()
+                                threading.Thread(target=delayed_update, daemon=True).start()
                             else:
-                                print("❌ Face not recognized or cancelled - locking recognition until user moves away")
                                 self.add_log_message("Царай танихгүй байна")
                                 # Lock recognition to prevent repeated attempts while user is still present
                                 self.recognition_locked = True
-                                # Keep face_recognition_attempted = True so it doesn't retry immediately
                                 self.update_status_file()
                     
                     # If face already recognized, maintain the state and reset timeout
                     elif self.current_person is not None:
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
-                        # Only log every 10 seconds to reduce spam
-                        if time.time() - self.last_detection_time > 10:
-                            print(f"👤 User {self.current_person} is still present at {smoothed_distance:.1f}cm, image={self.recognition_image_path}")
-                            self.last_detection_time = time.time()
-                        # Periodically update status to ensure image path is included
+                        # Periodically update status
                         current_time = time.time()
                         if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
-                            # Ensure image path is still set if person is recognized
+                            # Quick check if image path needs recovery
                             if self.recognition_image_path is None and self.current_person:
-                                print(f"[DEBUG] Image path is None for recognized person {self.current_person}, checking file...")
-                                # Try to verify if image file exists
                                 script_dir = os.path.dirname(os.path.abspath(__file__))
                                 if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
                                     project_root = script_dir
@@ -1919,7 +1777,6 @@ class FaceRecognitionSystem:
                                 image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                 if os.path.exists(image_file):
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                    print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
                             self.update_status_file()
                             last_status_update = current_time
                     
@@ -1929,7 +1786,7 @@ class FaceRecognitionSystem:
                         self.update_status_file()
                         last_status_update = current_time
                     
-                    time.sleep(0.2)  # Check every 0.2 seconds when active
+                    time.sleep(0.1)  # Check every 0.1 seconds when active (faster response)
                 else:
                     # Object moved away - count consecutive away readings
                     away_stable_count += 1
