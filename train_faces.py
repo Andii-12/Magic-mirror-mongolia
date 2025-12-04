@@ -436,48 +436,48 @@ if __name__ == "__main__":
     
     try:
         while True:
-        print("\n📋 What would you like to do?")
-        print("1. Add a new person (capture photos)")
-        print("2. Train the system with existing photos")
-        print("3. Test the trained system")
-        print("4. Exit")
-        
-        choice = input("\nEnter your choice (1-4): ").strip()
-        
-        if choice == "1":
-            # Add new person
-            person_name = input("Enter the person's name: ").strip()
-            if person_name:
-                print(f"\n👤 Adding {person_name} to the system...")
-                if capture_photos(person_name, 40):
-                    print(f"✅ Successfully captured photos for {person_name}")
+            print("\n📋 What would you like to do?")
+            print("1. Add a new person (capture photos)")
+            print("2. Train the system with existing photos")
+            print("3. Test the trained system")
+            print("4. Exit")
+            
+            choice = input("\nEnter your choice (1-4): ").strip()
+            
+            if choice == "1":
+                # Add new person
+                person_name = input("Enter the person's name: ").strip()
+                if person_name:
+                    print(f"\n👤 Adding {person_name} to the system...")
+                    if capture_photos(person_name, 40):
+                        print(f"✅ Successfully captured photos for {person_name}")
+                    else:
+                        print(f"❌ Failed to capture photos for {person_name}")
                 else:
-                    print(f"❌ Failed to capture photos for {person_name}")
-            else:
-                print("❌ Please enter a valid name")
-        
-        elif choice == "2":
-            # Train the system
-            print("\n🎓 Training the face recognition system...")
-            if train_recognizer():
+                    print("❌ Please enter a valid name")
+            
+            elif choice == "2":
+                # Train the system
+                print("\n🎓 Training the face recognition system...")
+                if train_recognizer():
+                    test_training()
+                    print("\n🎉 Training completed successfully!")
+                    print("   You can now run: python3 test_face_recognition.py")
+                else:
+                    print("\n❌ Training failed!")
+                    print("   Please add some people first (option 1)")
+            
+            elif choice == "3":
+                # Test the system
+                print("\n🧪 Testing the trained system...")
                 test_training()
-                print("\n🎉 Training completed successfully!")
-                print("   You can now run: python3 test_face_recognition.py")
+            
+            elif choice == "4":
+                print("👋 Goodbye!")
+                break
+            
             else:
-                print("\n❌ Training failed!")
-                print("   Please add some people first (option 1)")
-        
-        elif choice == "3":
-            # Test the system
-            print("\n🧪 Testing the trained system...")
-            test_training()
-        
-        elif choice == "4":
-            print("👋 Goodbye!")
-            break
-        
-        else:
-            print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
+                print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
     
     except KeyboardInterrupt:
         print("\n\n🛑 Interrupted by user")
