@@ -476,11 +476,16 @@ class FaceRecognitionSystem:
                 self.camera = None
     
     def _save_recognition_image_from_frame(self, frame, x, y, w, h, person_name):
-        """FAST: Save recognition image from current frame (no separate capture)"""
+        """FAST: Save recognition image from current frame with natural color correction"""
         try:
-            # Extract face region and resize
+            # Extract face region first
             face_roi = frame[y:y+h, x:x+w]
-            face_resized = cv2.resize(face_roi, (300, 300), interpolation=cv2.INTER_AREA)
+            
+            # Apply natural color correction to fix blue tint
+            face_corrected = self._apply_natural_color_correction(face_roi)
+            
+            # Resize to 300x300
+            face_resized = cv2.resize(face_corrected, (300, 300), interpolation=cv2.INTER_AREA)
             
             # Save to recognition location
             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -493,11 +498,45 @@ class FaceRecognitionSystem:
             os.makedirs(recognition_dir, exist_ok=True)
             recognition_file = os.path.join(recognition_dir, "recognition.jpg")
             
-            cv2.imwrite(recognition_file, face_resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            cv2.imwrite(recognition_file, face_resized, [cv2.IMWRITE_JPEG_QUALITY, 90])
             self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
         except Exception as e:
             print(f"[WARNING] Failed to save recognition image: {e}")
             self.recognition_image_path = None
+    
+    def _apply_natural_color_correction(self, frame_bgr):
+        """Apply natural color correction to fix blue tint - optimized for speed"""
+        try:
+            # Gray-world white balance: equalize average of channels (fixes color cast)
+            b, g, r = cv2.split(frame_bgr)
+            mean_b = float(b.mean()) + 1e-6
+            mean_g = float(g.mean()) + 1e-6
+            mean_r = float(r.mean()) + 1e-6
+            mean_gray = (mean_b + mean_g + mean_r) / 3.0
+
+            # Calculate correction factors
+            kb = mean_gray / mean_b
+            kg = mean_gray / mean_g
+            kr = mean_gray / mean_r
+
+            # Apply white balance correction
+            b_corr = cv2.multiply(b, kb)
+            g_corr = cv2.multiply(g, kg)
+            r_corr = cv2.multiply(r, kr)
+            wb = cv2.merge([b_corr, g_corr, r_corr])
+            wb = np.clip(wb, 0, 255).astype(np.uint8)
+
+            # Additional fix for blue tint: reduce blue channel slightly, boost red
+            b_final, g_final, r_final = cv2.split(wb)
+            b_final = cv2.multiply(b_final, 0.95)  # Slightly reduce blue
+            r_final = cv2.multiply(r_final, 1.05)  # Slightly boost red for warmer skin tones
+            corrected = cv2.merge([b_final, g_final, r_final])
+            corrected = np.clip(corrected, 0, 255).astype(np.uint8)
+
+            return corrected
+        except Exception as e:
+            print(f"[WARNING] Color correction failed: {e}")
+            return frame_bgr
     
     def _async_save_skin_photo_and_trigger(self, person_name):
         """ASYNC: Save skin photo and trigger analysis in background thread"""
