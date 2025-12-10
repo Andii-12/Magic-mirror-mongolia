@@ -9,7 +9,7 @@ Complete step-by-step installation guide for MagicMirror² with Face Recognition
 - **Raspberry Pi 4** (1GB+ RAM recommended)
 - **Raspberry Pi OS** (Bullseye or newer)
 - **Camera Module** (Raspberry Pi Camera v2 or v3)
-- **Ultrasonic Sensor** (HC-SR04) - GPIO pins 23 (TRIG) and 24 (ECHO)
+- **Ultrasonic Sensor** (HC-SR04) - GPIO pins 5 (TRIG) and 6 (ECHO)
 - **Relay Module** (12V) - GPIO pin 18
 - **Internet connection** for initial setup
 

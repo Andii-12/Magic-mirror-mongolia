@@ -11,8 +11,8 @@ import platform
 IS_WINDOWS = platform.system() == "Windows"
 
 # GPIO pins (same as face_recognition_system.py)
-TRIG_PIN = 23  # GPIO pin for TRIG
-ECHO_PIN = 24  # GPIO pin for ECHO
+TRIG_PIN = 5   # GPIO pin for TRIG
+ECHO_PIN = 6   # GPIO pin for ECHO
 
 # Initialize GPIO
 gpio_available = False
@@ -119,7 +119,7 @@ def test_ultrasonic_sensor():
                 print(f"Reading #{reading_count:4d}: {distance:6.2f} cm")
             else:
                 print(f"Reading #{reading_count:4d}: ERROR (no valid reading)")
-                print("   Tips: check 5V/GND, TRIG->GPIO23, ECHO->GPIO24 via divider,")
+                print("   Tips: check 5V/GND, TRIG->GPIO5, ECHO->GPIO6 via divider,")
                 print("         and ensure nothing is closer than 2cm or beyond 4m.")
             
             time.sleep(0.25)  # 250ms between readings
@@ -158,7 +158,7 @@ def main():
         print("❌ Test failed. Please check your wiring.")
         print("")
         print("🔧 Troubleshooting:")
-        print("   1. Check wiring: TRIG->GPIO23, ECHO->GPIO24")
+        print("   1. Check wiring: TRIG->GPIO5, ECHO->GPIO6")
         print("   2. Verify sensor is powered (5V and GND)")
         print("   3. Check if sensor is connected properly")
         print("   4. Try running with: sudo python3 test_ultrasonic.py")

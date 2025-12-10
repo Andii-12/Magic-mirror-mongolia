@@ -18,8 +18,8 @@ import libcamera
 import subprocess
 
 # GPIO pins for ultrasonic sensor (matching your working code)
-TRIG_PIN = 23  # GPIO pin for TRIG
-ECHO_PIN = 24  # GPIO pin for ECHO
+TRIG_PIN = 5   # GPIO pin for TRIG
+ECHO_PIN = 6   # GPIO pin for ECHO
 
 # GPIO pin for 12V relay (single channel)
 RELAY_PIN = 18  # GPIO pin for relay control

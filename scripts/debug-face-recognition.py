@@ -83,8 +83,8 @@ def test_ultrasonic_sensor():
     try:
         import RPi.GPIO as GPIO
         
-        TRIG_PIN = 23
-        ECHO_PIN = 24
+        TRIG_PIN = 5
+        ECHO_PIN = 6
         
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(TRIG_PIN, GPIO.OUT)

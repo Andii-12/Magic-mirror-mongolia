@@ -58,8 +58,8 @@ system.run()  # Гол ажиллагаа
 
 ```python
 # GPIO pins
-TRIG_PIN = 23
-ECHO_PIN = 24
+TRIG_PIN = 5
+ECHO_PIN = 6
 RELAY_PIN = 18
 
 # Settings

@@ -10,8 +10,8 @@ import time
 import sys
 
 # GPIO pins for ultrasonic sensor
-TRIG_PIN = 23  # GPIO pin for TRIG
-ECHO_PIN = 24  # GPIO pin for ECHO
+TRIG_PIN = 5   # GPIO pin for TRIG
+ECHO_PIN = 6   # GPIO pin for ECHO
 
 def test_ultrasonic_sensor():
     """Test ultrasonic sensor with detailed diagnostics"""

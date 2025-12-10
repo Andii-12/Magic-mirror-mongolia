@@ -10,7 +10,7 @@
       │
       ▼
 ┌─────────────────┐
-│ Setup GPIO      │──► Ultrasonic: GPIO 23, 24
+│ Setup GPIO      │──► Ultrasonic: GPIO 5, 6
 │ Pins            │──► Relay: GPIO 18
 └────────┬────────┘
          │
