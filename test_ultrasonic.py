@@ -21,10 +21,13 @@ if not IS_WINDOWS:
     try:
         import RPi.GPIO as GPIO
         GPIO.setmode(GPIO.BCM)
+        # TRIG as output, ECHO as input with a pull-down to avoid floating
         GPIO.setup(TRIG_PIN, GPIO.OUT)
-        GPIO.setup(ECHO_PIN, GPIO.IN)
+        GPIO.setup(ECHO_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.output(TRIG_PIN, False)
         gpio_available = True
         print("✅ GPIO initialized successfully")
+        time.sleep(0.05)  # let sensor settle
     except Exception as e:
         print(f"⚠️  GPIO initialization error: {e}")
         print("   Make sure you're running with sudo or have GPIO permissions")
@@ -33,49 +36,59 @@ else:
     print("⚠️  Running on Windows - GPIO features disabled")
     gpio_available = False
 
-def get_distance():
-    """Get distance from ultrasonic sensor in cm"""
+def _single_pulse_distance():
+    """Take one HC-SR04 reading. Returns distance in cm or None on failure."""
+    # Ensure trigger is low
+    GPIO.output(TRIG_PIN, False)
+    time.sleep(0.001)
+
+    # 10µs trigger pulse
+    GPIO.output(TRIG_PIN, True)
+    time.sleep(0.00001)
+    GPIO.output(TRIG_PIN, False)
+
+    # Wait for echo to go high (start)
+    start = None
+    timeout = time.perf_counter() + 0.04  # 40ms guard
+    while GPIO.input(ECHO_PIN) == 0:
+        if time.perf_counter() > timeout:
+            return None
+    start = time.perf_counter()
+
+    # Wait for echo to go low (end)
+    timeout = time.perf_counter() + 0.04
+    while GPIO.input(ECHO_PIN) == 1:
+        if time.perf_counter() > timeout:
+            return None
+    end = time.perf_counter()
+
+    elapsed = end - start
+    distance = (elapsed * 34300) / 2
+    if 2 <= distance <= 400:
+        return round(distance, 2)
+    return None
+
+
+def get_distance(samples=3):
+    """Get a smoothed distance reading (median of N samples)."""
     if not gpio_available:
         return 999
-    
-    try:
-        # Ensure trigger is low initially
-        GPIO.output(TRIG_PIN, False)
-        time.sleep(0.001)
-        
-        # Send trigger pulse
-        GPIO.output(TRIG_PIN, True)
-        time.sleep(0.00001)  # 10 microseconds
-        GPIO.output(TRIG_PIN, False)
-        
-        # Wait for echo start
-        start_time = time.time()
-        timeout = start_time + 0.05
-        while GPIO.input(ECHO_PIN) == 0:
-            if time.time() > timeout:
-                return 999
-            start_time = time.time()
-        
-        # Wait for echo end
-        stop_time = time.time()
-        timeout = stop_time + 0.05
-        while GPIO.input(ECHO_PIN) == 1:
-            if time.time() > timeout:
-                return 999
-            stop_time = time.time()
-        
-        # Calculate distance
-        elapsed = stop_time - start_time
-        distance = (elapsed * 34300) / 2
-        
-        # Validate distance range
-        if 2 <= distance <= 400:
-            return round(distance, 2)
+
+    readings = []
+    for _ in range(samples):
+        d = _single_pulse_distance()
+        if d is not None:
+            readings.append(d)
+        time.sleep(0.01)
+
+    if not readings:
         return 999
-        
-    except Exception as e:
-        print(f"Error reading distance: {e}")
-        return 999
+
+    readings.sort()
+    mid = len(readings) // 2
+    if len(readings) % 2 == 1:
+        return readings[mid]
+    return round((readings[mid - 1] + readings[mid]) / 2, 2)
 
 def test_ultrasonic_sensor():
     """Test ultrasonic sensor with continuous loop measurements"""
@@ -99,15 +112,17 @@ def test_ultrasonic_sensor():
     try:
         reading_count = 0
         while True:
-            distance = get_distance()
+            distance = get_distance(samples=5)
             reading_count += 1
             
             if distance != 999:
                 print(f"Reading #{reading_count:4d}: {distance:6.2f} cm")
             else:
                 print(f"Reading #{reading_count:4d}: ERROR (no valid reading)")
+                print("   Tips: check 5V/GND, TRIG->GPIO23, ECHO->GPIO24 via divider,")
+                print("         and ensure nothing is closer than 2cm or beyond 4m.")
             
-            time.sleep(0.2)  # 200ms between readings
+            time.sleep(0.25)  # 250ms between readings
             
     except KeyboardInterrupt:
         print("\n")
