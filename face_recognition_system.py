@@ -1679,14 +1679,8 @@ class FaceRecognitionSystem:
                         self._baseline_samples.sort()
                         mid = len(self._baseline_samples) // 2
                         self.baseline_distance = self._baseline_samples[mid]
-                        # If mirror or frame is already close to the sensor, lower the effective threshold
-                        # so that we only trigger when a person comes significantly closer (≈40% closer).
-                        if self.baseline_distance <= PROXIMITY_THRESHOLD * 2:
-                            self.effective_proximity_threshold = max(
-                                5, self.baseline_distance * 0.6
-                            )
-                        else:
-                            self.effective_proximity_threshold = PROXIMITY_THRESHOLD
+                        # Use fixed threshold to avoid overshooting when baseline is close
+                        self.effective_proximity_threshold = PROXIMITY_THRESHOLD
                         self.baseline_ready = True
                         print(
                             f"[INFO] Baseline distance calibrated at {self.baseline_distance:.1f}cm, "
@@ -1703,12 +1697,8 @@ class FaceRecognitionSystem:
 
                 # Keep an updated effective threshold even after baseline (in case env changes)
                 if self.baseline_ready and self.baseline_distance is not None:
-                    if self.baseline_distance <= PROXIMITY_THRESHOLD * 2:
-                        self.effective_proximity_threshold = max(
-                            5, self.baseline_distance * 0.6
-                        )
-                    else:
-                        self.effective_proximity_threshold = PROXIMITY_THRESHOLD
+                    # Keep threshold fixed at configured value for reliable triggering
+                    self.effective_proximity_threshold = PROXIMITY_THRESHOLD
                 
                 # Control lights based on proximity
                 self.control_lights_based_on_proximity(smoothed_distance)
