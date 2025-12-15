@@ -115,9 +115,19 @@ Module.register("facerecognition", {
 		this.currentConfidence = data.confidence || 0;
 		// Handle recognition_image - could be null, undefined, string, or empty string
 		const rawImage = data.recognition_image;
-		if (rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined') {
+		if (
+			rawImage &&
+			typeof rawImage === "string" &&
+			rawImage.trim() !== "" &&
+			rawImage !== "null" &&
+			rawImage !== "undefined"
+		) {
 			this.recognitionImage = rawImage.trim();
 		} else {
+			this.recognitionImage = null;
+		}
+		// Clear any stale image while not recognized to prevent double/early display
+		if (!this.currentPerson || this.currentPerson === "Unknown" || this.currentStatus !== "recognized") {
 			this.recognitionImage = null;
 		}
 		this.isGuest = data.is_guest || false;
@@ -395,19 +405,6 @@ Module.register("facerecognition", {
 			statusElement.innerHTML = text;
 			wrapper.appendChild(statusElement);
 
-			// If a recent recognition image exists, show it under the status too
-			if (this.recognitionImage) {
-				const imageElement = document.createElement("img");
-				imageElement.className = "facerecognition-recognition-image";
-				const timestamp = new Date().getTime();
-				imageElement.src = this.recognitionImage + "?t=" + timestamp;
-				imageElement.alt = "Recognition preview";
-				imageElement.onerror = function() {
-					console.error("Failed to load recognition image:", this.src);
-				};
-				wrapper.appendChild(imageElement);
-			}
-			
 			// Add log messages display box at the bottom - always show container
 			const logContainer = document.createElement("div");
 			logContainer.className = "facerecognition-logs-container";
