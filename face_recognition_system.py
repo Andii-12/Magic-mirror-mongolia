@@ -26,7 +26,7 @@ RELAY_PIN = 18  # GPIO pin for relay control
 
 # Face recognition settings
 STATUS_FILE = "/tmp/magicmirror_face_status.json"
-PROXIMITY_THRESHOLD = 20  # cm
+PROXIMITY_THRESHOLD = 70  # cm
 TIMEOUT_DELAY = 5  # seconds
 
 # Face recognition paths (matching your working code)
