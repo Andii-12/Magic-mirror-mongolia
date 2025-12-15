@@ -26,7 +26,7 @@ RELAY_PIN = 18  # GPIO pin for relay control
 
 # Face recognition settings
 STATUS_FILE = "/tmp/magicmirror_face_status.json"
-PROXIMITY_THRESHOLD = 70  # cm
+PROXIMITY_THRESHOLD = 75  # cm
 TIMEOUT_DELAY = 5  # seconds
 
 # Face recognition paths (matching your working code)
@@ -1746,6 +1746,9 @@ class FaceRecognitionSystem:
                         self.camera_opened = False
                         # Don't reset photo_saved_this_session here - only reset when new person detected
                         self.is_active = True
+                        # Ensure relay turns on immediately when activation occurs
+                        if self.relay_available and not self.lights_on:
+                            self.turn_on_lights()
                         # Pre-warm camera for faster recognition
                         self.initialize_camera()
                         self.update_status_file()
@@ -1870,7 +1873,7 @@ class FaceRecognitionSystem:
                             # No person recognized but was active - start timeout
                             self.shutdown_timer = time.time()
                             print(f"⏰ No face recognized, starting {TIMEOUT_DELAY}s timeout")
-                            self.add_log_message("Хүн хэт алсаж байна...")
+                            self.add_log_message("Хүний зай хол байна...")
                             # Reset recognition lock when user moves away (allows recognition next time)
                             if self.recognition_locked:
                                 self.recognition_locked = False
