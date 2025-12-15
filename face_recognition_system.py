@@ -1319,7 +1319,8 @@ class FaceRecognitionSystem:
                         if name != "Unknown" and confidence < 90 and confidence_percent > 70:
                             print(f"✅ Recognized: {name} ({confidence_percent:.0f}%)")
                             
-                            # FAST: Save recognition image from current frame (no separate capture needed)
+                        # Prefer latest saved skin photo for UI (instant display); fall back to live frame
+                        if not self.copy_latest_skin_photo_to_recognition(name):
                             self._save_recognition_image_from_frame(frame, x, y, w, h, name)
                             
                             # Reset photo flag for this person if it's a new recognition
@@ -1357,8 +1358,9 @@ class FaceRecognitionSystem:
                             # Handle unknown person as guest
                             guest_name = self.handle_unknown_person()
                             
-                            # FAST: Save recognition image from current frame
-                            self._save_recognition_image_from_frame(frame, x, y, w, h, guest_name)
+                            # Prefer latest skin photo if any; fall back to live frame
+                            if not self.copy_latest_skin_photo_to_recognition(guest_name):
+                                self._save_recognition_image_from_frame(frame, x, y, w, h, guest_name)
                             
                             # Reset photo flag for guest
                             if self.current_person != guest_name:
@@ -1385,8 +1387,9 @@ class FaceRecognitionSystem:
                         
                         guest_name = self.handle_unknown_person()
                         
-                        # FAST: Save recognition image from current frame
-                        self._save_recognition_image_from_frame(frame, x, y, w, h, guest_name)
+                        # Prefer latest skin photo if any; fall back to live frame
+                        if not self.copy_latest_skin_photo_to_recognition(guest_name):
+                            self._save_recognition_image_from_frame(frame, x, y, w, h, guest_name)
                         
                         # Reset photo flag for guest
                         if self.current_person != guest_name:
@@ -1552,14 +1555,14 @@ class FaceRecognitionSystem:
         if distance >= 400 or distance == 999:
             return
         
-        # Stable relay control constants - prevent flickering
-        LIGHTS_ON_STABLE_THRESHOLD = 2  # Require 2 consecutive readings to turn on
-        LIGHTS_OFF_STABLE_THRESHOLD = 5  # Require 5 consecutive readings to turn off (prevent flicker)
-        LIGHTS_OFF_BUFFER = 10  # Larger buffer to prevent rapid toggling
+        # Stable relay control constants - quicker response but still debounced
+        LIGHTS_ON_STABLE_THRESHOLD = 1  # Turn on after first stable detection
+        LIGHTS_OFF_STABLE_THRESHOLD = 3  # Shorter delay to turn off
+        LIGHTS_OFF_BUFFER = 6  # Smaller buffer for faster off response
         
-        # Longer debounce to prevent rapid toggling
-        MIN_ON_SECONDS = 0.5  # Minimum time between turning on
-        MIN_OFF_SECONDS = 2.0  # Minimum time between turning off (prevent flicker)
+        # Debounce: keep short to speed up visual response without chatter
+        MIN_ON_SECONDS = 0.2  # Minimum time between turning on
+        MIN_OFF_SECONDS = 1.0  # Minimum time between turning off
         now = time.time()
 
         # Global block to avoid re-toggling too soon - increased delay
@@ -1637,9 +1640,9 @@ class FaceRecognitionSystem:
         
         # State tracking variables
         proximity_stable_count = 0
-        PROXIMITY_STABLE_THRESHOLD = 2  # Reduced from 3 for faster activation
+        PROXIMITY_STABLE_THRESHOLD = 1  # Trigger immediately when within threshold
         away_stable_count = 0
-        AWAY_STABLE_THRESHOLD = 3  # Reduced from 4 for faster response
+        AWAY_STABLE_THRESHOLD = 2  # Faster shutdown when user walks away
         previous_smoothed_distance = None
         
         try:
