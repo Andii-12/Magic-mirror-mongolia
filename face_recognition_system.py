@@ -85,6 +85,8 @@ class FaceRecognitionSystem:
         # Log messages for display (Mongolian)
         self.log_messages = []  # Store last 5 log messages in Mongolian
         self.max_log_messages = 5  # Maximum number of log messages to keep
+        self._last_distance_log_time = 0  # Throttle ultrasonic log messages
+        self._last_distance_log_value = None  # Track last logged distance
         
         # Relay control variables
         self.lights_on = False  # Track if lights are currently on
@@ -1714,6 +1716,15 @@ class FaceRecognitionSystem:
                 # Debug output every 50 iterations (reduced frequency for speed)
                 if len(distance_history) % 50 == 0:
                     print(f"Distance: {smoothed_distance:.1f}cm, Person: {self.current_person}, Lights: {'ON' if self.lights_on else 'OFF'}")
+
+                # Throttled ultrasonic log (max every 1s, only valid distances)
+                now_ts = time.time()
+                if smoothed_distance < 400 and smoothed_distance != 999:
+                    if (now_ts - self._last_distance_log_time) > 1.0:
+                        if self._last_distance_log_value is None or abs(smoothed_distance - self._last_distance_log_value) >= 3:
+                            self.add_log_message(f"Мэдрэгч: {smoothed_distance:.0f}см")
+                            self._last_distance_log_time = now_ts
+                            self._last_distance_log_value = smoothed_distance
                 
                 # Check proximity with smoothed distance and calibrated threshold
                 if smoothed_distance <= self.effective_proximity_threshold:
