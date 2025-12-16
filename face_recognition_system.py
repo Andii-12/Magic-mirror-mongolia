@@ -81,6 +81,10 @@ class FaceRecognitionSystem:
         self._baseline_samples = []
         self.baseline_ready = False
         self.effective_proximity_threshold = PROXIMITY_THRESHOLD
+        # Person change detection
+        self.last_person_name = None  # Track last recognized person to detect changes
+        self.person_stable_start_time = None  # When current person was first detected
+        self.min_stable_time_before_recognition = 1.0  # Minimum 1 second stable before recognition
         
         # Log messages for display (Mongolian)
         self.log_messages = []  # Store last 5 log messages in Mongolian
@@ -1721,6 +1725,11 @@ class FaceRecognitionSystem:
                     # Object detected within threshold
                     proximity_stable_count += 1
                     away_stable_count = 0  # Reset away counter
+                    
+                    # If person was away and now close again, reset stable time
+                    if self.person_stable_start_time is None and self.is_active:
+                        self.person_stable_start_time = time.time()
+                        print(f"[INFO] Person returned - resetting stable time for recognition")
 
                     # Immediately publish 'detecting' status so UI shows scanning text
                     # even before full activation kicks in
@@ -1737,6 +1746,7 @@ class FaceRecognitionSystem:
                         print(f"🎯 Object detected at {smoothed_distance:.1f}cm - activating face recognition")
                         self.add_log_message(f"Хүн илрэв ({smoothed_distance:.0f}см зайд)")
                         self.last_detection_time = time.time()
+                        self.person_stable_start_time = time.time()  # Start tracking stable time
                         self.shutdown_timer = None
                         self.current_person = None  # Reset person
                         self.unknown_attempts = 0   # Reset unknown counter on new activation
@@ -1759,17 +1769,37 @@ class FaceRecognitionSystem:
                         # Ensure detection time is set
                         if self.last_detection_time is None:
                             self.last_detection_time = time.time()
-                        # Wait only ~0.2 seconds for stable proximity before camera activation (reduced from 0.3s)
-                        if time.time() - self.last_detection_time > 0.2:
+                        
+                        # Initialize stable time tracking
+                        if self.person_stable_start_time is None:
+                            self.person_stable_start_time = time.time()
+                        
+                        # Wait for minimum stable time before attempting recognition (1.0 second)
+                        # This ensures person is properly positioned and not just passing by
+                        time_since_stable = time.time() - self.person_stable_start_time
+                        time_since_detection = time.time() - self.last_detection_time
+                        
+                        # Require both: minimum stable time AND minimum detection time
+                        if time_since_stable >= self.min_stable_time_before_recognition and time_since_detection >= 0.5:
                             self.add_log_message("Царай танилт эхэлж байна...")
                             self.face_recognition_attempted = True
                             person = self.recognize_face_with_camera()
                             if person and person != "Unknown":
+                                # Check if this is a different person than before
+                                person_changed = (self.last_person_name is not None and 
+                                                 self.last_person_name != person)
+                                
                                 self.add_log_message(f"Царай танигдлаа: {person}")
                                 self.current_person = person
+                                self.last_person_name = person  # Update last person
                                 self.shutdown_timer = None
                                 # Lock recognition until user leaves and logs out
                                 self.recognition_locked = True
+                                
+                                # Reset photo flag if person changed (new person = new photo)
+                                if person_changed:
+                                    print(f"[INFO] Person changed from {self.last_person_name} to {person} - resetting photo flag")
+                                    self.photo_saved_this_session = False
                                 
                                 # Ensure lights are on for recognized trained face
                                 if self.relay_available and not self.lights_on:
@@ -1810,6 +1840,19 @@ class FaceRecognitionSystem:
                     elif self.current_person is not None:
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
+                        # Check if distance changed significantly (might be a different person)
+                        # If distance changes by more than 20cm while person is recognized, 
+                        # it might indicate a person change - allow re-recognition
+                        if previous_smoothed_distance is not None:
+                            distance_change = abs(smoothed_distance - previous_smoothed_distance)
+                            if distance_change > 20 and self.recognition_locked:
+                                # Significant distance change - might be a new person
+                                # Unlock recognition to allow re-check
+                                print(f"[INFO] Significant distance change ({distance_change:.1f}cm) - unlocking recognition for re-check")
+                                self.recognition_locked = False
+                                self.face_recognition_attempted = False
+                                self.person_stable_start_time = time.time()  # Reset stable time
+                        
                         # Periodically update status
                         current_time = time.time()
                         if current_time - last_status_update > STATUS_UPDATE_INTERVAL:
@@ -1825,6 +1868,9 @@ class FaceRecognitionSystem:
                                     self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
                             self.update_status_file()
                             last_status_update = current_time
+                        
+                        # Update previous distance for next iteration
+                        previous_smoothed_distance = smoothed_distance
                     
                     # Update status file regularly when active (if not already updated above)
                     current_time = time.time()
@@ -1837,6 +1883,8 @@ class FaceRecognitionSystem:
                     # Object moved away - count consecutive away readings
                     away_stable_count += 1
                     proximity_stable_count = 0  # Reset proximity counter
+                    # Reset stable time when person moves away
+                    self.person_stable_start_time = None
                     
                     # Only deactivate if away for stable period
                     if away_stable_count >= AWAY_STABLE_THRESHOLD:
@@ -1862,6 +1910,11 @@ class FaceRecognitionSystem:
                                 self.recognition_image_path = None
                                 self.face_recognition_attempted = False
                                 self.recognition_locked = False
+                                # Reset person tracking for next detection
+                                self.last_person_name = None
+                                self.person_stable_start_time = None
+                                # Reset photo flag when person leaves (next person can get new photo)
+                                self.photo_saved_this_session = False
                             
                             # Start timeout timer for final cleanup
                             if self.shutdown_timer is None:
@@ -1879,6 +1932,11 @@ class FaceRecognitionSystem:
                             if self.recognition_locked:
                                 self.recognition_locked = False
                                 print("🔓 Recognition lock reset - will try again when user returns")
+                            # Reset person tracking for next detection
+                            self.last_person_name = None
+                            self.person_stable_start_time = None
+                            # Reset photo flag when no person detected (next person can get new photo)
+                            self.photo_saved_this_session = False
                             # Turn off lights if still on
                             if self.lights_on and self.relay_available:
                                 print(f"🌙 Turning off lights - no person detected")
@@ -1901,13 +1959,17 @@ class FaceRecognitionSystem:
                             self.camera_opened = False
                             self.shutdown_timer = None
                             self.recognition_locked = False  # Allow recognition next time
+                            # Reset person tracking for next detection
+                            self.last_person_name = None
+                            self.person_stable_start_time = None
+                            # Reset photo flag on timeout (next person can get new photo)
+                            self.photo_saved_this_session = False
                             # Ensure lights are turned off on timeout (should already be off, but double-check)
                             if self.lights_on and self.relay_available:
                                 try:
                                     self.turn_off_lights()
                                 except Exception as e:
                                     print(f"[WARNING] Failed to turn off lights on timeout: {e}")
-                            # Don't reset photo_saved_this_session here - only reset when new person detected
                             self.update_status_file()
                         else:
                             # Still in timeout period - show countdown
