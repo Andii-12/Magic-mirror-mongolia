@@ -466,9 +466,10 @@ class FaceRecognitionSystem:
             return 999
 
     def initialize_camera(self):
-        """Initialize camera once and reuse it - OPTIMIZED"""
+        """Initialize camera once and reuse it - OPTIMIZED with verification"""
         if self.camera is None and platform.system() != "Windows":
             try:
+                print("[INFO] Initializing camera...")
                 self.camera = Picamera2()
                 config = self.camera.create_preview_configuration(
                     main={"size": (640, 480), "format": "RGB888"},
@@ -476,10 +477,58 @@ class FaceRecognitionSystem:
                 )
                 self.camera.configure(config)
                 self.camera.start()
-                time.sleep(0.3)  # Reduced from 1s to 0.3s for faster startup
+                time.sleep(0.5)  # Give camera time to stabilize
+                
+                # Verify camera is actually working by attempting a test capture
+                try:
+                    test_frame = self.camera.capture_array()
+                    if test_frame is None or test_frame.size == 0:
+                        print("[ERROR] Camera test capture returned empty frame")
+                        self.camera.stop()
+                        self.camera.close()
+                        self.camera = None
+                        return False
+                    print(f"[INFO] ✅ Camera initialized successfully (test frame: {test_frame.shape})")
+                    return True
+                except Exception as e:
+                    print(f"[ERROR] Camera test capture failed: {e}")
+                    try:
+                        self.camera.stop()
+                        self.camera.close()
+                    except:
+                        pass
+                    self.camera = None
+                    return False
             except Exception as e:
                 print(f"[ERROR] Camera initialization failed: {e}")
+                import traceback
+                traceback.print_exc()
                 self.camera = None
+                return False
+        elif self.camera is not None:
+            # Camera already initialized, verify it's still working
+            try:
+                test_frame = self.camera.capture_array()
+                if test_frame is None or test_frame.size == 0:
+                    print("[WARNING] Camera appears to be broken, reinitializing...")
+                    try:
+                        self.camera.stop()
+                        self.camera.close()
+                    except:
+                        pass
+                    self.camera = None
+                    return self.initialize_camera()
+                return True
+            except Exception as e:
+                print(f"[WARNING] Camera verification failed: {e}, reinitializing...")
+                try:
+                    self.camera.stop()
+                    self.camera.close()
+                except:
+                    pass
+                self.camera = None
+                return self.initialize_camera()
+        return True
     
     def _save_recognition_image_from_frame(self, frame, x, y, w, h, person_name):
         """FAST: Save recognition image from current frame with natural color correction"""
@@ -547,17 +596,41 @@ class FaceRecognitionSystem:
     def _async_save_skin_photo_and_trigger(self, person_name):
         """ASYNC: Save skin photo and trigger analysis in background thread"""
         try:
+            print(f"[INFO] Starting async skin photo save for: {person_name}")
             photo_saved = self.save_skin_photo(person_name)
             if photo_saved:
+                print(f"[INFO] Skin photo saved successfully for: {person_name}")
                 # Copy the newly saved skin photo to recognition location
                 self.copy_latest_skin_photo_to_recognition(person_name)
                 
-                # Get the photo path for the trigger
-                current_date = datetime.now().strftime("%Y-%m-%d")
-                photo_path = os.path.join(os.getcwd(), "Skin", person_name, f"{current_date}.jpg")
-                self.trigger_skin_analysis(person_name, photo_path)
+                # Find the actual photo path (might have timestamp if duplicate)
+                skin_dir = os.path.join(os.getcwd(), "Skin", person_name)
+                if os.path.exists(skin_dir):
+                    # Find the most recent photo
+                    image_files = []
+                    for file in os.listdir(skin_dir):
+                        if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                            file_path = os.path.join(skin_dir, file)
+                            if os.path.isfile(file_path):
+                                mtime = os.path.getmtime(file_path)
+                                image_files.append((mtime, file_path))
+                    
+                    if image_files:
+                        # Sort by modification time (newest first)
+                        image_files.sort(reverse=True)
+                        photo_path = image_files[0][1]
+                        print(f"[INFO] Triggering skin analysis with photo: {photo_path}")
+                        self.trigger_skin_analysis(person_name, photo_path)
+                    else:
+                        print(f"[WARNING] No photos found in {skin_dir} for skin analysis")
+                else:
+                    print(f"[WARNING] Skin directory not found: {skin_dir}")
+            else:
+                print(f"[WARNING] Skin photo save failed for: {person_name}")
         except Exception as e:
-            print(f"[WARNING] Async skin photo save failed: {e}")
+            print(f"[ERROR] Async skin photo save failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     def capture_recognition_image_with_rpicam(self, output_path):
         """Capture recognition image using rpicam-still with natural colors (same as skin photos)"""
@@ -1287,10 +1360,22 @@ class FaceRecognitionSystem:
                 # Instant cancel if user moved away
                 live_distance = self.get_distance()
                 if live_distance > PROXIMITY_THRESHOLD:
+                    print(f"[INFO] User moved away during recognition ({live_distance:.1f}cm > {PROXIMITY_THRESHOLD}cm)")
                     return None
 
                 # Capture frame - FAST
-                frame_rgb = self.camera.capture_array()
+                try:
+                    frame_rgb = self.camera.capture_array()
+                    if frame_rgb is None or frame_rgb.size == 0:
+                        print("[WARNING] Camera capture returned empty frame")
+                        return None
+                except Exception as e:
+                    print(f"[ERROR] Camera capture failed: {e}")
+                    # Try to reinitialize camera
+                    self.camera = None
+                    self.initialize_camera()
+                    return None
+                
                 # Convert RGB to BGR for OpenCV processing
                 frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -1300,10 +1385,12 @@ class FaceRecognitionSystem:
                     gray, 
                     scaleFactor=1.1,      # Balanced for speed/accuracy
                     minNeighbors=2,       # Reduced from 3 for speed
-                    minSize=(80, 80),     # Larger minimum = faster (less faces to check)
-                    maxSize=(300, 300),   # Limit max size for speed
+                    minSize=(60, 60),     # Reduced from 80x80 to detect smaller faces
+                    maxSize=(400, 400),   # Increased max size to detect larger faces
                     flags=cv2.CASCADE_SCALE_IMAGE | cv2.CASCADE_DO_CANNY_PRUNING  # Additional speed optimization
                 )
+
+                print(f"[DEBUG] Face detection found {len(faces)} face(s)")
 
                 if len(faces) > 0:
                     if self.recognizer:
@@ -1410,15 +1497,36 @@ class FaceRecognitionSystem:
                         ).start()
                         
                         return guest_name
+                else:
+                    # No faces detected - this is not an error, just no face in frame
+                    print(f"[INFO] No faces detected in frame (attempt {self.unknown_attempts + 1})")
+                    return None
                     
             except Exception as e:
-                print(f"[WARNING] Camera capture failed: {e}")
+                print(f"[ERROR] Face recognition error: {e}")
+                import traceback
+                traceback.print_exc()
+                # Don't return None on error - try to recover
+                # Check if camera is still working
+                try:
+                    if self.camera is not None:
+                        test_frame = self.camera.capture_array()
+                        if test_frame is None or test_frame.size == 0:
+                            print("[WARNING] Camera appears broken, will reinitialize on next attempt")
+                            self.camera = None
+                except:
+                    print("[WARNING] Camera test failed, will reinitialize on next attempt")
+                    self.camera = None
                 return None
             
+            # This should not be reached, but just in case
+            print("[WARNING] Face recognition reached end without returning")
             return None
             
         except Exception as e:
-            print(f"Error in face recognition: {e}")
+            print(f"[ERROR] Critical error in face recognition: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def update_status_file(self):
@@ -1765,7 +1873,7 @@ class FaceRecognitionSystem:
                         self.update_status_file()
                     
                     # Try face recognition when first activated
-                    if self.is_active and self.current_person is None and not self.face_recognition_attempted and not self.recognition_locked:
+                    if self.is_active and self.current_person is None and not self.recognition_locked:
                         # Ensure detection time is set
                         if self.last_detection_time is None:
                             self.last_detection_time = time.time()
@@ -1774,16 +1882,46 @@ class FaceRecognitionSystem:
                         if self.person_stable_start_time is None:
                             self.person_stable_start_time = time.time()
                         
-                        # Wait for minimum stable time before attempting recognition (1.0 second)
+                        # Wait for minimum stable time before attempting recognition (reduced to 0.5 second for faster response)
                         # This ensures person is properly positioned and not just passing by
                         time_since_stable = time.time() - self.person_stable_start_time
                         time_since_detection = time.time() - self.last_detection_time
                         
-                        # Require both: minimum stable time AND minimum detection time
-                        if time_since_stable >= self.min_stable_time_before_recognition and time_since_detection >= 0.5:
-                            self.add_log_message("Царай танилт эхэлж байна...")
-                            self.face_recognition_attempted = True
+                        # Require both: minimum stable time AND minimum detection time (reduced thresholds)
+                        if time_since_stable >= 0.5 and time_since_detection >= 0.3:
+                            # Ensure camera is initialized and working before attempting recognition
+                            if self.camera is None:
+                                print("[INFO] Camera not initialized, initializing now...")
+                                self.initialize_camera()
+                                if self.camera is None:
+                                    print("[WARNING] Camera initialization failed, will retry...")
+                                    time.sleep(0.2)
+                                    continue
+                            
+                            # Check if camera is actually working
+                            try:
+                                # Quick test capture to verify camera is working
+                                test_frame = self.camera.capture_array()
+                                if test_frame is None or test_frame.size == 0:
+                                    print("[WARNING] Camera test capture failed, reinitializing...")
+                                    self.camera = None
+                                    self.initialize_camera()
+                                    time.sleep(0.2)
+                                    continue
+                            except Exception as e:
+                                print(f"[WARNING] Camera test failed: {e}, reinitializing...")
+                                self.camera = None
+                                self.initialize_camera()
+                                time.sleep(0.2)
+                                continue
+                            
+                            if not self.face_recognition_attempted:
+                                self.add_log_message("Царай танилт эхэлж байна...")
+                                self.face_recognition_attempted = True
+                            
+                            print(f"[INFO] Attempting face recognition (stable: {time_since_stable:.1f}s, detection: {time_since_detection:.1f}s)")
                             person = self.recognize_face_with_camera()
+                            
                             if person and person != "Unknown":
                                 # Check if this is a different person than before
                                 person_changed = (self.last_person_name is not None and 
@@ -1793,7 +1931,7 @@ class FaceRecognitionSystem:
                                 self.current_person = person
                                 self.last_person_name = person  # Update last person
                                 self.shutdown_timer = None
-                                # Lock recognition until user leaves and logs out
+                                # Lock recognition only after SUCCESSFUL recognition
                                 self.recognition_locked = True
                                 
                                 # Reset photo flag if person changed (new person = new photo)
@@ -1830,9 +1968,27 @@ class FaceRecognitionSystem:
                                         self.copy_latest_skin_photo_to_recognition(person)
                                         self.update_status_file()
                                 threading.Thread(target=delayed_update, daemon=True).start()
+                            elif person is None:
+                                # Recognition failed (no face detected or camera error) - allow retry
+                                print(f"[INFO] Face recognition returned None - will retry (attempt {self.unknown_attempts + 1})")
+                                # Don't lock recognition on failure - allow retries
+                                # Reset attempt flag after a delay to allow retry
+                                if self.unknown_attempts >= 3:
+                                    # After 3 failed attempts, wait longer before retrying
+                                    self.add_log_message("Царай танихгүй байна - дахин оролдоно...")
+                                    self.face_recognition_attempted = False  # Allow retry
+                                    self.unknown_attempts = 0  # Reset counter
+                                    time.sleep(1.0)  # Wait before next attempt
+                                else:
+                                    self.unknown_attempts += 1
+                                self.update_status_file()
                             else:
-                                self.add_log_message("Царай танихгүй байна")
-                                # Lock recognition to prevent repeated attempts while user is still present
+                                # Person is "Unknown" or guest - this is still a successful detection
+                                self.add_log_message(f"Зочин танигдлаа: {person}")
+                                self.current_person = person
+                                self.last_person_name = person
+                                self.shutdown_timer = None
+                                # Lock recognition after guest detection too
                                 self.recognition_locked = True
                                 self.update_status_file()
                     
