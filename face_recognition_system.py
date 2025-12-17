@@ -1408,44 +1408,76 @@ class FaceRecognitionSystem:
                         confidence_percent = self.map_lbph_confidence_to_percent(confidence)
                         self.current_confidence = confidence_percent
                         
-                        # Check if face is recognized with good confidence
-                        if name != "Unknown" and confidence < 90 and confidence_percent > 70:
-                            print(f"✅ Recognized: {name} ({confidence_percent:.0f}%)")
-                            
-                        # Prefer latest saved skin photo for UI (instant display); fall back to live frame
-                        if not self.copy_latest_skin_photo_to_recognition(name):
-                            self._save_recognition_image_from_frame(frame, x, y, w, h, name)
-                            
-                            # Reset photo flag for this person if it's a new recognition
-                            if self.current_person != name:
-                                self.photo_saved_this_session = False
-                            
-                            # ASYNC: Save high-resolution skin photo in background (DON'T BLOCK!)
-                            import threading
-                            threading.Thread(
-                                target=self._async_save_skin_photo_and_trigger,
-                                args=(name,),
-                                daemon=True
-                            ).start()
-                            
-                            # Sticky identity
-                            self.last_recognized_name = name
-                            self.last_recognized_time = time.time()
-                            self.unknown_attempts = 0
-                            
-                            # Turn on lights when a trained face is recognized
-                            if self.relay_available and not self.lights_on:
-                                self.turn_on_lights()
-                            
-                            return name
+                        print(f"[DEBUG] Recognition result: label={label}, name={name}, confidence={confidence:.2f}, confidence_percent={confidence_percent:.1f}%")
+                        
+                        # Check if this is a trained face (in label_map)
+                        is_trained_face = (name != "Unknown" and name in self.label_names)
+                        
+                        # More lenient threshold for trained faces - accept if confidence is reasonable
+                        # For trained faces: accept if confidence < 120 (more lenient) OR confidence_percent > 50
+                        # For unknown: only accept if confidence is very high (> 100) meaning truly unknown
+                        if is_trained_face:
+                            # This is a trained face - be more lenient with confidence
+                            # Accept if confidence < 120 (LBPH lower is better, so < 120 is reasonable)
+                            # OR if confidence_percent > 50 (at least 50% match)
+                            if confidence < 120 or confidence_percent > 50:
+                                print(f"✅ Recognized trained face: {name} (confidence: {confidence:.2f}, {confidence_percent:.0f}%)")
+                                
+                                # Prefer latest saved skin photo for UI (instant display); fall back to live frame
+                                if not self.copy_latest_skin_photo_to_recognition(name):
+                                    self._save_recognition_image_from_frame(frame, x, y, w, h, name)
+                                
+                                # Reset photo flag for this person if it's a new recognition
+                                if self.current_person != name:
+                                    self.photo_saved_this_session = False
+                                
+                                # ASYNC: Save high-resolution skin photo in background (DON'T BLOCK!)
+                                import threading
+                                threading.Thread(
+                                    target=self._async_save_skin_photo_and_trigger,
+                                    args=(name,),
+                                    daemon=True
+                                ).start()
+                                
+                                # Sticky identity
+                                self.last_recognized_name = name
+                                self.last_recognized_time = time.time()
+                                self.unknown_attempts = 0
+                                
+                                # Turn on lights when a trained face is recognized
+                                if self.relay_available and not self.lights_on:
+                                    self.turn_on_lights()
+                                
+                                return name
+                            else:
+                                # Trained face but low confidence - might be lighting/angle issue
+                                # Use sticky identity if very recent (within 10 seconds)
+                                now_ts = time.time()
+                                if (self.last_recognized_name == name and 
+                                    (now_ts - self.last_recognized_time) < 10.0):
+                                    print(f"[INFO] Low confidence for {name} but using sticky identity (last recognized {now_ts - self.last_recognized_time:.1f}s ago)")
+                                    return name
+                                else:
+                                    print(f"[WARNING] Trained face {name} has low confidence ({confidence:.2f}, {confidence_percent:.0f}%) - will retry")
+                                    # Don't treat as guest yet - allow retry
+                                    self.unknown_attempts += 1
+                                    if self.unknown_attempts < 3:
+                                        return None
+                                    # After 3 attempts, might be a different person or bad lighting
+                                    print(f"[INFO] After {self.unknown_attempts} attempts, treating as guest")
                         else:
-                            # Face detected but not recognized - treat as guest
-                            if confidence >= 100 or confidence_percent <= 50:
+                            # Not a trained face - this is truly unknown
+                            print(f"[INFO] Unknown face detected (confidence: {confidence:.2f}, {confidence_percent:.0f}%)")
+                            
+                            # Only treat as guest if confidence is very high (meaning truly unknown)
+                            # High confidence (> 100) means the recognizer is very sure it doesn't match any trained face
+                            if confidence >= 100 or confidence_percent <= 40:
                                 self.last_recognized_name = None
                                 self.last_recognized_time = 0
                             
                             self.unknown_attempts += 1
                             if self.unknown_attempts < 2:
+                                # Allow a couple of retries in case it's a trained face with bad angle/lighting
                                 return None
 
                             # Handle unknown person as guest
@@ -1923,21 +1955,37 @@ class FaceRecognitionSystem:
                             person = self.recognize_face_with_camera()
                             
                             if person and person != "Unknown":
-                                # Check if this is a different person than before
-                                person_changed = (self.last_person_name is not None and 
-                                                 self.last_person_name != person)
+                                # Check if person changed - if so, reset everything
+                                person_changed = (self.current_person is not None and 
+                                                 self.current_person != person)
+                                
+                                if person_changed:
+                                    print(f"[INFO] ⚠️ Person changed from {self.current_person} to {person} - resetting state")
+                                    # Clear old person's data completely
+                                    self.photo_saved_this_session = False
+                                    self.unknown_attempts = 0
+                                    self.recognition_image_path = None
+                                    # Clear any old recognition images
+                                    try:
+                                        script_dir = os.path.dirname(os.path.abspath(__file__))
+                                        if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                            project_root = script_dir
+                                        else:
+                                            project_root = os.path.dirname(script_dir)
+                                        old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                        if os.path.exists(old_image):
+                                            os.remove(old_image)
+                                            print(f"[INFO] Removed old recognition image for person change")
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to remove old image: {e}")
                                 
                                 self.add_log_message(f"Царай танигдлаа: {person}")
                                 self.current_person = person
                                 self.last_person_name = person  # Update last person
                                 self.shutdown_timer = None
                                 # Lock recognition only after SUCCESSFUL recognition
+                                # But allow periodic re-verification (handled in main loop)
                                 self.recognition_locked = True
-                                
-                                # Reset photo flag if person changed (new person = new photo)
-                                if person_changed:
-                                    print(f"[INFO] Person changed from {self.last_person_name} to {person} - resetting photo flag")
-                                    self.photo_saved_this_session = False
                                 
                                 # Ensure lights are on for recognized trained face
                                 if self.relay_available and not self.lights_on:
@@ -1996,12 +2044,29 @@ class FaceRecognitionSystem:
                     elif self.current_person is not None:
                         # Reset timeout timer since person is still present
                         self.shutdown_timer = None
+                        
+                        # Periodically re-verify the person is still the same (every 8 seconds)
+                        # This prevents showing other people's faces if someone else approaches
+                        current_time = time.time()
+                        if not hasattr(self, 'last_verification_time'):
+                            self.last_verification_time = 0
+                        
+                        # Re-verify every 8 seconds to ensure it's still the same person
+                        # Only if recognition is locked (to avoid constant re-checking)
+                        if self.recognition_locked and (current_time - self.last_verification_time) > 8.0:
+                            self.last_verification_time = current_time
+                            # Unlock recognition for a quick re-check
+                            print(f"[INFO] Periodic verification - re-checking if {self.current_person} is still present")
+                            self.recognition_locked = False
+                            self.face_recognition_attempted = False
+                            self.person_stable_start_time = time.time()  # Reset stable time
+                        
                         # Check if distance changed significantly (might be a different person)
-                        # If distance changes by more than 20cm while person is recognized, 
+                        # If distance changes by more than 30cm while person is recognized, 
                         # it might indicate a person change - allow re-recognition
-                        if previous_smoothed_distance is not None:
+                        elif previous_smoothed_distance is not None and self.recognition_locked:
                             distance_change = abs(smoothed_distance - previous_smoothed_distance)
-                            if distance_change > 20 and self.recognition_locked:
+                            if distance_change > 30:
                                 # Significant distance change - might be a new person
                                 # Unlock recognition to allow re-check
                                 print(f"[INFO] Significant distance change ({distance_change:.1f}cm) - unlocking recognition for re-check")
