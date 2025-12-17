@@ -1409,18 +1409,30 @@ class FaceRecognitionSystem:
                         self.current_confidence = confidence_percent
                         
                         print(f"[DEBUG] Recognition result: label={label}, name={name}, confidence={confidence:.2f}, confidence_percent={confidence_percent:.1f}%")
+                        print(f"[DEBUG] Label in label_map: {label in self.label_map}, Name in label_names: {name in self.label_names if name != 'Unknown' else False}")
                         
                         # Check if this is a trained face (in label_map)
-                        is_trained_face = (name != "Unknown" and name in self.label_names)
+                        # IMPORTANT: Even if label exists, we must verify confidence is good
+                        is_trained_face = (name != "Unknown" and name in self.label_names and label in self.label_map)
                         
-                        # More lenient threshold for trained faces - accept if confidence is reasonable
-                        # For trained faces: accept if confidence < 120 (more lenient) OR confidence_percent > 50
-                        # For unknown: only accept if confidence is very high (> 100) meaning truly unknown
+                        # Additional safety check: if confidence is very high (> 100), it's likely a false positive
+                        # even if the label matches a trained face
+                        if is_trained_face and confidence > 100:
+                            print(f"[WARNING] Label {label} ({name}) returned but confidence {confidence:.2f} is too high - likely false positive")
+                            is_trained_face = False  # Treat as unknown
+                        
+                        # IMPORTANT: Even if label is in label_map, we need to verify confidence is actually good
+                        # LBPH confidence: lower is better (0 = perfect match, higher = worse match)
+                        # If confidence is too high (> 100), it's likely a false positive even if label matches
+                        
                         if is_trained_face:
-                            # This is a trained face - be more lenient with confidence
-                            # Accept if confidence < 120 (LBPH lower is better, so < 120 is reasonable)
-                            # OR if confidence_percent > 50 (at least 50% match)
-                            if confidence < 120 or confidence_percent > 50:
+                            # This is a trained face - but we need STRICT confidence check to prevent false positives
+                            # Accept ONLY if BOTH conditions are met:
+                            # 1. confidence < 90 (good match - lower is better)
+                            # 2. confidence_percent > 60 (at least 60% match)
+                            # This prevents guests from being recognized as trained faces
+                            
+                            if confidence < 90 and confidence_percent > 60:
                                 print(f"✅ Recognized trained face: {name} (confidence: {confidence:.2f}, {confidence_percent:.0f}%)")
                                 
                                 # Prefer latest saved skin photo for UI (instant display); fall back to live frame
@@ -1450,34 +1462,37 @@ class FaceRecognitionSystem:
                                 
                                 return name
                             else:
-                                # Trained face but low confidence - might be lighting/angle issue
-                                # Use sticky identity if very recent (within 10 seconds)
+                                # Trained face label returned but confidence is too low - likely a FALSE POSITIVE
+                                # This means someone else (guest) is being matched to a trained face incorrectly
+                                print(f"[WARNING] ⚠️ False positive detected: label={label} maps to '{name}' but confidence is too low ({confidence:.2f}, {confidence_percent:.0f}%)")
+                                print(f"[WARNING] This is likely a guest, not {name}. Treating as unknown.")
+                                
+                                # Use sticky identity ONLY if:
+                                # 1. Last recognized was this same person
+                                # 2. Very recent (within 5 seconds, not 10)
+                                # 3. Confidence is not terrible (at least < 110)
                                 now_ts = time.time()
                                 if (self.last_recognized_name == name and 
-                                    (now_ts - self.last_recognized_time) < 10.0):
-                                    print(f"[INFO] Low confidence for {name} but using sticky identity (last recognized {now_ts - self.last_recognized_time:.1f}s ago)")
+                                    (now_ts - self.last_recognized_time) < 5.0 and
+                                    confidence < 110):
+                                    print(f"[INFO] Using sticky identity for {name} (last recognized {now_ts - self.last_recognized_time:.1f}s ago, confidence acceptable)")
                                     return name
                                 else:
-                                    print(f"[WARNING] Trained face {name} has low confidence ({confidence:.2f}, {confidence_percent:.0f}%) - will retry")
-                                    # Don't treat as guest yet - allow retry
-                                    self.unknown_attempts += 1
-                                    if self.unknown_attempts < 3:
-                                        return None
-                                    # After 3 attempts, might be a different person or bad lighting
-                                    print(f"[INFO] After {self.unknown_attempts} attempts, treating as guest")
+                                    # Confidence is too low or too much time passed - treat as guest
+                                    print(f"[INFO] Confidence too low or sticky expired - treating as guest")
+                                    # Don't retry - go straight to guest handling
+                                    self.unknown_attempts = 2  # Set to 2 so it goes to guest handling
                         else:
-                            # Not a trained face - this is truly unknown
-                            print(f"[INFO] Unknown face detected (confidence: {confidence:.2f}, {confidence_percent:.0f}%)")
+                            # Not a trained face OR label returned but not in label_map - this is truly unknown
+                            print(f"[INFO] Unknown face detected (label={label}, name={name}, confidence: {confidence:.2f}, {confidence_percent:.0f}%)")
                             
-                            # Only treat as guest if confidence is very high (meaning truly unknown)
-                            # High confidence (> 100) means the recognizer is very sure it doesn't match any trained face
-                            if confidence >= 100 or confidence_percent <= 40:
-                                self.last_recognized_name = None
-                                self.last_recognized_time = 0
+                            # Clear sticky identity for unknown faces
+                            self.last_recognized_name = None
+                            self.last_recognized_time = 0
                             
                             self.unknown_attempts += 1
                             if self.unknown_attempts < 2:
-                                # Allow a couple of retries in case it's a trained face with bad angle/lighting
+                                # Allow one retry in case it's a trained face with bad angle/lighting
                                 return None
 
                             # Handle unknown person as guest
