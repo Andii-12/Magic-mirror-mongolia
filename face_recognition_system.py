@@ -76,6 +76,7 @@ class FaceRecognitionSystem:
         self.unknown_attempts = 0  # Count consecutive unknown recognitions before assigning guest
         self.last_recognized_name = None  # Sticky identity name
         self.last_recognized_time = 0  # Sticky identity timestamp
+        self.person_recognition_times = {}  # Track when each person was last recognized (to find only new photos)
         # Baseline distance calibration (to avoid false triggers when nobody is there)
         self.baseline_distance = None
         self._baseline_samples = []
@@ -597,6 +598,10 @@ class FaceRecognitionSystem:
         """ASYNC: Save skin photo and trigger analysis in background thread"""
         try:
             print(f"[INFO] Starting async skin photo save for: {person_name}")
+            # Get the recognition time for this person to ensure we only use photos from this session
+            recognition_time = self.person_recognition_times.get(person_name, time.time())
+            print(f"[DEBUG] Using recognition time {recognition_time} to find photos from this session")
+            
             # Record the time before saving to ensure we get the newest photo
             save_start_time = time.time()
             photo_saved = self.save_skin_photo(person_name)
@@ -607,16 +612,22 @@ class FaceRecognitionSystem:
                 time.sleep(0.5)
                 
                 # Copy the newly saved skin photo to recognition location
-                # Use timestamp to ensure we get the photo that was just saved
-                if self.copy_latest_skin_photo_after_time(person_name, save_start_time):
-                    print(f"[INFO] ✓ New skin photo copied to recognition location")
+                # Use recognition_time to ensure we only get photos from this recognition session
+                if self.copy_latest_skin_photo_after_time(person_name, recognition_time):
+                    print(f"[INFO] ✓ New skin photo copied to recognition location (from this session)")
                     # Update status file to refresh UI with new image
                     self.update_status_file()
                 else:
-                    print(f"[WARNING] Failed to copy newly saved photo, trying fallback...")
-                    # Fallback: try copying latest photo anyway
-                    if self.copy_latest_skin_photo_to_recognition(person_name):
+                    print(f"[WARNING] Failed to copy newly saved photo with timestamp filter, trying fallback...")
+                    # Fallback: try copying latest photo with save_start_time
+                    if self.copy_latest_skin_photo_after_time(person_name, save_start_time):
+                        print(f"[INFO] ✓ New skin photo copied using save start time")
                         self.update_status_file()
+                    else:
+                        # Final fallback: copy latest photo (but log warning)
+                        print(f"[WARNING] Using final fallback - copying latest photo (may be old)")
+                        if self.copy_latest_skin_photo_to_recognition(person_name, min_timestamp=recognition_time):
+                            self.update_status_file()
                 
                 # Find the actual photo path (might have timestamp if duplicate)
                 skin_dir = os.path.join(os.getcwd(), "Skin", person_name)
@@ -779,8 +790,10 @@ class FaceRecognitionSystem:
             traceback.print_exc()
             return False
 
-    def copy_latest_skin_photo_to_recognition(self, person_name):
-        """Copy the latest skin photo from Skin folder to recognition image location"""
+    def copy_latest_skin_photo_to_recognition(self, person_name, min_timestamp=None):
+        """Copy the latest skin photo from Skin folder to recognition image location
+        If min_timestamp is provided, only copies photos saved after that time
+        """
         try:
             # Get MagicMirror root directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -800,23 +813,32 @@ class FaceRecognitionSystem:
                 return False
             
             # Find latest image in Skin directory
+            # If min_timestamp is provided, only consider photos saved after that time
             image_files = []
             for file in os.listdir(skin_dir):
                 if file.lower().endswith(('.jpg', '.jpeg', '.png')):
                     file_path = os.path.join(skin_dir, file)
                     if os.path.isfile(file_path):
                         mtime = os.path.getmtime(file_path)
-                        image_files.append((mtime, file_path))
+                        # If min_timestamp is provided, only use photos saved after that time
+                        if min_timestamp is None or mtime >= min_timestamp - 1.0:  # 1 second tolerance
+                            image_files.append((mtime, file_path))
             
             if not image_files:
-                print(f"[DEBUG] No images found in {skin_dir}")
+                if min_timestamp:
+                    print(f"[DEBUG] No images found in {skin_dir} after timestamp {min_timestamp}")
+                else:
+                    print(f"[DEBUG] No images found in {skin_dir}")
                 return False
             
             # Sort by modification time (newest first)
             image_files.sort(reverse=True)
             latest_image_path = image_files[0][1]
             
-            print(f"[DEBUG] Found latest skin photo: {latest_image_path}")
+            if min_timestamp:
+                print(f"[DEBUG] Found latest skin photo (saved after {min_timestamp}): {latest_image_path}")
+            else:
+                print(f"[DEBUG] Found latest skin photo: {latest_image_path}")
             
             # Ensure recognition directory exists
             os.makedirs(recognition_dir, exist_ok=True)
@@ -1554,17 +1576,18 @@ class FaceRecognitionSystem:
                             if confidence < 90 and confidence_percent > 60:
                                 print(f"✅ Recognized trained face: {name} (confidence: {confidence:.2f}, {confidence_percent:.0f}%)")
                                 
+                                # Record recognition time to ensure we only use photos from this session
+                                recognition_time = time.time()
+                                self.person_recognition_times[name] = recognition_time
+                                
                                 # Reset photo flag for this person if it's a new recognition
                                 if self.current_person != name:
                                     self.photo_saved_this_session = False
                                 
-                                # Try to use existing skin photo first (if available)
-                                # Don't save frame-based image (has color problems) - wait for new photo instead
-                                existing_photo_available = self.copy_latest_skin_photo_to_recognition(name)
-                                if not existing_photo_available:
-                                    # No existing photo - set image path to None to avoid showing bad frame image
-                                    self.recognition_image_path = None
-                                    print(f"[INFO] No existing skin photo found - will use new photo after capture")
+                                # Don't copy any existing photo - wait for the new photo to be saved
+                                # This ensures we only show the most recent photo from this recognition session
+                                self.recognition_image_path = None
+                                print(f"[INFO] Waiting for new photo capture - will display after save completes")
                                 
                                 # ASYNC: Save high-resolution skin photo in background (DON'T BLOCK!)
                                 # This will copy the new photo to recognition location when done
@@ -1622,13 +1645,14 @@ class FaceRecognitionSystem:
                             # Handle unknown person as guest
                             guest_name = self.handle_unknown_person()
                             
-                            # Try to use existing skin photo (if available)
-                            # Don't save frame-based image (has color problems) - wait for new photo instead
-                            existing_photo_available = self.copy_latest_skin_photo_to_recognition(guest_name)
-                            if not existing_photo_available:
-                                # No existing photo - set image path to None to avoid showing bad frame image
-                                self.recognition_image_path = None
-                                print(f"[INFO] No existing skin photo found for guest - will use new photo after capture")
+                            # Record recognition time to ensure we only use photos from this session
+                            recognition_time = time.time()
+                            self.person_recognition_times[guest_name] = recognition_time
+                            
+                            # Don't copy any existing photo - wait for the new photo to be saved
+                            # This ensures we only show the most recent photo from this recognition session
+                            self.recognition_image_path = None
+                            print(f"[INFO] Waiting for new guest photo capture - will display after save completes")
                             
                             # Reset photo flag for guest
                             if self.current_person != guest_name:
@@ -1655,13 +1679,14 @@ class FaceRecognitionSystem:
                         
                         guest_name = self.handle_unknown_person()
                         
-                        # Try to use existing skin photo (if available)
-                        # Don't save frame-based image (has color problems) - wait for new photo instead
-                        existing_photo_available = self.copy_latest_skin_photo_to_recognition(guest_name)
-                        if not existing_photo_available:
-                            # No existing photo - set image path to None to avoid showing bad frame image
-                            self.recognition_image_path = None
-                            print(f"[INFO] No existing skin photo found for guest - will use new photo after capture")
+                        # Record recognition time to ensure we only use photos from this session
+                        recognition_time = time.time()
+                        self.person_recognition_times[guest_name] = recognition_time
+                        
+                        # Don't copy any existing photo - wait for the new photo to be saved
+                        # This ensures we only show the most recent photo from this recognition session
+                        self.recognition_image_path = None
+                        print(f"[INFO] Waiting for new guest photo capture - will display after save completes")
                         
                         # Reset photo flag for guest
                         if self.current_person != guest_name:
