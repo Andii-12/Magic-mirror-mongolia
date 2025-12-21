@@ -2035,10 +2035,29 @@ class FaceRecognitionSystem:
                         self.last_detection_time = time.time()
                         self.person_stable_start_time = time.time()  # Start tracking stable time
                         self.shutdown_timer = None
+                        
+                        # Clear old person's image immediately to prevent showing previous person's photo
+                        old_person = self.current_person
                         self.current_person = None  # Reset person
                         self.unknown_attempts = 0   # Reset unknown counter on new activation
                         self.current_confidence = 0  # Reset confidence
-                        self.recognition_image_path = None  # Reset image
+                        self.recognition_image_path = None  # Reset image path immediately
+                        
+                        # Remove old recognition image file immediately to prevent UI from showing it
+                        if old_person:
+                            try:
+                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                    project_root = script_dir
+                                else:
+                                    project_root = os.path.dirname(script_dir)
+                                old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                if os.path.exists(old_image):
+                                    os.remove(old_image)
+                                    print(f"[INFO] Removed old recognition image for new activation (previous person: {old_person})")
+                            except Exception as e:
+                                print(f"[WARNING] Failed to remove old image: {e}")
+                        
                         self.face_recognition_attempted = False
                         self.recognition_locked = False  # Reset lock on new activation
                         self.camera_opened = False
@@ -2049,6 +2068,7 @@ class FaceRecognitionSystem:
                             self.turn_on_lights()
                         # Pre-warm camera for faster recognition
                         self.initialize_camera()
+                        # Update status file immediately with cleared image to prevent showing old photo
                         self.update_status_file()
                     
                     # Try face recognition when first activated
@@ -2102,17 +2122,19 @@ class FaceRecognitionSystem:
                             person = self.recognize_face_with_camera()
                             
                             if person and person != "Unknown":
-                                # Check if person changed - if so, reset everything
+                                # Check if person changed - if so, reset everything IMMEDIATELY
                                 person_changed = (self.current_person is not None and 
                                                  self.current_person != person)
                                 
                                 if person_changed:
-                                    print(f"[INFO] ⚠️ Person changed from {self.current_person} to {person} - resetting state")
-                                    # Clear old person's data completely
-                                    self.photo_saved_this_session = False
-                                    self.unknown_attempts = 0
+                                    old_person = self.current_person
+                                    print(f"[INFO] ⚠️ Person changed from {old_person} to {person} - resetting state immediately")
+                                    
+                                    # Clear old person's image path and file IMMEDIATELY before updating status
                                     self.recognition_image_path = None
-                                    # Clear any old recognition images
+                                    self.current_confidence = 0
+                                    
+                                    # Remove old recognition image file immediately
                                     try:
                                         script_dir = os.path.dirname(os.path.abspath(__file__))
                                         if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
@@ -2122,9 +2144,17 @@ class FaceRecognitionSystem:
                                         old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
                                         if os.path.exists(old_image):
                                             os.remove(old_image)
-                                            print(f"[INFO] Removed old recognition image for person change")
+                                            print(f"[INFO] ✓ Removed old recognition image for person change ({old_person} → {person})")
                                     except Exception as e:
                                         print(f"[WARNING] Failed to remove old image: {e}")
+                                    
+                                    # Update status file IMMEDIATELY with cleared image to prevent UI showing old photo
+                                    self.current_person = None  # Temporarily clear to update status
+                                    self.update_status_file()
+                                    
+                                    # Clear old person's data completely
+                                    self.photo_saved_this_session = False
+                                    self.unknown_attempts = 0
                                 
                                 self.add_log_message(f"Царай танигдлаа: {person}")
                                 self.current_person = person
@@ -2139,20 +2169,11 @@ class FaceRecognitionSystem:
                                     print(f"💡 Ensuring lights are ON for recognized user: {person}")
                                     self.turn_on_lights()
                                 
-                                # Ensure image path is still set (it should be from recognize_face_with_camera)
-                                if not self.recognition_image_path:
-                                    # If image path is missing, try to find the file
-                                    script_dir = os.path.dirname(os.path.abspath(__file__))
-                                    if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
-                                        project_root = script_dir
-                                    else:
-                                        project_root = os.path.dirname(script_dir)
-                                    image_file = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
-                                    if os.path.exists(image_file):
-                                        self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                                        print(f"[DEBUG] Found existing image file, setting path: {self.recognition_image_path}")
+                                # Note: recognition_image_path will be set by recognize_face_with_camera() or
+                                # by async photo save. Don't try to find existing file here as it might be old.
+                                # The image path should be None until the new photo is saved.
                                 
-                                # Update immediately with all data
+                                # Update immediately with person name but NO image (image will come from async save)
                                 self.update_status_file()
                                 
                                 # Note: No delayed update needed - async photo save will copy the new photo
@@ -2173,6 +2194,31 @@ class FaceRecognitionSystem:
                                 self.update_status_file()
                             else:
                                 # Person is "Unknown" or guest - this is still a successful detection
+                                # Check if person changed - if so, clear old image immediately
+                                person_changed = (self.current_person is not None and 
+                                                 self.current_person != person)
+                                
+                                if person_changed:
+                                    old_person = self.current_person
+                                    print(f"[INFO] ⚠️ Person changed from {old_person} to {person} (guest) - clearing old image")
+                                    self.recognition_image_path = None
+                                    # Remove old recognition image file immediately
+                                    try:
+                                        script_dir = os.path.dirname(os.path.abspath(__file__))
+                                        if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                            project_root = script_dir
+                                        else:
+                                            project_root = os.path.dirname(script_dir)
+                                        old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                        if os.path.exists(old_image):
+                                            os.remove(old_image)
+                                            print(f"[INFO] ✓ Removed old recognition image for guest change ({old_person} → {person})")
+                                    except Exception as e:
+                                        print(f"[WARNING] Failed to remove old image: {e}")
+                                    # Update status immediately with cleared image
+                                    self.current_person = None
+                                    self.update_status_file()
+                                
                                 self.add_log_message(f"Зочин танигдлаа: {person}")
                                 self.current_person = person
                                 self.last_person_name = person
