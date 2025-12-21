@@ -127,10 +127,35 @@ let config = {
 		// 		updateInterval: 10 * 60 * 1000
 		// 	}
 		// },
+		// Skin Analysis Module (below weather)
+		{
+			module: "skinanalysis",
+			position: "top_left",
+			header: "Арьсны шинжилгээ", // "Skin Analysis" in Mongolian
+			order: 2, // Position after weather (order: 1)
+			config: {
+				// 🔑 EASY API KEY SETUP:
+				// 1. Go to https://platform.openai.com/api-keys
+				// 2. Create a new API key
+				// 3. Copy the key (starts with sk-)
+				// 4. Paste it below (replace the long key)
+				apiKey: "api input", // ⬅️ REPLACE THIS WITH YOUR API KEY
+				updateInterval: 60 * 60 * 1000, // 60 minutes (reduced frequency)
+				animationSpeed: 2000,
+				statusFile: "/tmp/magicmirror_face_status.json",
+				skinPhotosDir: "Skin",
+				showAnalysis: true,
+				showAdvice: true,
+				analysisStyle: "small bright", // Smaller text
+				adviceStyle: "small light", // Smaller text
+				rateLimitDelay: 30000 // 30 seconds between requests
+			}
+		},
 		{
 			module: "mongoliannews",
-			position: "bottom_bar",
+			position: "top_left",
 			header: "Монголын мэдээ", // "Mongolian News" in Mongolian
+			order: 3, // Position after skin analysis (order: 2)
 			config: {
 				apiKey: "pub_cb951c5b3961435ea0feb4edc321f1d2",
 				apiUrl: "https://newsdata.io/api/1/latest",
@@ -223,30 +248,6 @@ let config = {
 					"Andii": "Тавтай морил Анди!",
 					"Jane": "Тавтай морил Жейн!"
 				}
-			}
-		},
-		// Skin Analysis Module (below weather)
-		{
-			module: "skinanalysis",
-			position: "top_left",
-			header: "Арьсны шинжилгээ", // "Skin Analysis" in Mongolian
-			order: 2, // Position after weather (order: 1)
-			config: {
-				// 🔑 EASY API KEY SETUP:
-				// 1. Go to https://platform.openai.com/api-keys
-				// 2. Create a new API key
-				// 3. Copy the key (starts with sk-)
-				// 4. Paste it below (replace the long key)
-				apiKey: "api input", // ⬅️ REPLACE THIS WITH YOUR API KEY
-				updateInterval: 60 * 60 * 1000, // 60 minutes (reduced frequency)
-				animationSpeed: 2000,
-				statusFile: "/tmp/magicmirror_face_status.json",
-				skinPhotosDir: "Skin",
-				showAnalysis: true,
-				showAdvice: true,
-				analysisStyle: "small bright", // Smaller text
-				adviceStyle: "small light", // Smaller text
-				rateLimitDelay: 30000 // 30 seconds between requests
 			}
 		}
 	]
