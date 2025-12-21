@@ -555,7 +555,18 @@ class FaceRecognitionSystem:
             recognition_file = os.path.join(recognition_dir, "recognition.jpg")
             
             cv2.imwrite(recognition_file, face_resized, [cv2.IMWRITE_JPEG_QUALITY, 90])
-            self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+            # CRITICAL: Only set recognition_image_path if current_person matches person_name
+            # This prevents showing previous person's photo when person changes
+            if self.current_person == person_name:
+                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+            else:
+                print(f"[WARNING] Person mismatch in _save_recognition_image_from_frame: current_person={self.current_person}, person_name={person_name} - NOT setting image path")
+                # Remove the image we just saved since it's for wrong person
+                try:
+                    os.remove(recognition_file)
+                except:
+                    pass
+                self.recognition_image_path = None
         except Exception as e:
             print(f"[WARNING] Failed to save recognition image: {e}")
             self.recognition_image_path = None
@@ -608,26 +619,56 @@ class FaceRecognitionSystem:
             if photo_saved:
                 print(f"[INFO] Skin photo saved successfully for: {person_name}")
                 
+                # CRITICAL: Check if person has changed before updating image
+                # If current_person is different, don't update recognition_image_path
+                if self.current_person != person_name:
+                    print(f"[WARNING] Person changed from {person_name} to {self.current_person} - skipping image update to prevent showing wrong photo")
+                    return
+                
                 # Wait a moment to ensure file is fully written and timestamp is updated
                 time.sleep(0.5)
+                
+                # CRITICAL: Double-check person hasn't changed during the wait
+                if self.current_person != person_name:
+                    print(f"[WARNING] Person changed during photo save wait - skipping image update")
+                    return
                 
                 # Copy the newly saved skin photo to recognition location
                 # Use recognition_time to ensure we only get photos from this recognition session
                 if self.copy_latest_skin_photo_after_time(person_name, recognition_time):
-                    print(f"[INFO] ✓ New skin photo copied to recognition location (from this session)")
-                    # Update status file to refresh UI with new image
-                    self.update_status_file()
+                    # CRITICAL: Verify person still matches before setting image path
+                    if self.current_person == person_name:
+                        print(f"[INFO] ✓ New skin photo copied to recognition location (from this session)")
+                        # Update status file to refresh UI with new image
+                        self.update_status_file()
+                    else:
+                        print(f"[WARNING] Person changed after photo copy - not updating image path")
+                        # Clear the image we just copied since it's for wrong person
+                        self.recognition_image_path = None
+                        self.update_status_file()
                 else:
                     print(f"[WARNING] Failed to copy newly saved photo with timestamp filter, trying fallback...")
                     # Fallback: try copying latest photo with save_start_time
                     if self.copy_latest_skin_photo_after_time(person_name, save_start_time):
-                        print(f"[INFO] ✓ New skin photo copied using save start time")
-                        self.update_status_file()
+                        # CRITICAL: Verify person still matches
+                        if self.current_person == person_name:
+                            print(f"[INFO] ✓ New skin photo copied using save start time")
+                            self.update_status_file()
+                        else:
+                            print(f"[WARNING] Person changed after fallback photo copy - not updating image path")
+                            self.recognition_image_path = None
+                            self.update_status_file()
                     else:
                         # Final fallback: copy latest photo (but log warning)
                         print(f"[WARNING] Using final fallback - copying latest photo (may be old)")
                         if self.copy_latest_skin_photo_to_recognition(person_name, min_timestamp=recognition_time):
-                            self.update_status_file()
+                            # CRITICAL: Verify person still matches
+                            if self.current_person == person_name:
+                                self.update_status_file()
+                            else:
+                                print(f"[WARNING] Person changed after final fallback photo copy - not updating image path")
+                                self.recognition_image_path = None
+                                self.update_status_file()
                 
                 # Find the actual photo path (might have timestamp if duplicate)
                 skin_dir = os.path.join(os.getcwd(), "Skin", person_name)
@@ -874,9 +915,21 @@ class FaceRecognitionSystem:
                 except Exception as e:
                     print(f"[WARNING] Error verifying image file: {e}")
                 
-                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                print(f"[DEBUG] Set recognition_image_path to: {self.recognition_image_path}")
-                return True
+                # CRITICAL: Only set recognition_image_path if current_person matches person_name
+                # This prevents showing previous person's photo when person changes
+                if self.current_person == person_name:
+                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                    print(f"[DEBUG] Set recognition_image_path to: {self.recognition_image_path} for {person_name}")
+                    return True
+                else:
+                    print(f"[WARNING] Person mismatch: current_person={self.current_person}, photo_person={person_name} - NOT setting image path")
+                    # Remove the image we just copied since it's for wrong person
+                    try:
+                        os.remove(recognition_file)
+                        print(f"[INFO] Removed recognition image for wrong person")
+                    except:
+                        pass
+                    return False
             else:
                 print(f"[WARNING] Failed to copy skin photo to recognition location")
                 return False
@@ -962,9 +1015,21 @@ class FaceRecognitionSystem:
                 except Exception as e:
                     print(f"[WARNING] Error verifying image file: {e}")
                 
-                self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
-                print(f"[DEBUG] Set recognition_image_path to: {self.recognition_image_path}")
-                return True
+                # CRITICAL: Only set recognition_image_path if current_person matches person_name
+                # This prevents showing previous person's photo when person changes
+                if self.current_person == person_name:
+                    self.recognition_image_path = "/modules/facerecognition/public/recognition.jpg"
+                    print(f"[DEBUG] Set recognition_image_path to: {self.recognition_image_path} for {person_name}")
+                    return True
+                else:
+                    print(f"[WARNING] Person mismatch: current_person={self.current_person}, photo_person={person_name} - NOT setting image path")
+                    # Remove the image we just copied since it's for wrong person
+                    try:
+                        os.remove(recognition_file)
+                        print(f"[INFO] Removed recognition image for wrong person")
+                    except:
+                        pass
+                    return False
             else:
                 print(f"[WARNING] Failed to copy skin photo to recognition location")
                 return False
@@ -1587,6 +1652,21 @@ class FaceRecognitionSystem:
                                 # Don't copy any existing photo - wait for the new photo to be saved
                                 # This ensures we only show the most recent photo from this recognition session
                                 self.recognition_image_path = None
+                                
+                                # CRITICAL: Remove old recognition image file immediately to prevent showing previous person's photo
+                                try:
+                                    script_dir = os.path.dirname(os.path.abspath(__file__))
+                                    if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                        project_root = script_dir
+                                    else:
+                                        project_root = os.path.dirname(script_dir)
+                                    old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                    if os.path.exists(old_image):
+                                        os.remove(old_image)
+                                        print(f"[INFO] ✓ Removed old recognition image for new person: {name}")
+                                except Exception as e:
+                                    print(f"[WARNING] Failed to remove old image: {e}")
+                                
                                 print(f"[INFO] Waiting for new photo capture - will display after save completes")
                                 
                                 # ASYNC: Save high-resolution skin photo in background (DON'T BLOCK!)
@@ -1652,6 +1732,21 @@ class FaceRecognitionSystem:
                             # Don't copy any existing photo - wait for the new photo to be saved
                             # This ensures we only show the most recent photo from this recognition session
                             self.recognition_image_path = None
+                            
+                            # CRITICAL: Remove old recognition image file immediately to prevent showing previous person's photo
+                            try:
+                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                    project_root = script_dir
+                                else:
+                                    project_root = os.path.dirname(script_dir)
+                                old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                                if os.path.exists(old_image):
+                                    os.remove(old_image)
+                                    print(f"[INFO] ✓ Removed old recognition image for new guest: {guest_name}")
+                            except Exception as e:
+                                print(f"[WARNING] Failed to remove old image: {e}")
+                            
                             print(f"[INFO] Waiting for new guest photo capture - will display after save completes")
                             
                             # Reset photo flag for guest
@@ -1686,6 +1781,21 @@ class FaceRecognitionSystem:
                         # Don't copy any existing photo - wait for the new photo to be saved
                         # This ensures we only show the most recent photo from this recognition session
                         self.recognition_image_path = None
+                        
+                        # CRITICAL: Remove old recognition image file immediately to prevent showing previous person's photo
+                        try:
+                            script_dir = os.path.dirname(os.path.abspath(__file__))
+                            if os.path.basename(script_dir) == "MagicMirror-master" or os.path.exists(os.path.join(script_dir, "package.json")):
+                                project_root = script_dir
+                            else:
+                                project_root = os.path.dirname(script_dir)
+                            old_image = os.path.join(project_root, "modules", "facerecognition", "public", "recognition.jpg")
+                            if os.path.exists(old_image):
+                                os.remove(old_image)
+                                print(f"[INFO] ✓ Removed old recognition image for new guest (no recognizer): {guest_name}")
+                        except Exception as e:
+                            print(f"[WARNING] Failed to remove old image: {e}")
+                        
                         print(f"[INFO] Waiting for new guest photo capture - will display after save completes")
                         
                         # Reset photo flag for guest
